@@ -1,7 +1,7 @@
 (asdf:defsystem "clinedi"
   :version "0.1.0"
   :author "Lukáš Hozda"
-  :license "Private"
+  :license "ISC"
   :description "A portable, Unicode-aware terminal line editor"
   :encoding :utf-8
   :depends-on ("cl-colorist")
