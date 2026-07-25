@@ -195,3 +195,5 @@ Run the regression suite on every supported Lisp:
 ```sh
 ./check
 ```
+
+Part of the [Lambda Symbolics library shelf](https://www.lambda-symbolics.com/libraries).
