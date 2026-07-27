@@ -22,6 +22,7 @@
                 #:ansi-clear-line-right
                 #:ansi-strip
                 #:ansi-display-width
+                  #:wrap-styled-text
                 #:make-keymap
                 #:copy-keymap
                 #:keymap-parent

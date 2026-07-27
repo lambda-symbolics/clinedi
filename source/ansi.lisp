@@ -88,20 +88,39 @@ Return TEXT unchanged when presentation is disabled."
 
 All trusted ANSI controls are retained so the slice enters and leaves the same
 presentation state as STRING. START and END index ANSI-stripped characters."
-  (with-output-to-string (slice)
-    (let ((index 0)
-          (visible-index 0))
-      (loop while (< index (length string))
-            for control-end = (cl-colorist:ansi-control-end string index)
-            do (if control-end
-                   (progn
-                     (write-string string slice :start index :end control-end)
-                     (setf index control-end))
-                   (progn
-                     (when (<= start visible-index (1- end))
-                       (write-char (char string index) slice))
-                     (incf visible-index)
-                     (incf index)))))))
+  (if (= start end)
+      ""
+      (with-output-to-string (slice)
+        (let ((index 0)
+              (visible-index 0))
+          (loop while (< index (length string))
+                for control-end = (cl-colorist:ansi-control-end string index)
+                do (if control-end
+                       (progn
+                         (write-string string slice :start index :end control-end)
+                         (setf index control-end))
+                       (progn
+                         (when (<= start visible-index (1- end))
+                           (write-char (char string index) slice))
+                         (incf visible-index)
+                         (incf index))))))))
+
+(defun wrap-styled-text (text display maximum-cells)
+  "Return TEXT and trusted styled DISPLAY as paired word-wrapped rows.
+
+DISPLAY must have exactly TEXT as its ANSI-stripped visible content. Every
+returned pair contains a plain row followed by its styled equivalent. Explicit
+newlines, including empty and trailing lines, become row boundaries. Wrapping
+prefers spaces, preserves graphemes and retains the presentation of every
+visible character."
+  (check-type text string)
+  (check-type display string)
+  (check-type maximum-cells integer)
+  (unless (string= text (ansi-strip display))
+    (error "Styled text does not preserve its plain visible content."))
+  (loop for (start end) in (unicode--wrap-text-ranges text maximum-cells)
+        collect (list (subseq text start end)
+                      (ansi--visible-slice display start end))))
 
 (defun ansi-display-width (string)
   "Return the number of visible terminal cells STRING occupies."

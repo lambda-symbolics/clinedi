@@ -591,52 +591,87 @@ C0, DEL and C1 controls become REPLACEMENT-CHARACTER; NIL removes them."
                    (t
                     (write-char character stream))))))
 
-(defun unicode--wrap-line (line maximum-cells)
-  "Wrap newline-free LINE into grapheme-safe, word-aware rows."
+(defun unicode--trimmed-row-end (line start end)
+  "Return END moved left past ASCII spaces within LINE's row slice."
+  (loop while (and (> end start)
+                   (char= (char line (1- end)) #\space))
+        do (decf end)
+        finally (return end)))
+
+(defun unicode--wrap-line-ranges
+    (line maximum-cells &key (start 0) (end (length line)))
+  "Wrap newline-free LINE slice into grapheme-safe, word-aware index ranges."
   (let ((width (max 1 maximum-cells))
-        (segments nil)
-        (start 0))
-    (loop while (< start (length line))
+        (ranges nil)
+        (line-start start))
+    (loop while (< line-start end)
           do (let ((used 0)
-                   (end start)
+                   (row-end line-start)
                    (break-position nil))
-               (loop while (< end (length line))
-                     for next = (grapheme-next-boundary line end)
-                     for grapheme-width = (grapheme-cell-width line end next)
+               (loop while (< row-end end)
+                     for next = (grapheme-next-boundary line row-end end)
+                     for grapheme-width =
+                           (grapheme-cell-width line row-end next)
                      while (<= (+ used grapheme-width) width)
                      do (incf used grapheme-width)
-                        (when (and (= next (1+ end))
-                                   (char= (char line end) #\space))
+                        (when (and (= next (1+ row-end))
+                                   (char= (char line row-end) #\space))
                           (setf break-position next))
-                        (setf end next))
-               (cond ((= end (length line))
-                      (push (subseq line start end) segments)
-                      (setf start end))
-                     ((and (< end (length line))
-                           (char= (char line end) #\space))
-                      (push (string-right-trim " " (subseq line start end))
-                            segments)
-                      (setf start end))
-                     ((and break-position (> break-position start))
-                      (push (string-right-trim
-                             " " (subseq line start break-position))
-                            segments)
-                      (setf start break-position))
-                     ((> end start)
-                      (push (subseq line start end) segments)
-                      (setf start end))
+                        (setf row-end next))
+               (cond ((= row-end end)
+                      (push (list line-start row-end) ranges)
+                      (setf line-start row-end))
+                     ((and (< row-end end)
+                           (char= (char line row-end) #\space))
+                      (push (list line-start
+                                  (unicode--trimmed-row-end
+                                   line line-start row-end))
+                            ranges)
+                      (setf line-start row-end))
+                     ((and break-position (> break-position line-start))
+                      (push (list line-start
+                                  (unicode--trimmed-row-end
+                                   line line-start break-position))
+                            ranges)
+                      (setf line-start break-position))
+                     ((> row-end line-start)
+                      (push (list line-start row-end) ranges)
+                      (setf line-start row-end))
                      (t
                       (let ((forced-end
-                              (grapheme-next-boundary line start)))
-                        (push (subseq line start forced-end) segments)
-                        (setf start forced-end))))
-               (loop while (and (< start (length line))
-                                (char= (char line start) #\space))
-                     do (setf start
-                              (grapheme-next-boundary line start)))))
-    (if segments
-        (nreverse segments)
-        (list ""))))
+                              (grapheme-next-boundary line line-start end)))
+                        (push (list line-start forced-end) ranges)
+                        (setf line-start forced-end))))
+               (loop while (and (< line-start end)
+                                (char= (char line line-start) #\space))
+                     do (setf line-start
+                              (grapheme-next-boundary line line-start end)))))
+    (if ranges
+        (nreverse ranges)
+        (list (list start start)))))
+
+(defun unicode--wrap-line (line maximum-cells)
+  "Wrap newline-free LINE into grapheme-safe, word-aware rows."
+  (loop for (start end) in (unicode--wrap-line-ranges line maximum-cells)
+        collect (subseq line start end)))
+
+(defun unicode--wrap-text-ranges (text maximum-cells)
+  "Wrap TEXT into grapheme-safe, word-aware index ranges without newlines."
+  (let ((ranges nil)
+        (line-start 0))
+    (loop
+      for newline = (position #\newline text :start line-start)
+      for line-end = (or newline (length text))
+      do (setf ranges
+               (nconc ranges
+                      (unicode--wrap-line-ranges
+                       text maximum-cells
+                       :start line-start
+                       :end line-end)))
+      if newline
+        do (setf line-start (1+ newline))
+      else
+        do (return ranges))))
 
 (defun wrap-text (text maximum-cells)
   "Return TEXT wrapped as a list of display rows.

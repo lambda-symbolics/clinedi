@@ -105,7 +105,23 @@
     (check-equal "oversize grapheme remains indivisible"
                  (list family)
                  (wrap-text family 1))
-    (check-equal "wrapping preserves explicit empty lines"
+    (let* ((text "alpha beta gamma")
+             (display
+               (concatenate 'string
+                            (ansi-colorize "alpha " :red)
+                            (ansi-colorize "beta " :blue)
+                            (ansi-colorize "gamma" :green)))
+             (rows (wrap-styled-text text display 10)))
+        (check-equal "styled wrapping prefers word boundaries"
+                     '("alpha beta" "gamma")
+                     (mapcar #'first rows))
+        (check-true "styled wrapping preserves visible row content"
+                    (every (lambda (row)
+                             (string= (first row) (ansi-strip (second row))))
+                           rows))
+        (check-true "styled wrapping retains a continued ANSI style"
+                    (search (ansi-colorize "gamma" :green) (second (second rows)))))
+      (check-equal "wrapping preserves explicit empty lines"
                  '("a" "" "b" "")
                  (wrap-text (format nil "a~%~%b~%") 10)))
 
