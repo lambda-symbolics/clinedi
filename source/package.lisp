@@ -31,7 +31,8 @@
    #:ansi-clear-screen
    #:ansi-strip
    #:ansi-display-width
-    #:wrap-styled-text
+   #:wrap-styled-text
+   #:wrap-styled-editor-text
 
    ;; Programmable keymaps
    #:keymap

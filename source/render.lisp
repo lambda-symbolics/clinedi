@@ -329,6 +329,34 @@ spaces and insert display-only newlines immediately before the next word."
                          (incf visible-index)))))
         (write-breaks)))))
 
+(defun wrap-styled-editor-text
+    (text display &key (cursor (length text)) (columns 80))
+  "Return word-wrapped editable TEXT, styled DISPLAY, and cursor index.
+
+DISPLAY must have exactly TEXT as its ANSI-stripped visible content. CURSOR is
+an index in TEXT. The returned strings add display-only newlines before words
+that no longer fit on their current row, and the third value is CURSOR's index
+in the returned plain string. Words wider than COLUMNS still wrap by grapheme."
+  (check-type text string)
+  (check-type display string)
+  (check-type cursor integer)
+  (unless (and (integerp columns) (plusp columns))
+    (error 'type-error :datum columns :expected-type '(integer 1 *)))
+  (unless (string= text (ansi-strip display))
+    (error "Styled editor text does not preserve its plain visible content."))
+  (let* ((safe-cursor
+           (grapheme-boundary-at-or-after
+            text
+            (min (length text) (max 0 cursor))))
+         (layout (screen--editor-layout text 0 columns))
+         (wrapped-text (screen-editor-layout-display layout))
+         (wrapped-display
+           (render--insert-soft-breaks
+            text display (screen-editor-layout-soft-breaks layout)))
+         (wrapped-cursor
+           (aref (screen-editor-layout-display-indexes layout) safe-cursor)))
+    (values wrapped-text wrapped-display wrapped-cursor)))
+
 (defun line-editor-move-vertical
     (editor direction &key (columns 80) (prompt-width 0))
   "Move EDITOR by one physical display row and return whether it moved.
