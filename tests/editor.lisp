@@ -271,6 +271,13 @@
                                     :columns 5
                                     :prompt-width 2))
      "Movement must report the visual boundary for history fallback."))
+  (let ((editor (make-line-editor :text "say user")))
+    (line-editor-move-vertical editor -1 :columns 6 :prompt-width 0)
+    (editor-tests--assert (= (line-editor-cursor editor) 3)
+                          "Up must follow a soft word-wrapped row.")
+    (line-editor-move-vertical editor 1 :columns 6 :prompt-width 0)
+    (editor-tests--assert (= (line-editor-cursor editor) 8)
+                          "Down must restore the soft-wrapped word column."))
   (let* ((text (format nil "猫a~%犬b"))
          (editor (make-line-editor :text text)))
     (line-editor-move-vertical editor -1 :columns 20 :prompt-width 0)

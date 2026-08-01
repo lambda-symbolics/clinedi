@@ -84,6 +84,83 @@
       (split-prompt (format nil "first~%second> "))
     (check-equal "prompt preamble" (format nil "first~%") preamble)
     (check-equal "editable prompt" "second> " prompt))
+  (let ((layout (clinedi::screen--editor-layout "user" 7 10)))
+    (check-equal "first input word moves past a short prompt row"
+                 (format nil "~%user")
+                 (clinedi::screen-editor-layout-display layout))
+    (check-equal "wrapped first word begins at the next row"
+                 '(0 1 0)
+                 (first (clinedi::screen-editor-layout-positions layout))))
+  (let ((layout (clinedi::screen--editor-layout "say user" 0 6)))
+    (check-equal "input wraps before a whole word"
+                 (format nil "say ~%user")
+                 (clinedi::screen-editor-layout-display layout))
+    (check-equal "cursor after a wrap separator starts the next row"
+                 '(4 1 0)
+                 (find 4
+                       (clinedi::screen-editor-layout-positions layout)
+                       :key #'first)))
+  (let* ((text "abcdef")
+         (layout (clinedi::screen--editor-layout text 2 4)))
+    (check-equal "long input words still wrap by grapheme"
+                 (format nil "~%abcdef")
+                 (clinedi::screen-editor-layout-display layout))
+    (check-equal "hard-wrapped long word retains source geometry"
+                 '(4 2 0)
+                 (find 4
+                       (clinedi::screen-editor-layout-positions layout)
+                       :key #'first)))
+  (let* ((text "say user")
+         (layout (clinedi::screen--editor-layout text 0 6))
+         (presented
+           (clinedi::render--insert-soft-breaks
+            text
+            (ansi-colorize text :red)
+            (clinedi::screen-editor-layout-soft-breaks layout))))
+    (check-equal "styled input preserves soft word breaks"
+                 (clinedi::screen-editor-layout-display layout)
+                 (ansi-strip presented)))
+  (let* ((text "pri")
+         (combined "printf")
+         (accepted (clinedi::screen--editor-layout text 7 10))
+         (with-suggestion
+           (clinedi::screen--editor-layout
+            combined 7 10 :stable-end (length text))))
+    (check-equal "suggestion does not reflow accepted input"
+                 '(3 1 0)
+                 (find 3
+                       (clinedi::screen-editor-layout-positions accepted)
+                       :key #'first))
+    (check-equal "continued suggestion keeps the accepted prefix in place"
+                 "printf"
+                 (clinedi::screen-editor-layout-display with-suggestion)))
+  (let ((rendered
+          (with-output-to-string (stream)
+            (render-line "user"
+                         :cursor 4
+                         :prompt-width 7
+                         :columns 10
+                         :previous-row 0
+                         :stream stream))))
+    (check-true "live input renders its first word on the next row"
+                (search (format nil "~a~%~cuser"
+                                (ansi-clear-line-right)
+                                #\return)
+                        rendered)))
+  (let* ((combined (format nil "e~c" (code-char #x301)))
+         (rendered
+           (with-output-to-string (stream)
+             (render-line combined
+                          :cursor 1
+                          :columns 4
+                          :stream stream))))
+    (check-true "render cursor accepts an interior character index"
+                (search combined rendered)))
+  (let ((rendered
+          (with-output-to-string (stream)
+            (render-line "x" :columns 0 :stream stream))))
+    (check-true "render normalizes a nonpositive terminal width"
+                (search "x" rendered)))
   (let ((rendered
           (with-output-to-string (stream)
             (render-line "pri"

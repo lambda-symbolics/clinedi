@@ -125,6 +125,10 @@
                                        resized-frame)))
               (check-equal "resized editor restores terminal" 1
                            restores)))))))
+  (check-equal "completion budget follows soft-wrapped editor rows"
+               1
+               (clinedi::terminal-completion--row-budget
+                "aaa aaa aaa" 0 6 4))
   (multiple-value-bind (line kind output restores)
       (terminal-editor-test--read
        (format nil "first~c~csecond~%" (code-char 27) #\return)
@@ -149,6 +153,27 @@
                  (format nil "abcd~%xy!~%abcdef")
                  line)
     (check-equal "vertically edited input remains submittable" :line kind))
+  (with-input-from-string
+      (input-stream (format nil "say user~c[A!~%" (code-char 27)))
+    (let ((output-stream (make-string-output-stream)))
+      (multiple-value-bind (line kind)
+          (edit-line "> "
+                     :input-stream input-stream
+                     :output-stream output-stream
+                     :terminal-size-function (lambda () (values 24 8))
+                     :raw-mode-function (lambda () t)
+                     :restore-function (lambda () nil)
+                     :bracketed-paste-p nil)
+        (let ((output (get-output-stream-string output-stream)))
+          (check-equal "Up edits a soft word-wrapped row"
+                       "sa!y user"
+                       line)
+          (check-equal "soft-wrapped input remains submittable" :line kind)
+          (check-true "blocking editor emits the soft word break"
+                      (search (format nil "~a~%~cuser"
+                                      (ansi-clear-line-right)
+                                      #\return)
+                              output))))))
   (multiple-value-bind (line kind output restores)
       (terminal-editor-test--read
        (format nil "~c[A~%" (code-char 27))

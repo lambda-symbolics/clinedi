@@ -215,10 +215,10 @@
 (defun terminal-completion--row-budget
     (text prompt-width columns terminal-rows)
   "Return the footer row budget beneath editor TEXT."
-  (multiple-value-bind (editor-row editor-column pending-wrap)
-      (screen-position text :prompt-width prompt-width :columns columns)
-    (declare (ignore editor-column pending-wrap))
-    (max 1 (- terminal-rows (1+ editor-row)))))
+  (let ((layout (screen--editor-layout text prompt-width columns)))
+    (max 1
+         (- terminal-rows
+            (1+ (screen-editor-layout-end-row layout))))))
 
 (defun terminal-completion--handle-command (editor session command)
   "Handle resolved COMMAND in SESSION and return session and forwarding flag."
@@ -435,10 +435,18 @@ uses ordinary READ-LINE."
                             (setf rows next-rows
                                   columns next-columns)))
                         (remember-rendered-frame ()
-                          (setf rendered-text
-                                (copy-seq (line-editor-text editor))
-                                rendered-cursor
-                                (line-editor-cursor editor)))
+                          (let* ((layout
+                                   (screen--editor-layout
+                                    (line-editor-text editor)
+                                    prompt-width columns))
+                                 (display-indexes
+                                   (screen-editor-layout-display-indexes
+                                    layout)))
+                            (setf rendered-text
+                                  (screen-editor-layout-display layout)
+                                  rendered-cursor
+                                  (aref display-indexes
+                                        (line-editor-cursor editor)))))
                         (vertical-command (command)
                           (case command
                             (:up

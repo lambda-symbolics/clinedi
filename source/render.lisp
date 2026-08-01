@@ -151,6 +151,184 @@ still needs to be materialized."
              (push (list index row column) positions)))
     (nreverse positions)))
 
+(defstruct (screen-editor-layout
+            (:constructor screen--make-editor-layout))
+  "A word-wrapped editable display and its source-boundary geometry."
+  (display "" :type string)
+  (display-indexes #() :type vector)
+  (positions nil :type list)
+  (soft-breaks nil :type list)
+  (end-row 0 :type integer)
+  (end-column 0 :type integer)
+  (pending-wrap-p nil :type boolean))
+
+(defun screen--word-end (text start end)
+  "Return the end of TEXT's word beginning at START, no later than END."
+  (loop with index = start
+        while (< index end)
+        for character = (char text index)
+        until (or (char= character #\space)
+                  (char= character #\newline)
+                  (char= character #\return))
+        do (setf index (grapheme-next-boundary text index end))
+        finally (return index)))
+
+(defun screen--word-start-p (text index)
+  "Return whether INDEX begins a word in TEXT."
+  (and (< index (length text))
+       (let ((character (char text index)))
+         (and (not (char= character #\space))
+              (not (char= character #\newline))
+              (not (char= character #\return))
+              (or (zerop index)
+                  (let ((previous (char text (1- index))))
+                    (or (char= previous #\space)
+                        (char= previous #\newline)
+                        (char= previous #\return))))))))
+
+(defun screen--editor-layout
+    (text prompt-width columns &key (stable-end (length text)))
+  "Return TEXT's word-wrapped editable display and source geometry.
+
+The first display row begins after PROMPT-WIDTH cells and later rows use all
+COLUMNS cells. STABLE-END limits words that begin before it, preventing a
+transient suffix from reflowing accepted input. Soft wraps preserve source
+spaces and insert display-only newlines immediately before the next word."
+  (check-type text string)
+  (unless (and (integerp columns) (plusp columns))
+    (error 'type-error :datum columns :expected-type '(integer 1 *)))
+  (unless (and (integerp prompt-width) (not (minusp prompt-width)))
+    (error 'type-error :datum prompt-width :expected-type '(integer 0 *)))
+  (unless (and (integerp stable-end) (<= 0 stable-end (length text)))
+    (error 'type-error
+           :datum stable-end
+           :expected-type `(integer 0 ,(length text))))
+  (let ((display (make-string-output-stream))
+        (display-indexes (make-array (1+ (length text)) :initial-element nil))
+        (positions nil)
+        (soft-breaks nil)
+        (display-index 0)
+        (row (floor prompt-width columns))
+        (column (mod prompt-width columns))
+        (pending-wrap-p (and (plusp prompt-width)
+                             (zerop (mod prompt-width columns))))
+        (index 0))
+    (labels ((record-boundary (source-index)
+               (setf (aref display-indexes source-index) display-index)
+               (push (list source-index row column) positions))
+
+             (advance-newline ()
+               (if pending-wrap-p
+                   (setf pending-wrap-p nil)
+                   (incf row))
+               (setf column 0))
+
+             (write-soft-break (source-index)
+               (write-char #\newline display)
+               (incf display-index)
+               (push source-index soft-breaks)
+               (advance-newline))
+
+             (word-width (start)
+               (let* ((limit (if (< start stable-end)
+                                 stable-end
+                                 (length text)))
+                      (end (screen--word-end text start limit)))
+                 (text-cell-width text :start start :end end)))
+
+             (advance-grapheme (start end)
+               (let ((width (min columns
+                                 (grapheme-cell-width text start end))))
+                 (when (plusp width)
+                   (when pending-wrap-p
+                     (setf pending-wrap-p nil))
+                   (when (and (plusp column)
+                              (> (+ column width) columns))
+                     (incf row)
+                     (setf column 0))
+                   (incf column width)
+                   (when (= column columns)
+                     (incf row)
+                     (setf column 0
+                           pending-wrap-p t))))))
+      (when (zerop (length text))
+        (record-boundary 0))
+      (loop while (< index (length text))
+            do (when (and (screen--word-start-p text index)
+                          (plusp column)
+                          (> (word-width index) (- columns column)))
+                 (write-soft-break index))
+               (record-boundary index)
+               (let ((character (char text index)))
+                 (cond ((char= character #\newline)
+                        (write-char character display)
+                        (incf display-index)
+                        (incf index)
+                        (advance-newline))
+                       ((char= character #\return)
+                        (write-char character display)
+                        (incf display-index)
+                        (incf index)
+                        (setf column 0
+                              pending-wrap-p nil))
+                       (t
+                        (let ((next (grapheme-next-boundary
+                                     text index (length text))))
+                          (write-string text display :start index :end next)
+                          (incf display-index (- next index))
+                          (advance-grapheme index next)
+                          (setf index next))))
+               (setf (aref display-indexes index) display-index)
+               (push (list index row column) positions)))
+      (screen--make-editor-layout
+       :display (get-output-stream-string display)
+       :display-indexes display-indexes
+       :positions (nreverse
+                   (remove-duplicates positions :key #'first :from-end t))
+       :soft-breaks (nreverse soft-breaks)
+       :end-row row
+       :end-column column
+       :pending-wrap-p pending-wrap-p))))
+
+(defun screen--editor-position (layout source-index)
+  "Return LAYOUT's row and column for SOURCE-INDEX."
+  (let ((position (find source-index
+                        (screen-editor-layout-positions layout)
+                        :key #'first)))
+    (unless position
+      (error 'type-error
+             :datum source-index
+             :expected-type 'integer))
+    (values (second position) (third position))))
+
+(defun render--insert-soft-breaks (text display soft-breaks)
+  "Insert SOFT-BREAKS into trusted styled DISPLAY for visible TEXT indexes."
+  (unless (string= text (ansi-strip display))
+    (error "Highlighted text does not preserve its plain visible content."))
+  (with-output-to-string (wrapped)
+    (let ((breaks soft-breaks)
+          (index 0)
+          (visible-index 0))
+      (labels ((write-breaks ()
+                 (loop while (and breaks
+                                  (= (first breaks) visible-index))
+                       do (write-char #\newline wrapped)
+                          (setf breaks (rest breaks)))))
+        (loop while (< index (length display))
+              do (write-breaks)
+                 (let ((control-end
+                         (cl-colorist:ansi-control-end display index)))
+                   (if control-end
+                       (progn
+                         (write-string display wrapped
+                                       :start index :end control-end)
+                         (setf index control-end))
+                       (progn
+                         (write-char (char display index) wrapped)
+                         (incf index)
+                         (incf visible-index)))))
+        (write-breaks)))))
+
 (defun line-editor-move-vertical
     (editor direction &key (columns 80) (prompt-width 0))
   "Move EDITOR by one physical display row and return whether it moved.
@@ -165,9 +343,10 @@ retains the original preferred cell column across shorter rows."
     (error 'type-error :datum columns :expected-type '(integer 1 *)))
   (unless (and (integerp prompt-width) (not (minusp prompt-width)))
     (error 'type-error :datum prompt-width :expected-type '(integer 0 *)))
-  (let* ((positions
-           (screen--boundary-positions
+  (let* ((layout
+           (screen--editor-layout
             (line-editor-text editor) prompt-width columns))
+         (positions (screen-editor-layout-positions layout))
          (cursor-position
            (find (line-editor-cursor editor) positions :key #'first))
          (target-row (+ (second cursor-position) direction))
@@ -291,21 +470,38 @@ SUGGESTION is unaccepted suffix text rendered after TEXT. HIGHLIGHT-FUNCTION
 may add ANSI styling, but must preserve the visible content of TEXT.
 FOOTER-TEXT and FOOTER-DISPLAY describe optional plain geometry and trusted
 ANSI presentation below the editor. Their visible contents must match."
-  (let* ((suffix (or suggestion ""))
+  (let* ((columns (max 1 columns))
+         (safe-cursor
+           (grapheme-boundary-at-or-after
+            text
+            (min (length text) (max 0 cursor))))
+         (suffix (or suggestion ""))
          (footer (or footer-text ""))
          (footer-p (plusp (length footer)))
+         (accepted-layout
+           (screen--editor-layout text prompt-width columns))
+         (combined-text (concatenate 'string text suffix))
+         (combined-layout
+           (screen--editor-layout combined-text prompt-width columns
+                                  :stable-end (length text)))
+         (combined-display (screen-editor-layout-display combined-layout))
          (display (concatenate 'string
-                               text
-                               suffix
+                               combined-display
                                (if footer-p (string #\newline) "")
-                               footer)))
+                               footer))
+         (highlighted (funcall highlight-function text))
+         (presented
+           (render--insert-soft-breaks
+            combined-text
+            (concatenate 'string
+                         highlighted
+                         (ansi-colorize suffix :bright-black))
+            (screen-editor-layout-soft-breaks combined-layout))))
     (multiple-value-bind (prompt-row prompt-column prompt-wrap)
         (screen-position "" :prompt-width prompt-width :columns columns)
       (declare (ignore prompt-wrap))
-      (multiple-value-bind (target-row target-column target-wrap)
-          (screen-position text :prompt-width prompt-width :columns columns
-                                :end cursor)
-        (declare (ignore target-wrap))
+      (multiple-value-bind (target-row target-column)
+          (screen--editor-position accepted-layout safe-cursor)
         (multiple-value-bind (end-row end-column exact-wrap)
             (screen-position display :prompt-width prompt-width
                                      :columns columns)
@@ -316,11 +512,7 @@ ANSI presentation below the editor. Their visible contents must match."
                  (write-string (ansi-cursor-up (- previous-row prompt-row))
                                stream)
                  (write-string (ansi-cursor-column prompt-column) stream)
-                 (render--overwrite-display
-                  (funcall highlight-function text) stream)
-                 (when (plusp (length suffix))
-                   (render--overwrite-display
-                    (ansi-colorize suffix :bright-black) stream))
+                 (render--overwrite-display presented stream)
                  (when footer-p
                    (write-string (ansi-clear-line-right) stream)
                    (render--write-newline stream)
