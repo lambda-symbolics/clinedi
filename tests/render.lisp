@@ -102,34 +102,32 @@
                        :key #'first)))
   (multiple-value-bind (wrapped-text wrapped-display wrapped-cursor)
       (clinedi:wrap-styled-editor-text
-       "123456 lin"
-       (concatenate 'string
-                    (ansi-colorize "123456 " :red)
-                    (ansi-colorize "lin" :green))
-       :cursor 10
-       :columns 10)
-    (check-equal "a growing word may exactly fill its current row"
-                 "123456 lin"
+       "lin"
+       (ansi-colorize "lin" :green)
+       :cursor 3
+       :columns 10
+       :prompt-width 7)
+    (check-equal "a growing word may exactly fill its prompt row"
+                 "lin"
                  wrapped-text)
     (check-equal "an exact-row editor cursor needs no display break"
-                 10
+                 3
                  wrapped-cursor)
     (check-equal "styled exact-row editor text preserves visible content"
                  wrapped-text
                  (ansi-strip wrapped-display)))
   (multiple-value-bind (wrapped-text wrapped-display wrapped-cursor)
       (clinedi:wrap-styled-editor-text
-       "123456 line"
-       (concatenate 'string
-                    (ansi-colorize "123456 " :red)
-                    (ansi-colorize "line" :green))
-       :cursor 11
-       :columns 10)
-    (check-equal "a growing editor word moves intact to the next row"
-                 (format nil "123456 ~%line")
+       "line"
+       (ansi-colorize "line" :green)
+       :cursor 4
+       :columns 10
+       :prompt-width 7)
+    (check-equal "a growing editor word moves intact past its prompt"
+                 (format nil "~%line")
                  wrapped-text)
     (check-equal "a reflowed editor cursor follows the complete word"
-                 12
+                 5
                  wrapped-cursor)
     (check-equal "styled editor reflow preserves visible content"
                  wrapped-text

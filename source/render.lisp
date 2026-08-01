@@ -330,13 +330,14 @@ spaces and insert display-only newlines immediately before the next word."
         (write-breaks)))))
 
 (defun wrap-styled-editor-text
-    (text display &key (cursor (length text)) (columns 80))
+    (text display &key (cursor (length text)) (columns 80) (prompt-width 0))
   "Return word-wrapped editable TEXT, styled DISPLAY, and cursor index.
 
 DISPLAY must have exactly TEXT as its ANSI-stripped visible content. CURSOR is
-an index in TEXT. The returned strings add display-only newlines before words
-that no longer fit on their current row, and the third value is CURSOR's index
-in the returned plain string. Words wider than COLUMNS still wrap by grapheme."
+an index in TEXT. PROMPT-WIDTH reserves cells before TEXT on its first row. The
+returned strings add display-only newlines before words that no longer fit on
+their current row, and the third value is CURSOR's index in the returned plain
+string. Words wider than COLUMNS still wrap by grapheme."
   (check-type text string)
   (check-type display string)
   (check-type cursor integer)
@@ -348,7 +349,7 @@ in the returned plain string. Words wider than COLUMNS still wrap by grapheme."
            (grapheme-boundary-at-or-after
             text
             (min (length text) (max 0 cursor))))
-         (layout (screen--editor-layout text 0 columns))
+         (layout (screen--editor-layout text prompt-width columns))
          (wrapped-text (screen-editor-layout-display layout))
          (wrapped-display
            (render--insert-soft-breaks
