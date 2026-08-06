@@ -71,6 +71,30 @@
                  2 (text-cell-width heart))
     (check-equal "keycap occupies two cells"
                  2 (grapheme-cell-width keycap 0 (length keycap)))
+    #+(and ccl netbsd)
+    (let ((outer-locale nil)
+          (nested-locale nil)
+          (native-width nil))
+      (clinedi::unicode--call-with-cell-locale
+       (lambda ()
+         (setf outer-locale clinedi::*unicode-cell-locale*
+               native-width
+               (ccl:external-call "wcwidth_l"
+                                  :unsigned-int (char-code #\猫)
+                                  :address outer-locale
+                                  :int))
+         (clinedi::unicode--call-with-cell-locale
+          (lambda ()
+            (setf nested-locale clinedi::*unicode-cell-locale*)))))
+      (check-true "NetBSD width queries bind an explicit locale"
+                  (and outer-locale
+                       (not (ccl:%null-ptr-p outer-locale))))
+      (check-true "nested NetBSD width queries reuse their locale"
+                  (eq outer-locale nested-locale))
+      (check-equal "NetBSD locale classifies CJK width natively"
+                   2 native-width)
+      (check-true "NetBSD width queries release their locale binding"
+                  (null clinedi::*unicode-cell-locale*)))
 
     (check-equal "cell prefix stops before a wide grapheme"
                  "a" (text-cell-prefix "a猫b" 2))

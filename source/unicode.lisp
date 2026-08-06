@@ -3,12 +3,18 @@
 (in-package #:clinedi)
 
 #+ccl
-(defconstant +unicode-lc-ctype-mask+ 1
-  "Glibc NEWLOCALE mask selecting the LC_CTYPE category.")
+(defconstant +unicode-lc-ctype-mask+
+  #+netbsd 4
+  #-netbsd 1
+  "NEWLOCALE mask selecting the LC_CTYPE category.")
 
 #+ccl
 (defvar *unicode-cell-locale-active* nil
   "True while the current thread is inside a terminal-width query.")
+
+#+(and ccl netbsd)
+(defvar *unicode-cell-locale* nil
+  "Private locale used by the current NetBSD terminal-width query.")
 
 
 ;;; Character properties
@@ -180,29 +186,48 @@
         (unless (ccl:%null-ptr-p locale)
           (return locale))))))
 
+#+(and ccl netbsd)
+(defun unicode--call-with-created-cell-locale (function locale)
+  "Call FUNCTION with LOCALE bound for NetBSD's WCWIDTH_L, then release it.
+
+NetBSD has locale objects but no USELOCALE. Keeping the locale explicit avoids
+mutating process-global state when editor threads measure text concurrently."
+  (unwind-protect
+       (let ((*unicode-cell-locale-active* t)
+             (*unicode-cell-locale* locale))
+         (funcall function))
+    (ccl:external-call "freelocale"
+                       :address locale
+                       :void)))
+
+#+(and ccl (not netbsd))
+(defun unicode--call-with-created-cell-locale (function locale)
+  "Call FUNCTION with the native thread using LOCALE, then release it."
+  (let ((previous
+          (ccl:external-call "uselocale"
+                             :address locale
+                             :address)))
+    (unwind-protect
+         (let ((*unicode-cell-locale-active* t))
+           (funcall function))
+      (unless (ccl:%null-ptr-p previous)
+        (ccl:external-call "uselocale"
+                           :address previous
+                           :address))
+      (ccl:external-call "freelocale"
+                         :address locale
+                         :void))))
+
 #+ccl
 (defun unicode--call-with-cell-locale (function)
-  "Call FUNCTION with CCL's native thread using a private UTF-8 locale."
+  "Call FUNCTION using a private UTF-8 locale for native width queries."
   (if *unicode-cell-locale-active*
       (funcall function)
       (let ((locale (unicode--make-cell-locale)))
         (if (ccl:%null-ptr-p locale)
             (let ((*unicode-cell-locale-active* t))
               (funcall function))
-            (let ((previous
-                    (ccl:external-call "uselocale"
-                                       :address locale
-                                       :address)))
-              (unwind-protect
-                   (let ((*unicode-cell-locale-active* t))
-                     (funcall function))
-                (unless (ccl:%null-ptr-p previous)
-                  (ccl:external-call "uselocale"
-                                     :address previous
-                                     :address))
-                (ccl:external-call "freelocale"
-                                   :address locale
-                                   :void)))))))
+            (unicode--call-with-created-cell-locale function locale)))))
 
 #-ccl
 (defun unicode--call-with-cell-locale (function)
@@ -240,9 +265,20 @@
   "Return CHARACTER's cell width inside an active width query."
   #+ccl
   (let* ((code (char-code character))
-         (width (ccl:external-call "wcwidth"
-                                   :unsigned-int code
-                                   :int)))
+         (width
+           #+netbsd
+           (if *unicode-cell-locale*
+               (ccl:external-call "wcwidth_l"
+                                  :unsigned-int code
+                                  :address *unicode-cell-locale*
+                                  :int)
+               (ccl:external-call "wcwidth"
+                                  :unsigned-int code
+                                  :int))
+           #-netbsd
+           (ccl:external-call "wcwidth"
+                              :unsigned-int code
+                              :int)))
     (cond ((not (minusp width))
            width)
           ((unicode--zero-width-code-p code)
