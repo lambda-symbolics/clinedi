@@ -20,6 +20,7 @@
                 #:ansi-cursor-column
                 #:ansi-clear-below
                 #:ansi-clear-line-right
+                #:semantic-prompt-marker-sequence
                 #:ansi-strip
                 #:ansi-display-width
                   #:wrap-styled-text

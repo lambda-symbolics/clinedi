@@ -79,6 +79,21 @@ Return TEXT unchanged when presentation is disabled."
       (format nil "~c[H~c[2J" +escape-character+ +escape-character+)
       ""))
 
+(defun semantic-prompt-marker-sequence (marker &optional (status 0))
+  "Return one OSC 133 control for semantic prompt MARKER and completion STATUS."
+  (check-type status (integer 0))
+  (let ((payload
+          (ecase marker
+            (:prompt-start "A")
+            (:input-start "B")
+            (:execution-start "C")
+            (:command-finished (format nil "D;~D" status)))))
+    (format nil "~c]133;~a~c~c"
+            +escape-character+
+            payload
+            +escape-character+
+            #\\)))
+
 (defun ansi-strip (string)
   "Remove ANSI control sequences from STRING."
   (cl-colorist:strip-ansi string))

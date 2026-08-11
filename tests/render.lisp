@@ -4,6 +4,28 @@
 
 (defun run-render-tests ()
   "Run ANSI and wrapped-rendering regression tests."
+  (flet ((expected-marker (payload)
+           "Return the exact OSC 133 ST control for PAYLOAD."
+           (format nil "~c]133;~a~c~c"
+                   (code-char 27)
+                   payload
+                   (code-char 27)
+                   #\\)))
+    (check-equal "semantic prompt-start marker"
+                 (expected-marker "A")
+                 (semantic-prompt-marker-sequence :prompt-start))
+    (check-equal "semantic input-start marker"
+                 (expected-marker "B")
+                 (semantic-prompt-marker-sequence :input-start))
+    (check-equal "semantic execution-start marker"
+                 (expected-marker "C")
+                 (semantic-prompt-marker-sequence :execution-start))
+    (check-equal "semantic successful completion marker"
+                 (expected-marker "D;0")
+                 (semantic-prompt-marker-sequence :command-finished))
+    (check-equal "semantic failed completion marker"
+                 (expected-marker "D;7")
+                 (semantic-prompt-marker-sequence :command-finished 7)))
   (let ((combined (format nil "e~c" (code-char #x301))))
     (check-equal "wide glyph ends at edge"
                  '(1 0 t)

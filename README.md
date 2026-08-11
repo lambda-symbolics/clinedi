@@ -188,6 +188,14 @@ Applications that manage their own presentation can use `clinedi:screen-window`
 to obtain grapheme-safe start, end, and cursor indexes for the same bounded
 multiline viewport behavior.
 
+## Semantic prompt markers
+
+`clinedi:semantic-prompt-marker-sequence` returns OSC 133 controls for terminal
+shell integration. The `:prompt-start`, `:input-start`, and `:execution-start`
+markers identify prompt lifecycle boundaries. `:command-finished` includes an
+optional nonnegative status, defaulting to zero. Applications retain control of
+when these trusted controls are written and flushed.
+
 ## Tests
 
 Run the regression suite on every supported Lisp:

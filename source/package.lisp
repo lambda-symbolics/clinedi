@@ -29,6 +29,7 @@
    #:ansi-clear-below
    #:ansi-clear-line-right
    #:ansi-clear-screen
+   #:semantic-prompt-marker-sequence
    #:ansi-strip
    #:ansi-display-width
    #:wrap-styled-text
