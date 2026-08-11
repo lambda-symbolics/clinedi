@@ -134,8 +134,9 @@ Enter submits input. Alt-Enter inserts a newline on terminals that encode Alt
 as an Escape prefix. The blocking frontend temporarily enables CSI-u and
 modifyOtherKeys reporting, so Shift-Enter, Ctrl-Enter, and Alt-Enter insert a
 newline on terminals supporting either protocol. Event-driven applications can
-balance `enable-keyboard-enhancement` with `disable-keyboard-enhancement` while
-they own the terminal. `read-event` maps CSI-u reports for ordinary Enter, Tab,
+balance `enable-keyboard-enhancement` with `disable-keyboard-enhancement`, and
+`enable-bracketed-paste` with `disable-bracketed-paste`, while they own the
+terminal. `read-event` maps CSI-u reports for ordinary Enter, Tab,
 Shift-Tab, Escape, Backspace, and Ctrl-D to the same events as their raw forms.
 Ctrl-Backspace and Ctrl-W delete the whitespace and word before the cursor;
 Ctrl-Backspace works

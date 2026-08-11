@@ -31,6 +31,26 @@ be balanced with DISABLE-KEYBOARD-ENHANCEMENT while the same terminal is owned."
   (force-output stream)
   (values))
 
+(defparameter *bracketed-paste-enable-sequence*
+  (format nil "~c[?2004h" +escape-character+)
+  "The terminal control enabling bracketed paste mode.")
+
+(defparameter *bracketed-paste-disable-sequence*
+  (format nil "~c[?2004l" +escape-character+)
+  "The terminal control disabling bracketed paste mode.")
+
+(defun enable-bracketed-paste (&key (stream *standard-output*))
+  "Enable bracketed paste mode on STREAM."
+  (write-string *bracketed-paste-enable-sequence* stream)
+  (force-output stream)
+  (values))
+
+(defun disable-bracketed-paste (&key (stream *standard-output*))
+  "Disable bracketed paste mode on STREAM."
+  (write-string *bracketed-paste-disable-sequence* stream)
+  (force-output stream)
+  (values))
+
 (defparameter *bracketed-paste-end*
   (concatenate 'string (string +escape-character+) "[201~")
   "Terminal sequence ending a bracketed paste payload.")

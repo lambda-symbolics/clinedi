@@ -11,8 +11,20 @@
   "Return an escape-prefixed terminal sequence containing BODY."
   (concatenate 'string (string (code-char 27)) body))
 
+(defun input-test--control-output (function)
+  "Return the terminal control written by FUNCTION."
+  (let ((stream (make-string-output-stream)))
+    (funcall function :stream stream)
+    (get-output-stream-string stream)))
+
 (defun run-input-tests ()
   "Run semantic input-decoder regression tests."
+  (check-equal "bracketed paste enable control"
+               (input-test--escape-sequence "[?2004h")
+               (input-test--control-output #'enable-bracketed-paste))
+  (check-equal "bracketed paste disable control"
+               (input-test--escape-sequence "[?2004l")
+               (input-test--control-output #'disable-bracketed-paste))
   (check-equal "printable input event"
                '(:insert "猫")
                (input-test--event "猫"))

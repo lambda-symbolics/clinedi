@@ -73,6 +73,16 @@
                 (search (format nil "~c[>1u" (code-char 27)) output))
     (check-true "raw editor restores keyboard reporting"
                 (search (format nil "~c[<u" (code-char 27)) output)))
+  (multiple-value-bind (line kind output restores)
+      (terminal-editor-test--read
+       (string #\newline)
+       :raw-mode-function (lambda () t)
+       :keyboard-enhancement-p nil)
+    (declare (ignore line kind restores))
+    (check-true "raw editor enables bracketed paste"
+                (search (format nil "~c[?2004h" (code-char 27)) output))
+    (check-true "raw editor disables bracketed paste"
+                (search (format nil "~c[?2004l" (code-char 27)) output)))
   (let ((size-calls 0)
         (restores 0))
     (flet ((changing-size ()

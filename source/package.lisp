@@ -83,6 +83,8 @@
    ;; Input and layout
    #:enable-keyboard-enhancement
    #:disable-keyboard-enhancement
+   #:enable-bracketed-paste
+   #:disable-bracketed-paste
    #:read-event
    #:screen-position
    #:screen-window

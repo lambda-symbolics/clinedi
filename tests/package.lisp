@@ -59,6 +59,8 @@
                 #:selector-window
                 #:selector-arrange
                 #:selector-handle-event
+                #:enable-bracketed-paste
+                #:disable-bracketed-paste
                 #:read-event
                 #:screen-position
                 #:screen-window

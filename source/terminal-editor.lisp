@@ -374,7 +374,8 @@ applying that input.
 
 KEYBOARD-ENHANCEMENT-P requests CSI-u and modifyOtherKeys reporting while raw
 mode is active, allowing modified Enter and other modified keys to remain
-distinguishable from their unmodified forms.
+distinguishable from their unmodified forms. BRACKETED-PASTE-P balances terminal
+bracketed paste mode around the same raw editing region.
 
 When raw mode is unavailable, this function prints the final prompt line and
 uses ordinary READ-LINE."
@@ -409,7 +410,7 @@ uses ordinary READ-LINE."
                (when keyboard-enhancement-p
                  (enable-keyboard-enhancement :stream output-stream))
                (when bracketed-paste-p
-                 (format output-stream "~c[?2004h" +escape-character+))
+                 (enable-bracketed-paste :stream output-stream))
                (setf previous-row
                      (render--write-prompt editable-prompt prompt-width columns
                                            output-stream))
@@ -584,8 +585,7 @@ uses ordinary READ-LINE."
                                     event command)))))))))))
           (when raw-p
             (when bracketed-paste-p
-              (format output-stream "~c[?2004l" +escape-character+)
-              (force-output output-stream))
+              (disable-bracketed-paste :stream output-stream))
             (when keyboard-enhancement-p
               (disable-keyboard-enhancement :stream output-stream)))
           (funcall restore-function))))))
