@@ -60,15 +60,35 @@
                 (concatenate 'string
                              (string (code-char 27))
                              (string #\return))))
-  (dolist (case '(("CSI-u shift-enter event" "[13;2u")
-                  ("CSI-u control-enter event" "[13;5u")
-                  ("modify-other-keys shift-enter event" "[27;2;13~")
-                  ("modify-other-keys alt-enter event" "[27;3;13~")
-                  ("modify-other-keys control-enter event" "[27;5;13~")))
+  (dolist (case '(("CSI-u line-feed event" "[10u" :submit)
+                  ("CSI-u carriage-return event" "[13u" :submit)
+                  ("CSI-u tab event" "[9u" :complete)
+                  ("CSI-u shift-tab event" "[9;2u" :complete-previous)
+                  ("CSI-u escape event" "[27u" :escape)
+                  ("CSI-u backspace event" "[127u" :backspace)
+                  ("CSI-u control-D event" "[100;5u" :end-of-input)
+                  ("modify-other-keys control-D event"
+                   "[27;5;100~" :end-of-input)))
     (check-equal (first case)
-                 :insert-newline
+                 (third case)
                  (input-test--event
                   (input-test--escape-sequence (second case)))))
+  (dolist (code '(10 13))
+    (loop for modifier from 2 to 8
+          do (check-equal
+              (format nil "CSI-u modified Enter code ~D modifier ~D"
+                      code modifier)
+              :insert-newline
+              (input-test--event
+               (input-test--escape-sequence
+                (format nil "[~D;~Du" code modifier))))))
+  (loop for modifier from 2 to 8
+        do (check-equal
+            (format nil "modify-other-keys Enter modifier ~D" modifier)
+            :insert-newline
+            (input-test--event
+             (input-test--escape-sequence
+              (format nil "[27;~D;13~C" modifier #\~)))))
   (dolist (case '(("CSI-u control-backspace with BS" "[8;5u")
                   ("CSI-u control-backspace with DEL" "[127;5u")
                   ("modify-other-keys control-backspace with BS" "[27;5;8~")

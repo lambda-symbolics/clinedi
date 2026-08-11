@@ -135,8 +135,10 @@ as an Escape prefix. The blocking frontend temporarily enables CSI-u and
 modifyOtherKeys reporting, so Shift-Enter, Ctrl-Enter, and Alt-Enter insert a
 newline on terminals supporting either protocol. Event-driven applications can
 balance `enable-keyboard-enhancement` with `disable-keyboard-enhancement` while
-they own the terminal. Ctrl-Backspace and
-Ctrl-W delete the whitespace and word before the cursor; Ctrl-Backspace works
+they own the terminal. `read-event` maps CSI-u reports for ordinary Enter, Tab,
+Shift-Tab, Escape, Backspace, and Ctrl-D to the same events as their raw forms.
+Ctrl-Backspace and Ctrl-W delete the whitespace and word before the cursor;
+Ctrl-Backspace works
 with its raw control byte and its CSI-u or modifyOtherKeys encodings. Ctrl-Left
 and Ctrl-Right move across words when the terminal emits the usual modified
 arrow sequences. Up and Down move by physical display rows across explicit

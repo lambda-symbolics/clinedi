@@ -78,13 +78,27 @@ be balanced with DISABLE-KEYBOARD-ENHANCEMENT while the same terminal is owned."
         ((member body '("1~" "7~") :test #'string=) :home)
         ((string= body "3~") :delete)
         ((member body '("4~" "8~") :test #'string=) :end)
-        ((member body '("13;2u" "13;3u" "13;4u" "13;5u"
+        ((member body '("10u" "13u") :test #'string=)
+         :submit)
+        ((member body '("10;2u" "10;3u" "10;4u" "10;5u"
+                        "10;6u" "10;7u" "10;8u"
+                        "13;2u" "13;3u" "13;4u" "13;5u"
                         "13;6u" "13;7u" "13;8u"
                         "27;2;13~" "27;3;13~" "27;4;13~"
                         "27;5;13~" "27;6;13~" "27;7;13~"
                         "27;8;13~")
                  :test #'string=)
          :insert-newline)
+        ((string= body "9u")
+         :complete)
+        ((string= body "9;2u")
+         :complete-previous)
+        ((string= body "27u")
+         :escape)
+        ((string= body "127u")
+         :backspace)
+        ((member body '("100;5u" "27;5;100~") :test #'string=)
+         :end-of-input)
         ((member body '("8;5u" "127;5u"
                         "27;5;8~" "27;5;127~")
                  :test #'string=)
@@ -133,8 +147,10 @@ be balanced with DISABLE-KEYBOARD-ENHANCEMENT while the same terminal is owned."
 
 Printable input becomes (:INSERT text). Control and escape sequences become
 editing keywords. Bracketed paste becomes one (:PASTE text) event, with terminal
-controls sanitized before the text reaches an editor. Modified Enter becomes
-:INSERT-NEWLINE when distinguishable from Enter. Ctrl-Backspace and Ctrl-W
+controls sanitized before the text reaches an editor. CSI-u reports for Enter,
+Tab, Shift-Tab, Escape, Backspace, and Ctrl-D map to their raw semantic events.
+Modified Enter becomes :INSERT-NEWLINE when distinguishable from Enter.
+Ctrl-Backspace and Ctrl-W
 become :KILL-WORD. Ctrl-Left and Ctrl-Right become :WORD-LEFT and :WORD-RIGHT.
 Arrow Up and Down become :UP and :DOWN, while Ctrl-P and Ctrl-N retain explicit
 history traversal. Shift-Tab becomes :COMPLETE-PREVIOUS. Ctrl-D becomes
