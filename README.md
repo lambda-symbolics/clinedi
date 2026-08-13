@@ -13,7 +13,7 @@ completion policy and history persistence remain the application's concern.
 ## Loading
 
 Clinedi is an ASDF system. It uses
-[cl-colorist](https://github.com/luciusmagn/cl-colorist) for ANSI text styling
+[cl-colorist](https://github.com/lambda-symbolics/cl-colorist) for ANSI text styling
 and control-sequence parsing.
 
 ```lisp
