@@ -66,8 +66,7 @@
            (write-string "<after>" stream)))
       (declare (ignore line kind restores))
       (check-equal "fallback prompt boundary callbacks run once"
-                   "<before>preamble
-<after>\r> "
+                   (format nil "preamble~%~c<before>> <after>" #\return)
                    output)
       (check-equal "fallback before prompt callback count" 1 before-count)
       (check-equal "fallback after prompt callback count" 1 after-count)))
