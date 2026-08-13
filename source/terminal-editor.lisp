@@ -327,9 +327,14 @@
       :stream stream)
      (values nil :eof))))
 
-(defun terminal-editor--fallback (prompt input-stream output-stream)
+(defun terminal-editor--fallback
+    (prompt input-stream output-stream before-prompt-function after-prompt-function)
   "Read a plain line after PROMPT when raw mode is unavailable."
+  (when before-prompt-function
+    (funcall before-prompt-function output-stream))
   (write-string prompt output-stream)
+  (when after-prompt-function
+    (funcall after-prompt-function output-stream))
   (force-output output-stream)
   (let ((line (cl:read-line input-stream nil nil)))
     (if line
@@ -352,7 +357,9 @@
                  suggestion-function
                  (keymap (default-line-editor-keymap))
                  (keyboard-enhancement-p t)
-                 (bracketed-paste-p t))
+                 (bracketed-paste-p t)
+                 before-prompt-function
+                 after-prompt-function)
   "Edit one line under PROMPT and return line and result kind.
 
 The result kind is :LINE, :ABORT or :EOF. HISTORY is copied into an incremental
@@ -377,8 +384,12 @@ mode is active, allowing modified Enter and other modified keys to remain
 distinguishable from their unmodified forms. BRACKETED-PASTE-P balances terminal
 bracketed paste mode around the same raw editing region.
 
-When raw mode is unavailable, this function prints the final prompt line and
-uses ordinary READ-LINE."
+BEFORE-PROMPT-FUNCTION and AFTER-PROMPT-FUNCTION, when supplied, receive the
+output stream immediately around the initial prompt write. They are not called
+for redraws, so applications can emit one-shot trusted prompt boundary controls.
+
+When raw mode is unavailable, this function invokes the same boundary callbacks,
+prints the final prompt line and uses ordinary READ-LINE."
   (unless (member completion-arrangement '(:vertical :grid))
     (error 'type-error
            :datum completion-arrangement
@@ -403,17 +414,22 @@ uses ordinary READ-LINE."
         (unwind-protect
              (progn
                (setf raw-p (funcall raw-mode-function))
-               (unless raw-p
-                 (return-from edit-line
-                   (terminal-editor--fallback
-                    editable-prompt input-stream output-stream)))
+              (unless raw-p
+                (return-from edit-line
+                  (terminal-editor--fallback
+                   editable-prompt input-stream output-stream
+                   before-prompt-function after-prompt-function)))
                (when keyboard-enhancement-p
                  (enable-keyboard-enhancement :stream output-stream))
                (when bracketed-paste-p
                  (enable-bracketed-paste :stream output-stream))
+              (when before-prompt-function
+                (funcall before-prompt-function output-stream))
                (setf previous-row
                      (render--write-prompt editable-prompt prompt-width columns
                                            output-stream))
+              (when after-prompt-function
+                (funcall after-prompt-function output-stream))
                (labels ((refresh-terminal-size ()
                           (multiple-value-bind (next-rows next-columns)
                               (funcall terminal-size-function)

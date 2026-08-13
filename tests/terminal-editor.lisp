@@ -50,6 +50,27 @@
                  (format nil "preamble~%~c> " #\return)
                  output)
     (check-equal "plain fallback restores terminal" 1 restores))
+  (let ((before-count 0)
+        (after-count 0))
+    (multiple-value-bind (line kind output restores)
+        (terminal-editor-test--read
+         (format nil "plain~%")
+         :raw-mode-function (lambda () nil)
+         :before-prompt-function
+         (lambda (stream)
+           (incf before-count)
+           (write-string "<before>" stream))
+         :after-prompt-function
+         (lambda (stream)
+           (incf after-count)
+           (write-string "<after>" stream)))
+      (declare (ignore line kind restores))
+      (check-equal "fallback prompt boundary callbacks run once"
+                   "<before>preamble
+<after>\r> "
+                   output)
+      (check-equal "fallback before prompt callback count" 1 before-count)
+      (check-equal "fallback after prompt callback count" 1 after-count)))
   (multiple-value-bind (line kind output restores)
       (terminal-editor-test--read
        (format nil "abc~%")
@@ -59,6 +80,39 @@
     (check-equal "raw editor submit kind" :line kind)
     (check-true "raw editor renders entered text" (search "abc" output))
     (check-equal "raw editor restores terminal" 1 restores))
+  (let ((before-count 0)
+        (after-count 0))
+    (multiple-value-bind (line kind output restores)
+        (terminal-editor-test--read
+         (format nil "~c[12~%" (code-char 27))
+         :raw-mode-function (lambda () t)
+         :keyboard-enhancement-p nil
+         :bracketed-paste-p nil
+         :before-prompt-function
+         (lambda (stream)
+           (incf before-count)
+           (write-string "<before>" stream))
+         :after-prompt-function
+         (lambda (stream)
+           (incf after-count)
+           (write-string "<after>" stream)))
+      (declare (ignore line kind restores))
+      (check-equal "redraw before prompt callback count" 1 before-count)
+      (check-equal "redraw after prompt callback count" 1 after-count)
+      (check-equal "redraw keeps one before marker"
+                   1
+                   (loop with start = 0
+                         for position = (search "<before>" output :start2 start)
+                         while position
+                         count 1
+                         do (setf start (+ position 8))))
+      (check-equal "redraw keeps one after marker"
+                   1
+                   (loop with start = 0
+                         for position = (search "<after>" output :start2 start)
+                         while position
+                         count 1
+                         do (setf start (+ position 7))))))
   (multiple-value-bind (line kind output restores)
       (terminal-editor-test--read
        (format nil "first~c[13;2usecond~%" (code-char 27))
