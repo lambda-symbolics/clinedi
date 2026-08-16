@@ -14,83 +14,90 @@ still needs to be materialized."
         end (min end (length text)))
   (when (> start end)
     (setf start end))
-  (let ((row (floor prompt-width columns))
-        (column (mod prompt-width columns))
-        (pending-wrap (and (plusp prompt-width)
-                           (zerop (mod prompt-width columns))))
-        (index start))
-    (loop while (< index end)
-          do (let ((character (char text index)))
-               (cond ((char= character #\newline)
-                      (if pending-wrap
-                          (setf pending-wrap nil)
-                          (incf row))
-                      (setf column 0)
-                      (incf index))
-                     ((char= character #\return)
-                      (setf column 0
-                            pending-wrap nil)
-                      (incf index))
-                     (t
-                      (let* ((next (grapheme-next-boundary text index end))
-                             (width (min columns
-                                         (grapheme-cell-width
-                                          text index next))))
-                        (when (plusp width)
-                          (when pending-wrap
-                            (setf pending-wrap nil))
-                          ;; Wide glyphs wrap as units instead of splitting at
-                          ;; the terminal's last column.
-                          (when (and (plusp column)
-                                     (> (+ column width) columns))
-                            (incf row)
-                            (setf column 0))
-                          (incf column width)
-                          (when (= column columns)
-                            (incf row)
-                            (setf column 0
-                                  pending-wrap t)))
-                        (setf index next)))))
-          finally (return (values row column pending-wrap)))))
+  ;; One locale activation covers the whole traversal. Entering the width
+  ;; locale per grapheme dominates redraw time on locale-backed backends.
+  (unicode--call-with-cell-locale
+   (lambda ()
+     (let ((row (floor prompt-width columns))
+           (column (mod prompt-width columns))
+           (pending-wrap (and (plusp prompt-width)
+                              (zerop (mod prompt-width columns))))
+           (index start))
+       (loop while (< index end)
+             do (let ((character (char text index)))
+                  (cond ((char= character #\newline)
+                         (if pending-wrap
+                             (setf pending-wrap nil)
+                             (incf row))
+                         (setf column 0)
+                         (incf index))
+                        ((char= character #\return)
+                         (setf column 0
+                               pending-wrap nil)
+                         (incf index))
+                        (t
+                         (let* ((next (grapheme-next-boundary text index end))
+                                (width (min columns
+                                            (grapheme-cell-width
+                                             text index next))))
+                           (when (plusp width)
+                             (when pending-wrap
+                               (setf pending-wrap nil))
+                             ;; Wide glyphs wrap as units instead of splitting
+                             ;; at the terminal's last column.
+                             (when (and (plusp column)
+                                        (> (+ column width) columns))
+                               (incf row)
+                               (setf column 0))
+                             (incf column width)
+                             (when (= column columns)
+                               (incf row)
+                               (setf column 0
+                                     pending-wrap t)))
+                           (setf index next)))))
+             finally (return (values row column pending-wrap)))))))
 
 (defun screen--row-starts (text columns)
   "Return character indexes beginning TEXT's modeled physical screen rows."
-  (let ((starts (list 0))
-        (column 0)
-        (pending-wrap nil)
-        (index 0))
-    (loop while (< index (length text))
-          do (let ((character (char text index)))
-               (cond
-                 ((char= character #\newline)
-                  (incf index)
-                  (if pending-wrap
-                      (setf (first starts) index
-                            pending-wrap nil)
-                      (push index starts))
-                  (setf column 0))
-                 ((char= character #\return)
-                  (setf column 0
-                        pending-wrap nil)
-                  (incf index))
-                 (t
-                  (let* ((next (grapheme-next-boundary text index))
-                         (width (min columns
-                                     (grapheme-cell-width text index next))))
-                    (when (plusp width)
-                      (when pending-wrap
-                        (setf pending-wrap nil))
-                      (when (and (plusp column)
-                                 (> (+ column width) columns))
-                        (push index starts)
-                        (setf column 0))
-                      (incf column width)
-                      (when (= column columns)
-                        (push next starts)
-                        (setf column 0
-                              pending-wrap t)))
-                    (setf index next))))))
-    (nreverse starts)))
+  (unicode--call-with-cell-locale
+   (lambda ()
+     (let ((starts (list 0))
+           (column 0)
+           (pending-wrap nil)
+           (index 0))
+       (loop while (< index (length text))
+             do (let ((character (char text index)))
+                  (cond
+                    ((char= character #\newline)
+                     (incf index)
+                     (if pending-wrap
+                         (setf (first starts) index
+                               pending-wrap nil)
+                         (push index starts))
+                     (setf column 0))
+                    ((char= character #\return)
+                     (setf column 0
+                           pending-wrap nil)
+                     (incf index))
+                    (t
+                     (let* ((next (grapheme-next-boundary text index))
+                            (width (min columns
+                                        (grapheme-cell-width
+                                         text index next))))
+                       (when (plusp width)
+                         (when pending-wrap
+                           (setf pending-wrap nil))
+                         (when (and (plusp column)
+                                    (> (+ column width) columns))
+                           (push index starts)
+                           (setf column 0))
+                         (incf column width)
+                         (when (= column columns)
+                           (push next starts)
+                           (setf column 0
+                                 pending-wrap t)))
+                       (setf index next))))))
+       (nreverse starts)))))
 
 (defun screen--row-count (text columns start end)
   "Return the physical row count for TEXT between START and END."
@@ -111,45 +118,48 @@ still needs to be materialized."
   "Return grapheme boundary indexes and screen positions throughout TEXT."
   (setf columns (max 1 columns)
         prompt-width (max 0 prompt-width))
-  (let ((positions nil)
-        (row (floor prompt-width columns))
-        (column (mod prompt-width columns))
-        (pending-wrap (and (plusp prompt-width)
-                           (zerop (mod prompt-width columns))))
-        (index 0))
-    (push (list 0 row column) positions)
-    (loop while (< index (length text))
-          do (let ((character (char text index)))
-               (cond
-                 ((char= character #\newline)
-                  (incf index)
-                  (if pending-wrap
-                      (setf pending-wrap nil)
-                      (incf row))
-                  (setf column 0))
-                 ((char= character #\return)
-                  (incf index)
-                  (setf column 0
-                        pending-wrap nil))
-                 (t
-                  (let* ((next (grapheme-next-boundary text index))
-                         (width (min columns
-                                     (grapheme-cell-width text index next))))
-                    (when (plusp width)
-                      (when pending-wrap
-                        (setf pending-wrap nil))
-                      (when (and (plusp column)
-                                 (> (+ column width) columns))
-                        (incf row)
-                        (setf column 0))
-                      (incf column width)
-                      (when (= column columns)
-                        (incf row)
-                        (setf column 0
-                              pending-wrap t)))
-                    (setf index next))))
-             (push (list index row column) positions)))
-    (nreverse positions)))
+  (unicode--call-with-cell-locale
+   (lambda ()
+     (let ((positions nil)
+           (row (floor prompt-width columns))
+           (column (mod prompt-width columns))
+           (pending-wrap (and (plusp prompt-width)
+                              (zerop (mod prompt-width columns))))
+           (index 0))
+       (push (list 0 row column) positions)
+       (loop while (< index (length text))
+             do (let ((character (char text index)))
+                  (cond
+                    ((char= character #\newline)
+                     (incf index)
+                     (if pending-wrap
+                         (setf pending-wrap nil)
+                         (incf row))
+                     (setf column 0))
+                    ((char= character #\return)
+                     (incf index)
+                     (setf column 0
+                           pending-wrap nil))
+                    (t
+                     (let* ((next (grapheme-next-boundary text index))
+                            (width (min columns
+                                        (grapheme-cell-width
+                                         text index next))))
+                       (when (plusp width)
+                         (when pending-wrap
+                           (setf pending-wrap nil))
+                         (when (and (plusp column)
+                                    (> (+ column width) columns))
+                           (incf row)
+                           (setf column 0))
+                         (incf column width)
+                         (when (= column columns)
+                           (incf row)
+                           (setf column 0
+                                 pending-wrap t)))
+                       (setf index next))))
+                (push (list index row column) positions)))
+       (nreverse positions)))))
 
 (defstruct (screen-editor-layout
             (:constructor screen--make-editor-layout))
@@ -203,92 +213,96 @@ spaces and insert display-only newlines immediately before the next word."
     (error 'type-error
            :datum stable-end
            :expected-type `(integer 0 ,(length text))))
-  (let ((display (make-string-output-stream))
-        (display-indexes (make-array (1+ (length text)) :initial-element nil))
-        (positions nil)
-        (soft-breaks nil)
-        (display-index 0)
-        (row (floor prompt-width columns))
-        (column (mod prompt-width columns))
-        (pending-wrap-p (and (plusp prompt-width)
-                             (zerop (mod prompt-width columns))))
-        (index 0))
-    (labels ((record-boundary (source-index)
-               (setf (aref display-indexes source-index) display-index)
-               (push (list source-index row column) positions))
+  (unicode--call-with-cell-locale
+   (lambda ()
+     (let ((display (make-string-output-stream))
+           (display-indexes (make-array (1+ (length text))
+                                        :initial-element nil))
+           (positions nil)
+           (soft-breaks nil)
+           (display-index 0)
+           (row (floor prompt-width columns))
+           (column (mod prompt-width columns))
+           (pending-wrap-p (and (plusp prompt-width)
+                                (zerop (mod prompt-width columns))))
+           (index 0))
+       (labels ((record-boundary (source-index)
+                  (setf (aref display-indexes source-index) display-index)
+                  (push (list source-index row column) positions))
 
-             (advance-newline ()
-               (if pending-wrap-p
-                   (setf pending-wrap-p nil)
-                   (incf row))
-               (setf column 0))
+                (advance-newline ()
+                  (if pending-wrap-p
+                      (setf pending-wrap-p nil)
+                      (incf row))
+                  (setf column 0))
 
-             (write-soft-break (source-index)
-               (write-char #\newline display)
-               (incf display-index)
-               (push source-index soft-breaks)
-               (advance-newline))
+                (write-soft-break (source-index)
+                  (write-char #\newline display)
+                  (incf display-index)
+                  (push source-index soft-breaks)
+                  (advance-newline))
 
-             (word-width (start)
-               (let* ((limit (if (< start stable-end)
-                                 stable-end
-                                 (length text)))
-                      (end (screen--word-end text start limit)))
-                 (text-cell-width text :start start :end end)))
+                (word-width (start)
+                  (let* ((limit (if (< start stable-end)
+                                    stable-end
+                                    (length text)))
+                         (end (screen--word-end text start limit)))
+                    (text-cell-width text :start start :end end)))
 
-             (advance-grapheme (start end)
-               (let ((width (min columns
-                                 (grapheme-cell-width text start end))))
-                 (when (plusp width)
-                   (when pending-wrap-p
-                     (setf pending-wrap-p nil))
-                   (when (and (plusp column)
-                              (> (+ column width) columns))
-                     (incf row)
-                     (setf column 0))
-                   (incf column width)
-                   (when (= column columns)
-                     (incf row)
-                     (setf column 0
-                           pending-wrap-p t))))))
-      (when (zerop (length text))
-        (record-boundary 0))
-      (loop while (< index (length text))
-            do (when (and (screen--word-start-p text index)
-                          (plusp column)
-                          (> (word-width index) (- columns column)))
-                 (write-soft-break index))
-               (record-boundary index)
-               (let ((character (char text index)))
-                 (cond ((char= character #\newline)
-                        (write-char character display)
-                        (incf display-index)
-                        (incf index)
-                        (advance-newline))
-                       ((char= character #\return)
-                        (write-char character display)
-                        (incf display-index)
-                        (incf index)
+                (advance-grapheme (start end)
+                  (let ((width (min columns
+                                    (grapheme-cell-width text start end))))
+                    (when (plusp width)
+                      (when pending-wrap-p
+                        (setf pending-wrap-p nil))
+                      (when (and (plusp column)
+                                 (> (+ column width) columns))
+                        (incf row)
+                        (setf column 0))
+                      (incf column width)
+                      (when (= column columns)
+                        (incf row)
                         (setf column 0
-                              pending-wrap-p nil))
-                       (t
-                        (let ((next (grapheme-next-boundary
-                                     text index (length text))))
-                          (write-string text display :start index :end next)
-                          (incf display-index (- next index))
-                          (advance-grapheme index next)
-                          (setf index next))))
-               (setf (aref display-indexes index) display-index)
-               (push (list index row column) positions)))
-      (screen--make-editor-layout
-       :display (get-output-stream-string display)
-       :display-indexes display-indexes
-       :positions (nreverse
-                   (remove-duplicates positions :key #'first :from-end t))
-       :soft-breaks (nreverse soft-breaks)
-       :end-row row
-       :end-column column
-       :pending-wrap-p pending-wrap-p))))
+                              pending-wrap-p t))))))
+         (when (zerop (length text))
+           (record-boundary 0))
+         (loop while (< index (length text))
+               do (when (and (screen--word-start-p text index)
+                             (plusp column)
+                             (> (word-width index) (- columns column)))
+                    (write-soft-break index))
+                  (record-boundary index)
+                  (let ((character (char text index)))
+                    (cond ((char= character #\newline)
+                           (write-char character display)
+                           (incf display-index)
+                           (incf index)
+                           (advance-newline))
+                          ((char= character #\return)
+                           (write-char character display)
+                           (incf display-index)
+                           (incf index)
+                           (setf column 0
+                                 pending-wrap-p nil))
+                          (t
+                           (let ((next (grapheme-next-boundary
+                                        text index (length text))))
+                             (write-string text display
+                                           :start index :end next)
+                             (incf display-index (- next index))
+                             (advance-grapheme index next)
+                             (setf index next))))
+                  (setf (aref display-indexes index) display-index)
+                  (push (list index row column) positions)))
+         (screen--make-editor-layout
+          :display (get-output-stream-string display)
+          :display-indexes display-indexes
+          :positions (nreverse
+                      (remove-duplicates positions :key #'first :from-end t))
+          :soft-breaks (nreverse soft-breaks)
+          :end-row row
+          :end-column column
+          :pending-wrap-p pending-wrap-p))))))
 
 (defun screen--editor-position (layout source-index)
   "Return LAYOUT's row and column for SOURCE-INDEX."

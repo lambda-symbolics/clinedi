@@ -181,11 +181,35 @@
           (return locale))))))
 
 #+ccl
+(defvar *unicode-cell-locale* nil
+  "Cached width-query locale shared by every thread, or NIL before first use.")
+
+#+ccl
+(defvar *unicode-cell-locale-lock* (ccl:make-lock "clinedi-cell-locale")
+  "Lock serializing lazy creation of *UNICODE-CELL-LOCALE*.")
+
+#+ccl
+(ccl:def-load-pointers reset-unicode-cell-locale ()
+  ;; A locale created before SAVE-APPLICATION is a dangling foreign pointer
+  ;; in the restarted image, so each image start forgets the cached locale.
+  (setf *unicode-cell-locale* nil))
+
+#+ccl
+(defun unicode--cell-locale ()
+  "Return the process-wide width-query locale, creating it on first use.
+Locale objects are immutable after creation, so sharing one across threads
+through USELOCALE is safe. The cached locale is deliberately never freed."
+  (or *unicode-cell-locale*
+      (ccl:with-lock-grabbed (*unicode-cell-locale-lock*)
+        (or *unicode-cell-locale*
+            (setf *unicode-cell-locale* (unicode--make-cell-locale))))))
+
+#+ccl
 (defun unicode--call-with-cell-locale (function)
   "Call FUNCTION with CCL's native thread using a private UTF-8 locale."
   (if *unicode-cell-locale-active*
       (funcall function)
-      (let ((locale (unicode--make-cell-locale)))
+      (let ((locale (unicode--cell-locale)))
         (if (ccl:%null-ptr-p locale)
             (let ((*unicode-cell-locale-active* t))
               (funcall function))
@@ -199,10 +223,7 @@
                 (unless (ccl:%null-ptr-p previous)
                   (ccl:external-call "uselocale"
                                      :address previous
-                                     :address))
-                (ccl:external-call "freelocale"
-                                   :address locale
-                                   :void)))))))
+                                     :address))))))))
 
 #-ccl
 (defun unicode--call-with-cell-locale (function)
@@ -238,6 +259,10 @@
 
 (defun unicode--character-cell-width (character)
   "Return CHARACTER's cell width inside an active width query."
+  ;; Printable ASCII is single width in every UTF-8 locale. Answering it
+  ;; directly spares the dominant character class a foreign wcwidth call.
+  (when (<= 32 (char-code character) 126)
+    (return-from unicode--character-cell-width 1))
   #+ccl
   (let* ((code (char-code character))
          (width (ccl:external-call "wcwidth"
@@ -369,6 +394,14 @@ indivisible. START and END are character indexes and must delimit STRING."
            start end (length string)))
   (when (>= start end)
     (return-from grapheme-next-boundary end))
+  ;; Printable ASCII never extends and is never extended by printable
+  ;; ASCII, so such a character followed by another or by the slice end
+  ;; completes its grapheme without consulting break properties.
+  (let ((next (1+ start)))
+    (when (and (<= 32 (char-code (char string start)) 126)
+               (or (>= next end)
+                   (<= 32 (char-code (char string next)) 126)))
+      (return-from grapheme-next-boundary next)))
   (unicode--call-with-cell-locale
    (lambda ()
      (loop with index = (1+ start)
@@ -426,6 +459,10 @@ modifiers and joined pictographs do not add cells to the base glyph."
   (unless (<= start end (length string))
     (error "Invalid grapheme slice ~d..~d for a string of length ~d."
            start end (length string)))
+  ;; A single printable ASCII character is one cell in every locale.
+  (when (and (= end (1+ start))
+             (<= 32 (char-code (char string start)) 126))
+    (return-from grapheme-cell-width 1))
   (unicode--call-with-cell-locale
    (lambda ()
      (let ((total 0)
