@@ -5,6 +5,15 @@
 (defconstant +default-history-limit+ 10000
   "Default number of entries retained by a line editor.")
 
+(defparameter *default-word-delimiters*
+  '(#\- #\_ #\/ #\. #\:)
+  "Characters that separate words in word-delimiter mode by default.")
+
+(defun line-editor--word-delimiters-p (value)
+  "Return true when VALUE is a proper list of characters."
+  (and (listp value)
+       (every #'characterp value)))
+
 (defclass line-editor ()
   ((text
     :initarg :text
@@ -22,6 +31,20 @@
     :reader line-editor-keymap
     :type keymap
     :documentation "Programmable event-to-command mappings for this editor.")
+   (word-delimiter-mode-p
+    :initarg :word-delimiter-mode-p
+    :initform nil
+    :reader line-editor-word-delimiter-mode-p
+    :type boolean
+    :documentation
+    "Whether configured delimiters separate words for movement and deletion.")
+   (word-delimiters
+    :initarg :word-delimiters
+    :initform (copy-list *default-word-delimiters*)
+    :reader line-editor-word-delimiters
+    :type (satisfies line-editor--word-delimiters-p)
+    :documentation
+    "Characters treated as word separators in word-delimiter mode.")
    (history
     :initarg :history
     :type vector
@@ -166,33 +189,46 @@
     ((#\Space #\Tab #\Newline #\Return #\Page) t)
     (otherwise nil)))
 
-(defun line-editor--word-start (text cursor)
-  "Return the grapheme boundary at the start of the word before CURSOR."
-  (labels ((previous-boundary ()
-             (grapheme-previous-boundary text cursor)))
-    (loop while (plusp cursor)
-          for previous = (previous-boundary)
-          while (line-editor--whitespace-character-p
-                 (char text previous))
-          do (setf cursor previous))
-    (loop while (plusp cursor)
-          for previous = (previous-boundary)
-          while (not (line-editor--whitespace-character-p
-                      (char text previous)))
-          do (setf cursor previous))
-    cursor))
+(defun line-editor--word-delimiter-character-p (editor character)
+  "Return true when CHARACTER is one of EDITOR's word delimiters."
+  (member character (line-editor-word-delimiters editor) :test #'char=))
 
-(defun line-editor--word-end (text cursor)
-  "Return the grapheme boundary at the end of the word after CURSOR."
-  (labels ((next-boundary ()
-             (grapheme-next-boundary text cursor)))
-    (loop while (< cursor (length text))
-          while (line-editor--whitespace-character-p (char text cursor))
-          do (setf cursor (next-boundary)))
-    (loop while (< cursor (length text))
-          while (not (line-editor--whitespace-character-p (char text cursor)))
-          do (setf cursor (next-boundary)))
-    cursor))
+(defun line-editor--word-separator-p (editor character)
+  "Return whether CHARACTER separates words in EDITOR's active editing mode."
+  (or (line-editor--whitespace-character-p character)
+      (and (line-editor-word-delimiter-mode-p editor)
+           (line-editor--word-delimiter-character-p editor character))))
+
+(defun line-editor--word-start (editor)
+  "Return the grapheme boundary at the start of the word before EDITOR's cursor."
+  (let ((text (line-editor-text editor))
+        (cursor (line-editor-cursor editor)))
+    (labels ((previous-boundary ()
+               (grapheme-previous-boundary text cursor)))
+      (loop while (plusp cursor)
+            for previous = (previous-boundary)
+            while (line-editor--word-separator-p editor (char text previous))
+            do (setf cursor previous))
+      (loop while (plusp cursor)
+            for previous = (previous-boundary)
+            while (not (line-editor--word-separator-p
+                        editor (char text previous)))
+            do (setf cursor previous))
+      cursor)))
+
+(defun line-editor--word-end (editor)
+  "Return the grapheme boundary at the end of the word after EDITOR's cursor."
+  (let ((text (line-editor-text editor))
+        (cursor (line-editor-cursor editor)))
+    (labels ((next-boundary ()
+               (grapheme-next-boundary text cursor)))
+      (loop while (< cursor (length text))
+            while (line-editor--word-separator-p editor (char text cursor))
+            do (setf cursor (next-boundary)))
+      (loop while (< cursor (length text))
+            while (not (line-editor--word-separator-p editor (char text cursor)))
+            do (setf cursor (next-boundary)))
+      cursor)))
 
 (defun line-editor--kill-to-end (editor)
   "Delete EDITOR's text after its cursor."
@@ -205,10 +241,10 @@
   nil)
 
 (defun line-editor--kill-word (editor)
-  "Delete whitespace and the word immediately before EDITOR's cursor."
+  "Delete separators and the word immediately before EDITOR's cursor."
   (let* ((text   (line-editor-text editor))
          (cursor (line-editor-cursor editor))
-         (start  (line-editor--word-start text cursor)))
+         (start  (line-editor--word-start editor)))
     (line-editor--set-state
      editor
      (concatenate 'string
@@ -282,14 +318,20 @@
                            (history #())
                            (history-limit +default-history-limit+)
                            history-match-function
-                           (keymap (default-line-editor-keymap)))
+                           (keymap (default-line-editor-keymap))
+                           (word-delimiter-mode-p nil)
+                           (word-delimiters *default-word-delimiters*))
   "Create an editor initialized with TEXT, CURSOR, and copied HISTORY.
 
 HISTORY is ordered from oldest to newest. HISTORY-MATCH-FUNCTION, when non-NIL,
 receives the fixed draft and each candidate entry during traversal. An empty
 draft always traverses every entry. CURSOR is clamped to TEXT and advanced when
 necessary so that it never divides a grapheme. KEYMAP controls semantic event
-dispatch and is retained so callers can update it deliberately."
+dispatch and is retained so callers can update it deliberately.
+
+When WORD-DELIMITER-MODE-P is true, WORD-DELIMITERS separate words for Ctrl-Left,
+Ctrl-Right and Ctrl-Backspace behavior. WORD-DELIMITERS defaults to hyphen,
+underscore, slash, dot, and colon, and is copied into the editor."
   (check-type text string)
   (unless (and (integerp history-limit) (plusp history-limit))
     (error 'type-error
@@ -301,12 +343,16 @@ dispatch and is retained so callers can update it deliberately."
            :datum history-match-function
            :expected-type '(or null function)))
   (check-type keymap keymap)
+  (check-type word-delimiter-mode-p boolean)
+  (check-type word-delimiters (satisfies line-editor--word-delimiters-p))
   (let* ((owned-text (copy-seq text))
          (safe-cursor (line-editor--normalize-cursor owned-text cursor)))
     (make-instance 'line-editor
                    :text owned-text
                    :cursor safe-cursor
                    :keymap keymap
+                   :word-delimiter-mode-p word-delimiter-mode-p
+                   :word-delimiters (copy-list word-delimiters)
                    :history (line-editor--make-history history history-limit)
                    :history-limit history-limit
                    :history-match-function history-match-function)))
@@ -317,14 +363,18 @@ dispatch and is retained so callers can update it deliberately."
                              (history #())
                              (history-limit +default-history-limit+)
                              history-match-function
-                             (keymap (default-line-editor-keymap)))
+                             (keymap (default-line-editor-keymap))
+                             (word-delimiter-mode-p nil)
+                             (word-delimiters *default-word-delimiters*))
   "Create a line editor through the application-oriented named constructor."
   (make-line-editor :text text
                     :cursor cursor
                     :history history
                     :history-limit history-limit
                     :history-match-function history-match-function
-                    :keymap keymap))
+                    :keymap keymap
+                    :word-delimiter-mode-p word-delimiter-mode-p
+                    :word-delimiters word-delimiters))
 
 (defun line-editor-history (editor)
   "Return a detached oldest-to-newest snapshot of EDITOR's history."
@@ -355,6 +405,13 @@ dispatch and is retained so callers can update it deliberately."
         (decf (fill-pointer history)))))
   (line-editor--leave-history editor)
   editor)
+
+(defun line-editor-toggle-word-delimiter-mode (editor)
+  "Toggle word-delimiter mode in EDITOR and return its new state."
+  (check-type editor line-editor)
+  (setf (slot-value editor 'word-delimiter-mode-p)
+        (not (line-editor-word-delimiter-mode-p editor)))
+  (line-editor-word-delimiter-mode-p editor))
 
 (defun line-editor--text-event-p (event kind)
   "Return true when EVENT carries one string for compound event KIND."
@@ -436,16 +493,13 @@ return values. NIL and :IGNORED are no-op commands returning :IGNORED."
             (line-editor-cursor editor))))
         (line-editor--continue-action))
        (:word-left
-        (line-editor--set-cursor
-         editor
-         (line-editor--word-start (line-editor-text editor)
-                                  (line-editor-cursor editor)))
+        (line-editor--set-cursor editor (line-editor--word-start editor))
         (line-editor--continue-action))
        (:word-right
-        (line-editor--set-cursor
-         editor
-         (line-editor--word-end (line-editor-text editor)
-                                (line-editor-cursor editor)))
+        (line-editor--set-cursor editor (line-editor--word-end editor))
+        (line-editor--continue-action))
+       (:toggle-word-delimiter-mode
+        (line-editor-toggle-word-delimiter-mode editor)
         (line-editor--continue-action))
        (:home
         (line-editor--set-cursor editor 0)
@@ -512,7 +566,8 @@ return values. NIL and :IGNORED are no-op commands returning :IGNORED."
                :datum command
                :expected-type '(member
                                 :insert :paste :insert-newline :line
-                                :left :right :word-left :word-right :home :end
+                                :left :right :word-left :word-right
+                                :toggle-word-delimiter-mode :home :end
                                 :backspace :delete :history-previous :history-next
                                 :kill-to-end :kill-line :kill-word
                                 :complete :complete-previous :up :down :submit

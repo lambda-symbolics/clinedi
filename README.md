@@ -66,6 +66,12 @@ events. The function receives the complete draft captured when traversal begins
 and each candidate entry. Down past the newest match restores that draft and
 its original cursor. An empty draft traverses every entry.
 
+Pass `:word-delimiter-mode-p t` to make Ctrl-Left, Ctrl-Right and
+Ctrl-Backspace stop at delimiters as well as whitespace. The default delimiter
+list is `-`, `_`, `/`, `.`, and `:`; override it with `:word-delimiters`.
+`line-editor-toggle-word-delimiter-mode` and the built-in
+`:toggle-word-delimiter-mode` command switch the mode while an editor is active.
+
 ## Programmable keymaps
 
 Clinedi decodes terminal input into semantic events, then resolves each event

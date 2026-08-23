@@ -355,9 +355,11 @@
                  (completion-accept-function #'identity)
                  (completion-arrangement :grid)
                  suggestion-function
-                 (keymap (default-line-editor-keymap))
-                 (keyboard-enhancement-p t)
-                 (bracketed-paste-p t)
+                  (keymap (default-line-editor-keymap))
+                  (word-delimiter-mode-p nil)
+                  (word-delimiters *default-word-delimiters*)
+                  (keyboard-enhancement-p t)
+                  (bracketed-paste-p t)
                  before-prompt-function
                  after-prompt-function)
   "Edit one line under PROMPT and return line and result kind.
@@ -370,9 +372,10 @@ the caller through size, raw-mode and restore callbacks. Highlighting,
 completion and suggestion callbacks add application policy without coupling
 Clinedi to a parser or history store.
 KEYMAP supplies programmable event-to-command bindings to the incremental
-editor and is retained for the duration of this call.
-The size callback is refreshed between redraws and input events so a resized
-terminal can reflow the last visible frame without displacing the cursor.
+editor and is retained for the duration of this call. WORD-DELIMITER-MODE-P and
+WORD-DELIMITERS initialize word movement and deletion behavior. The size callback
+is refreshed between redraws and input events so a resized terminal can reflow the
+last visible frame without displacing the cursor.
 COMPLETION-ARRANGEMENT is :GRID for a width-measured row-major selector or
 :VERTICAL for one completion per row. While a selector is open, arrows
 navigate, Tab and Shift-Tab cycle forward and backward, Escape restores the
@@ -400,11 +403,13 @@ prints the final prompt line and uses ordinary READ-LINE."
         (funcall terminal-size-function)
       (setf rows (max 1 rows)
             columns (max 1 columns))
-      (let ((editor (make-line-editor
-                     :history history
-                     :history-match-function history-match-function
-                     :keymap keymap))
-            (prompt-width (ansi-display-width editable-prompt))
+       (let ((editor (make-line-editor
+                      :history history
+                      :history-match-function history-match-function
+                      :keymap keymap
+                      :word-delimiter-mode-p word-delimiter-mode-p
+                      :word-delimiters word-delimiters))
+             (prompt-width (ansi-display-width editable-prompt))
             (previous-row 0)
             (rendered-text "")
             (rendered-cursor 0)

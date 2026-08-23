@@ -170,10 +170,11 @@ editing keywords. Bracketed paste becomes one (:PASTE text) event, with terminal
 controls sanitized before the text reaches an editor. CSI-u reports for Enter,
 Tab, Shift-Tab, Escape, Backspace, and Ctrl-D map to their raw semantic events.
 Modified Enter becomes :INSERT-NEWLINE when distinguishable from Enter.
-Ctrl-Backspace and Ctrl-W
-become :KILL-WORD. Ctrl-Left and Ctrl-Right become :WORD-LEFT and :WORD-RIGHT.
-Arrow Up and Down become :UP and :DOWN, while Ctrl-P and Ctrl-N retain explicit
-history traversal. Shift-Tab becomes :COMPLETE-PREVIOUS. Ctrl-D becomes
+Ctrl-Backspace and Ctrl-W become :KILL-WORD. Ctrl-Left and Ctrl-Right become
+:WORD-LEFT and :WORD-RIGHT. When a line editor enables word-delimiter mode,
+these events also recognize that editor's configured word delimiters. Arrow Up
+and Down become :UP and :DOWN, while Ctrl-P and Ctrl-N retain explicit history
+traversal. Shift-Tab becomes :COMPLETE-PREVIOUS. Ctrl-D becomes
 :END-OF-INPUT; physical stream EOF becomes :STREAM-END."
   (let ((character (read-char stream nil nil)))
     (cond ((null character)

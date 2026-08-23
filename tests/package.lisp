@@ -36,6 +36,9 @@
                 #:line-editor-create
                 #:line-editor-text
                 #:line-editor-cursor
+                #:line-editor-word-delimiter-mode-p
+                #:line-editor-toggle-word-delimiter-mode
+                #:line-editor-word-delimiters
                 #:line-editor-history
                 #:line-editor-history-match-function
                 #:line-editor-keymap
