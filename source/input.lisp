@@ -117,6 +117,32 @@ be balanced with DISABLE-KEYBOARD-ENHANCEMENT while the same terminal is owned."
          :escape)
         ((string= body "127u")
          :backspace)
+        ((string= body "97;5u")
+         :home)
+        ((string= body "98;5u")
+         :left)
+        ((string= body "101;5u")
+         :end)
+        ((string= body "102;5u")
+         :right)
+        ((string= body "104;5u")
+         :backspace)
+        ((string= body "105;5u")
+         :complete)
+        ((member body '("106;5u" "109;5u") :test #'string=)
+         :submit)
+        ((string= body "107;5u")
+         :kill-to-end)
+        ((string= body "108;5u")
+         :clear-screen)
+        ((string= body "110;5u")
+         :history-next)
+        ((string= body "112;5u")
+         :history-previous)
+        ((string= body "117;5u")
+         :kill-line)
+        ((string= body "119;5u")
+         :kill-word)
         ((member body '("100;5u" "27;5;100~") :test #'string=)
          :end-of-input)
         ((member body '("8;5u" "127;5u"
@@ -168,8 +194,8 @@ be balanced with DISABLE-KEYBOARD-ENHANCEMENT while the same terminal is owned."
 Printable input becomes (:INSERT text). Control and escape sequences become
 editing keywords. Bracketed paste becomes one (:PASTE text) event, with terminal
 controls sanitized before the text reaches an editor. CSI-u reports for Enter,
-Tab, Shift-Tab, Escape, Backspace, and Ctrl-D map to their raw semantic events.
-Modified Enter becomes :INSERT-NEWLINE when distinguishable from Enter.
+Tab, Shift-Tab, Escape, Backspace, and supported Ctrl editing keys map to their
+semantic events. Modified Enter becomes :INSERT-NEWLINE when distinguishable.
 Ctrl-Backspace and Ctrl-W become :KILL-WORD. Ctrl-Left and Ctrl-Right become
 :WORD-LEFT and :WORD-RIGHT. When a line editor enables word-delimiter mode,
 these events also recognize that editor's configured word delimiters. Arrow Up

@@ -85,6 +85,24 @@
                  (third case)
                  (input-test--event
                   (input-test--escape-sequence (second case)))))
+  (dolist (case '(("CSI-u control-A event" "[97;5u" :home)
+                  ("CSI-u control-B event" "[98;5u" :left)
+                  ("CSI-u control-E event" "[101;5u" :end)
+                  ("CSI-u control-F event" "[102;5u" :right)
+                  ("CSI-u control-H event" "[104;5u" :backspace)
+                  ("CSI-u control-I event" "[105;5u" :complete)
+                  ("CSI-u control-J event" "[106;5u" :submit)
+                  ("CSI-u control-K event" "[107;5u" :kill-to-end)
+                  ("CSI-u control-L event" "[108;5u" :clear-screen)
+                  ("CSI-u control-M event" "[109;5u" :submit)
+                  ("CSI-u control-N event" "[110;5u" :history-next)
+                  ("CSI-u control-P event" "[112;5u" :history-previous)
+                  ("CSI-u control-U event" "[117;5u" :kill-line)
+                  ("CSI-u control-W event" "[119;5u" :kill-word)))
+    (check-equal (first case)
+                 (third case)
+                 (input-test--event
+                  (input-test--escape-sequence (second case)))))
   (dolist (code '(10 13))
     (loop for modifier from 2 to 8
           do (check-equal
