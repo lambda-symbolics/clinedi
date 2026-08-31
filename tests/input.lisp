@@ -103,6 +103,14 @@
                  (third case)
                  (input-test--event
                   (input-test--escape-sequence (second case)))))
+  (dolist (case '(("CSI-u alt-B event" "[98;3u" :word-left)
+                  ("CSI-u alt-D event" "[100;3u" :kill-word-right)
+                  ("CSI-u alt-F event" "[102;3u" :word-right)
+                  ("CSI-u alt-backspace event" "[127;3u" :kill-word)))
+    (check-equal (first case)
+                 (third case)
+                 (input-test--event
+                  (input-test--escape-sequence (second case)))))
   (dolist (code '(10 13))
     (loop for modifier from 2 to 8
           do (check-equal
