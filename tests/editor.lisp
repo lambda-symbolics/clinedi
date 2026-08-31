@@ -178,6 +178,12 @@
     (editor-tests--assert (and (string= (line-editor-text editor) "")
                                (zerop (line-editor-cursor editor)))
                           "Kill-line must clear text and cursor."))
+  (let ((editor (make-line-editor :text "alpha  beta gamma" :cursor 5)))
+    (editor-tests--event editor :kill-word-right :continue)
+    (editor-tests--assert
+     (and (string= (line-editor-text editor) "alpha gamma")
+          (= (line-editor-cursor editor) 5))
+     "Kill-word-right must remove separators and the next word."))
   nil)
 
 (defun editor-tests--test-history ()
