@@ -193,6 +193,10 @@ be balanced with DISABLE-KEYBOARD-ENHANCEMENT while the same terminal is owned."
          (#\H :home)
          (#\F :end)
          (t :ignore)))
+      ((#\b #\B) :word-left)
+      ((#\d #\D) :kill-word-right)
+      ((#\f #\F) :word-right)
+      ((#\backspace #\rubout) :kill-word)
       ((#\newline #\return) :insert-newline)
       (t :escape))))
 
@@ -203,9 +207,9 @@ Printable input becomes (:INSERT text). Control and escape sequences become
 editing keywords. Bracketed paste becomes one (:PASTE text) event, with terminal
 controls sanitized before the text reaches an editor. CSI-u reports for Enter,
 Tab, Shift-Tab, Escape, Backspace, and supported Ctrl editing keys map to their
-semantic events. Alt-B and Alt-F move by words, Alt-D deletes the following
-word, and Alt-Backspace deletes the preceding word. Modified Enter becomes
-:INSERT-NEWLINE when distinguishable.
+semantic events. Legacy escape-prefix and CSI-u reports for Alt-B and Alt-F
+move by words, Alt-D deletes the following word, and Alt-Backspace deletes the
+preceding word. Modified Enter becomes :INSERT-NEWLINE when distinguishable.
 Ctrl-Backspace and Ctrl-W become :KILL-WORD. Ctrl-Left and Ctrl-Right become
 :WORD-LEFT and :WORD-RIGHT. When a line editor enables word-delimiter mode,
 these events also recognize that editor's configured word delimiters. Arrow Up

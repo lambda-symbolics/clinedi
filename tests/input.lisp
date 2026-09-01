@@ -111,6 +111,16 @@
                  (third case)
                  (input-test--event
                   (input-test--escape-sequence (second case)))))
+  (dolist (case `(("legacy alt-B event" "b" :word-left)
+                  ("legacy alt-D event" "d" :kill-word-right)
+                  ("legacy alt-F event" "f" :word-right)
+                  ("legacy alt-backspace event"
+                   ,(string (code-char 127))
+                   :kill-word)))
+    (check-equal (first case)
+                 (third case)
+                 (input-test--event
+                  (input-test--escape-sequence (second case)))))
   (dolist (code '(10 13))
     (loop for modifier from 2 to 8
           do (check-equal
