@@ -106,7 +106,12 @@
   (dolist (case '(("CSI-u alt-B event" "[98;3u" :word-left)
                   ("CSI-u alt-D event" "[100;3u" :kill-word-right)
                   ("CSI-u alt-F event" "[102;3u" :word-right)
-                  ("CSI-u alt-backspace event" "[127;3u" :kill-word)))
+                  ("CSI-u alt-backspace event" "[127;3u" :kill-word)
+                  ("modify-other-keys alt-B event" "[27;3;98~" :word-left)
+                  ("modify-other-keys alt-D event" "[27;3;100~" :kill-word-right)
+                  ("modify-other-keys alt-F event" "[27;3;102~" :word-right)
+                  ("modify-other-keys alt-backspace event"
+                   "[27;3;127~" :kill-word)))
     (check-equal (first case)
                  (third case)
                  (input-test--event
