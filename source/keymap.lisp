@@ -114,6 +114,7 @@ command values remain opaque and are retained."
      (:right . :right)
      (:word-left . :word-left)
      (:word-right . :word-right)
+     (:toggle-word-delimiter-mode . :toggle-word-delimiter-mode)
      (:home . :home)
      (:end . :end)
      (:backspace . :backspace)
