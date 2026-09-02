@@ -85,6 +85,47 @@
                  (third case)
                  (input-test--event
                   (input-test--escape-sequence (second case)))))
+  (dolist (case '(("CSI-u control-A event" "[97;5u" :home)
+                  ("CSI-u control-B event" "[98;5u" :left)
+                  ("CSI-u control-E event" "[101;5u" :end)
+                  ("CSI-u control-F event" "[102;5u" :right)
+                  ("CSI-u control-H event" "[104;5u" :backspace)
+                  ("CSI-u control-I event" "[105;5u" :complete)
+                  ("CSI-u control-J event" "[106;5u" :submit)
+                  ("CSI-u control-K event" "[107;5u" :kill-to-end)
+                  ("CSI-u control-L event" "[108;5u" :clear-screen)
+                  ("CSI-u control-M event" "[109;5u" :submit)
+                  ("CSI-u control-N event" "[110;5u" :history-next)
+                  ("CSI-u control-P event" "[112;5u" :history-previous)
+                  ("CSI-u control-U event" "[117;5u" :kill-line)
+                  ("CSI-u control-W event" "[119;5u" :kill-word)))
+    (check-equal (first case)
+                 (third case)
+                 (input-test--event
+                  (input-test--escape-sequence (second case)))))
+  (dolist (case '(("CSI-u alt-B event" "[98;3u" :word-left)
+                  ("CSI-u alt-D event" "[100;3u" :kill-word-right)
+                  ("CSI-u alt-F event" "[102;3u" :word-right)
+                  ("CSI-u alt-backspace event" "[127;3u" :kill-word)
+                  ("modify-other-keys alt-B event" "[27;3;98~" :word-left)
+                  ("modify-other-keys alt-D event" "[27;3;100~" :kill-word-right)
+                  ("modify-other-keys alt-F event" "[27;3;102~" :word-right)
+                  ("modify-other-keys alt-backspace event"
+                   "[27;3;127~" :kill-word)))
+    (check-equal (first case)
+                 (third case)
+                 (input-test--event
+                  (input-test--escape-sequence (second case)))))
+  (dolist (case `(("legacy alt-B event" "b" :word-left)
+                  ("legacy alt-D event" "d" :kill-word-right)
+                  ("legacy alt-F event" "f" :word-right)
+                  ("legacy alt-backspace event"
+                   ,(string (code-char 127))
+                   :kill-word)))
+    (check-equal (first case)
+                 (third case)
+                 (input-test--event
+                  (input-test--escape-sequence (second case)))))
   (dolist (code '(10 13))
     (loop for modifier from 2 to 8
           do (check-equal

@@ -124,6 +124,7 @@ command values remain opaque and are retained."
      (:kill-to-end . :kill-to-end)
      (:kill-line . :kill-line)
      (:kill-word . :kill-word)
+     (:kill-word-right . :kill-word-right)
      (:complete . :complete)
      (:complete-previous . :complete-previous)
      (:up . :up)

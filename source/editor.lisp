@@ -254,6 +254,20 @@
      :leave-history-p t))
   nil)
 
+(defun line-editor--kill-word-right (editor)
+  "Delete separators and the word immediately after EDITOR's cursor."
+  (let* ((text   (line-editor-text editor))
+         (cursor (line-editor-cursor editor))
+         (end    (line-editor--word-end editor)))
+    (line-editor--set-state
+     editor
+     (concatenate 'string
+                  (subseq text 0 cursor)
+                  (subseq text end))
+     cursor
+     :leave-history-p t))
+  nil)
+
 (defun line-editor--history-entry-matches-p (editor query entry)
   "True when ENTRY is eligible for EDITOR's fixed history QUERY."
   (let ((function (line-editor-history-match-function editor)))
@@ -528,6 +542,9 @@ return values. NIL and :IGNORED are no-op commands returning :IGNORED."
        (:kill-word
         (line-editor--kill-word editor)
         (line-editor--continue-action))
+       (:kill-word-right
+        (line-editor--kill-word-right editor)
+        (line-editor--continue-action))
        (:complete
         (values :complete nil))
        (:complete-previous
@@ -570,6 +587,7 @@ return values. NIL and :IGNORED are no-op commands returning :IGNORED."
                                 :toggle-word-delimiter-mode :home :end
                                 :backspace :delete :history-previous :history-next
                                 :kill-to-end :kill-line :kill-word
+                                :kill-word-right
                                 :complete :complete-previous :up :down :submit
                                 :interrupt :end-of-input :stream-end :escape
                                 :clear-screen :ignore :ignored)))))
