@@ -35,7 +35,7 @@
                              :key (selection-session-identity-key session)
                              :test (selection-session-identity-test session))))
     (when position
-      (selector-move selector position)))
+      (selector-move selector (- position (selector-selection selector)))))
   session)
 
 (defun selection-session--terms (query)

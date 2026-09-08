@@ -10,6 +10,14 @@
 (defun run-session-tests ()
   "Test filtered navigation, identity, event coordination and cleanup failures."
   (let ((session (session-tests--make)))
+    (dolist (identity '(2 3 1 1 3 2))
+      (clinedi:selection-session-select-id session identity)
+      (check-equal "identity selection is independent of the current cursor"
+                   identity (clinedi:selection-session-selected-id session)))
+    (clinedi:selection-session-select-id session 99)
+    (check-equal "unknown identity preserves selection" 2
+                 (clinedi:selection-session-selected-id session)))
+  (let ((session (session-tests--make)))
     (clinedi:selection-session-handle-event session '(:insert "SAME"))
     (check-equal "filter retains identity among duplicate labels" 2
                  (clinedi:selection-session-selected-id session))
