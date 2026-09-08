@@ -3,6 +3,48 @@
 (defpackage #:clinedi/tests
   (:use #:cl)
   (:import-from #:clinedi
+                #:terminal
+                #:stream-terminal
+                #:posix-terminal
+                #:stream-terminal-create
+                #:terminal-rows
+                #:terminal-columns
+                #:terminal-interactive-p
+                #:terminal-styled-p
+                #:terminal-started-p
+                #:terminal-set-dimensions
+                #:terminal-start
+                #:terminal-stop
+                #:terminal-read-event
+                #:terminal-input-ready-p
+                #:terminal-write
+                #:terminal-flush
+                #:stream-terminal-input-stream
+                #:stream-terminal-output-stream
+                #:stream-terminal-input-file-descriptor
+                #:stream-terminal-pending-input-stream
+                #:stream-terminal-saved-terminal-mode
+                #:terminal-capture-input-mode
+                #:terminal-activate-input-mode
+                #:terminal-restore-input-mode
+                #:terminal-file-descriptor-size
+                #:terminal-error
+                #:terminal-error-message
+                #:terminal-error-operation
+                #:terminal-error-cause
+                #:read-paste-burst
+                #:terminal-read-editing-event
+                #:terminal-bracketed-paste-enable-sequence
+                #:terminal-bracketed-paste-disable-sequence
+                #:terminal-keyboard-enhancement-enable-sequence
+                #:terminal-keyboard-enhancement-disable-sequence
+                #:*terminal-default-rows*
+                #:*terminal-default-columns*
+                #:*terminal-escape-character*
+                #:*terminal-escape-delay-seconds*
+                #:*terminal-unbracketed-paste-coalesce-seconds*
+                #:*terminal-unbracketed-paste-maximum-characters*
+
                 #:grapheme-next-boundary
                 #:grapheme-previous-boundary
                 #:grapheme-boundary-at-or-after

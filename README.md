@@ -48,6 +48,28 @@ The loop queries it before readiness and again before event handling.
 updates. Keep titles, hints and application-specific actions in the callbacks.
 `:on-close` runs on every exit, including a failed `:on-open`.
 
+## Buffered transports and native modes
+
+Use `stream-terminal-create` for buffered stream input and trusted presentation
+output. Call `terminal-start`, `terminal-read-event`, `terminal-input-ready-p`,
+`terminal-write`, `terminal-flush`, and `terminal-stop`. Plain bursts become one
+`:insert` event; multiline bursts become sanitized `:paste` events. Mixed input
+retains pending characters between reads. Configure a custom `:event-decoder`
+with `(stream &key escape-delay)` and an `:event-prefix-p-function` when an
+application-defined prefix must precede multiline-paste classification.
+Use `read-paste-burst` to implement literal-paste bindings with explicit idle
+and character limits. Choose styling with `:styling-p-function`.
+
+Load the optional `clinedi/posix` system on SBCL, then instantiate
+`posix-terminal` with `:input-stream`, `:output-stream`, and
+`:input-file-descriptor`. Check the descriptor rather than the stream wrapper
+for interactive mode. Read native dimensions with `terminal-file-descriptor-size`.
+The transport falls back to line events for non-TTY input. Startup and shutdown
+are idempotent. Failed activation rolls back partial protocols and native mode;
+shutdown attempts every cleanup and reports the first failure as `terminal-error`.
+For another native backend, implement `terminal-capture-input-mode`,
+`terminal-activate-input-mode`, and `terminal-restore-input-mode` on a subclass.
+
 ## Loading
 
 Clinedi is an ASDF system. It uses

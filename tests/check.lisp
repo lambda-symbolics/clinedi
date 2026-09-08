@@ -9,6 +9,7 @@
     (run-editor-tests)
     (run-editor-state-tests)
     (run-session-tests)
+    (run-transport-tests)
     (run-selector-tests)
     (run-input-tests)
     (run-render-tests)

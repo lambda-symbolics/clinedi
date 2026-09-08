@@ -17,6 +17,7 @@
                  (:file "selector")
                  (:file "session")
                  (:file "input")
+                 (:file "transport")
                  (:file "render")
                  (:file "live-region")
                  (:file "terminal-editor"))))
@@ -25,7 +26,7 @@
 (asdf:defsystem "clinedi/tests"
   :description "Regression tests for Clinedi"
   :encoding :utf-8
-  :depends-on ("clinedi")
+  :depends-on ("clinedi" #+sbcl "clinedi/posix")
   :components ((:module "tests"
                 :serial t
                 :components
@@ -36,6 +37,7 @@
                  (:file "selector")
                  (:file "session")
                  (:file "input")
+                 (:file "transport")
                  (:file "render")
                  (:file "live-region")
                  (:file "terminal-editor")
@@ -44,3 +46,8 @@
             (operation system)
             (declare (ignore operation system))
             (uiop:symbol-call '#:clinedi/tests '#:run-tests)))
+
+(asdf:defsystem "clinedi/posix"
+  :description "Optional SBCL POSIX terminal input-mode and geometry adapter"
+  :depends-on ("clinedi" "sb-posix")
+  :components ((:file "source/posix")))
