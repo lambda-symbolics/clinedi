@@ -1,0 +1,31 @@
+(in-package #:clinedi/tests)
+
+(defun run-editor-state-tests ()
+  "Exercise reusable completion snapshots throughout history traversal."
+  (dolist (recalled-p '(nil t))
+    (let ((editor (make-line-editor :history '("old" "new"))))
+      (line-editor-set-text editor "draft" :cursor 2)
+      (when recalled-p (line-editor-handle-event editor ':history-previous))
+      (let ((state (clinedi:line-editor-snapshot editor)))
+        (dotimes (iteration 2)
+          (declare (ignorable iteration))
+          (line-editor-set-text editor "completion preview")
+          (clinedi:line-editor-restore editor state)
+          (check-equal "snapshot text" (if recalled-p "new" "draft")
+                       (line-editor-text editor))
+          (check-equal "snapshot traversal" recalled-p
+                       (clinedi:line-editor-history-navigating-p editor))
+          (when recalled-p (line-editor-handle-event editor ':history-next))
+          (check-equal "snapshot draft" "draft" (line-editor-text editor))
+          (check-equal "snapshot cursor" 2 (line-editor-cursor editor))))))
+  (let ((source (make-line-editor :history '("old" "new")))
+        (target (make-line-editor :history-limit 1)))
+    (line-editor-handle-event source ':history-previous)
+    (line-editor-handle-event source ':history-previous)
+    (clinedi:line-editor-restore target (clinedi:line-editor-snapshot source))
+    (check-equal "bounded restore retains visible recalled text" "old"
+                 (line-editor-text target))
+    (check-equal "bounded restore truncates history" '("new") (coerce (line-editor-history target) 'list))
+    (check-equal "discarded recall leaves navigation" nil
+                 (clinedi:line-editor-history-navigating-p target)))
+  t)

@@ -18,6 +18,36 @@ The editor handles:
 
 The application owns shell parsing, completion policy and history persistence.
 
+## Editor snapshots and modal sessions
+
+Use `line-editor-snapshot` and `line-editor-restore` to suspend completion
+previews without losing history traversal, its saved draft, or the cursor.
+Snapshots are reusable and own their text and history copies. Use
+`line-editor-history-navigating-p` to inspect traversal and
+`line-editor-replace-history` to replace bounded history while restoring the
+original draft. Persist history in the application.
+
+Create a `selection-session` with `make-selection-session`. Supply opaque
+`:items`, an `:identity-key`, an `:identity-test`, and a string-valued
+`:search-key`. Enable `:search-p` for case-insensitive, whitespace-separated
+query terms. Use `selection-session-handle-event` in an existing event loop,
+or `run-selection-session` with transport and presentation callbacks.
+
+Read `selection-session-selector` for navigation and viewport state, and
+`selection-session-query` for the current query. Replace candidate snapshots
+with `selection-session-replace-items`; select a stable designator with
+`selection-session-select-id`. Candidate labels may coincide without losing
+selection identity.
+
+For the modal loop, supply `:read-event`, `:input-ready-p`, `:poll-interval`,
+`:refresh`, `:paint`, and optionally `:call-with-lock`. Query pending resizes
+in `:refresh`. Return true after repainting there to omit a duplicate paint.
+The loop queries it before readiness and again before event handling.
+`:on-event` receives `(event selector)` and returns NIL for default handling,
+`:continue`, `(:accept value)`, or `(:cancel)`. Handle `:poll` for background
+updates. Keep titles, hints and application-specific actions in the callbacks.
+`:on-close` runs on every exit, including a failed `:on-open`.
+
 ## Loading
 
 Clinedi is an ASDF system. It uses

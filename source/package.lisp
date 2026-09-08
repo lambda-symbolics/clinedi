@@ -3,6 +3,13 @@
 (defpackage #:clinedi
   (:use #:cl)
   (:export
+   #:line-editor-state #:line-editor-history-navigating-p
+   #:line-editor-snapshot #:line-editor-restore #:line-editor-replace-history
+   #:selection-session #:make-selection-session
+   #:selection-session-selector #:selection-session-query
+   #:selection-session-selected-id #:selection-session-select-id
+   #:selection-session-replace-items #:selection-session-handle-event
+   #:run-selection-session
    ;; Identity
    #:*clinedi-version*
 

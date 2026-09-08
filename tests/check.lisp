@@ -7,6 +7,8 @@
   (let ((*test-failures* nil))
     (run-unicode-tests)
     (run-editor-tests)
+    (run-editor-state-tests)
+    (run-session-tests)
     (run-selector-tests)
     (run-input-tests)
     (run-render-tests)

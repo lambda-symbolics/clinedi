@@ -45,8 +45,14 @@
     :documentation "Sanitized single-line candidate label."))
   (:documentation "One blocking-editor completion candidate and its label."))
 
+
+
 (defclass terminal-completion-session ()
-  ((selector
+  ((original-state
+    :initarg :original-state
+    :reader terminal-completion-session-original-state
+    :documentation "Editor snapshot before completion preview.")
+   (selector
     :initarg :selector
     :reader terminal-completion-session-selector
     :type selector
@@ -74,6 +80,7 @@
   (:documentation
    "Transient completion selection for the blocking line editor."))
 
+
 (defun terminal-completion--candidates (candidates displays)
   "Return internal completion candidates for CANDIDATES and DISPLAYS."
   (let ((remaining-displays (and displays (coerce displays 'list))))
@@ -90,6 +97,8 @@
                                  :value candidate
                                  :display display))))
 
+
+
 (defun terminal-completion--make-session
     (editor start end candidates displays accept-function arrangement)
   "Create a completion session for EDITOR and preview its first candidate."
@@ -101,6 +110,7 @@
            (make-instance
             'terminal-completion-session
             :selector selector
+             :original-state (line-editor-snapshot editor)
             :original-text (copy-seq (line-editor-text editor))
             :replacement-start start
             :replacement-end end
@@ -108,6 +118,7 @@
     (terminal-completion--preview
      editor session (selector-selected-item selector))
     session))
+
 
 (defun terminal-completion--preview (editor session candidate)
   "Preview CANDIDATE in EDITOR using SESSION's original replacement range."
@@ -128,12 +139,10 @@
        :cursor (+ start (length replacement)))))
   editor)
 
+
 (defun terminal-completion--restore (editor session)
-  "Restore EDITOR to the state preceding SESSION and return EDITOR."
-  (line-editor-set-text
-   editor
-   (terminal-completion-session-original-text session)
-   :cursor (terminal-completion-session-replacement-end session)))
+  "Restore text, cursor and history traversal preceding SESSION."
+  (line-editor-restore editor (terminal-completion-session-original-state session)))
 
 (defun terminal-completion--candidate-width (candidate columns)
   "Return CANDIDATE's selection-cell width capped at COLUMNS."
