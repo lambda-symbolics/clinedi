@@ -26,7 +26,9 @@
 (asdf:defsystem "clinedi/tests"
   :description "Regression tests for Clinedi"
   :encoding :utf-8
-  :depends-on ("clinedi" #+sbcl "clinedi/posix")
+  :depends-on ("clinedi"
+               #+(and sbcl (not win32)) "clinedi/posix"
+               #+(and sbcl win32) "clinedi/win32")
   :components ((:module "tests"
                 :serial t
                 :components
@@ -51,3 +53,8 @@
   :description "Optional SBCL POSIX terminal input-mode and geometry adapter"
   :depends-on ("clinedi" "sb-posix")
   :components ((:file "source/posix")))
+
+(asdf:defsystem "clinedi/win32"
+  :description "Optional SBCL Windows console input-mode and geometry adapter"
+  :depends-on ("clinedi")
+  :components ((:file "source/win32")))

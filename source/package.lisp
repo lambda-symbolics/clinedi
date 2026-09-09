@@ -6,6 +6,9 @@
    #:terminal
    #:stream-terminal
    #:posix-terminal
+   #:win32-terminal
+   #:host-terminal
+   #:terminal-standard-input-file-descriptor
    #:stream-terminal-create
    #:terminal-rows
    #:terminal-columns

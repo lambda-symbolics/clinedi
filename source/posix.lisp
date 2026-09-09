@@ -41,8 +41,15 @@
   mode)
 
 
+(defun terminal-standard-input-file-descriptor ()
+  "Return the descriptor of this process's standard input for terminal use."
+  0)
+
 (defclass posix-terminal (stream-terminal) ()
   (:documentation "An SBCL POSIX stream terminal with native input-mode management."))
+
+(defclass host-terminal (posix-terminal) ()
+  (:documentation "The terminal class with native input-mode management on this host."))
 
 (defmethod terminal-capture-input-mode ((terminal posix-terminal))
   "Capture termios only for an actual interactive descriptor."
