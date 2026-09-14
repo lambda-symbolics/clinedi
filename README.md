@@ -104,6 +104,12 @@ local projects:
 action plus an optional payload. This API is suitable for event-driven terminal
 UIs that own their repaint loop.
 
+For application-owned transcript viewports, `read-event` also decodes Page Up
+and Page Down as `:page-up` and `:page-down`, Ctrl-Home and Ctrl-End as
+`:scroll-top` and `:scroll-bottom`, and SGR mouse wheel reports as `(:scroll -1)`
+or `(:scroll 1)`. Handle these in the application's viewport before dispatching
+to the editor. Enable mouse reporting only while that viewport owns the terminal.
+
 - `:end-of-input` represents Ctrl-D and follows the usual delete-or-EOF behavior
 - `:stream-end` represents physical stream EOF; handling it returns the
   `:end-of-input` action and keeps partial text

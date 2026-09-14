@@ -84,6 +84,27 @@ be balanced with DISABLE-KEYBOARD-ENHANCEMENT while the same terminal is owned."
       (write-string marker payload :end matched))
     (sanitize-text (get-output-stream-string payload))))
 
+(defun input--mouse-wheel-event (body)
+  "Decode an SGR wheel report as (:SCROLL delta), ignoring other mouse reports."
+  (handler-case
+      (let* ((end (1- (length body)))
+             (first-separator (position #\; body))
+             (second-separator (and first-separator
+                                    (position #\; body :start (1+ first-separator)))))
+        (if (and (< 5 (length body) 64)
+                 (char= (char body 0) #\<)
+                 (char= (char body end) #\M)
+                 first-separator second-separator
+                 (plusp (parse-integer body :start (1+ first-separator)
+                                           :end second-separator))
+                 (plusp (parse-integer body :start (1+ second-separator) :end end)))
+            (case (logand (parse-integer body :start 1 :end first-separator) (lognot #x1c))
+              (#x40 (list :scroll -1))
+              (#x41 (list :scroll 1))
+              (otherwise :ignore))
+            :ignore))
+    (error () :ignore)))
+
 (defun input--csi-event (body stream)
   "Decode a CSI sequence BODY, reading paste payloads from STREAM."
   (cond ((string= body "A") :up)
@@ -98,6 +119,12 @@ be balanced with DISABLE-KEYBOARD-ENHANCEMENT while the same terminal is owned."
         ((member body '("1~" "7~") :test #'string=) :home)
         ((string= body "3~") :delete)
         ((member body '("4~" "8~") :test #'string=) :end)
+        ((string= body "5~") :page-up)
+        ((string= body "6~") :page-down)
+        ((member body '("1;5H" "1;5~" "7;5~") :test #'string=) :scroll-top)
+        ((member body '("1;5F" "4;5~" "8;5~") :test #'string=) :scroll-bottom)
+        ((and (plusp (length body)) (char= (char body 0) #\<))
+         (input--mouse-wheel-event body))
         ((member body '("10u" "13u") :test #'string=)
          :submit)
         ((member body '("10;2u" "10;3u" "10;4u" "10;5u"
