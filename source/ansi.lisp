@@ -98,27 +98,127 @@ Return TEXT unchanged when presentation is disabled."
   "Remove ANSI control sequences from STRING."
   (cl-colorist:strip-ansi string))
 
-(defun ansi--visible-slice (string start end)
-  "Return STRING controls and visible characters between START and END.
+(defun ansi--control-payload-start (string start)
+  "Return the index after the introducer of the control beginning at START."
+  (if (char= (char string start) +escape-character+)
+      (+ start 2)
+      (1+ start)))
 
-All trusted ANSI controls are retained so the slice enters and leaves the same
-presentation state as STRING. START and END index ANSI-stripped characters."
-  (if (= start end)
-      ""
-      (with-output-to-string (slice)
-        (let ((index 0)
-              (visible-index 0))
-          (loop while (< index (length string))
-                for control-end = (cl-colorist:ansi-control-end string index)
-                do (if control-end
-                       (progn
-                         (write-string string slice :start index :end control-end)
-                         (setf index control-end))
-                       (progn
-                         (when (<= start visible-index (1- end))
-                           (write-char (char string index) slice))
-                         (incf visible-index)
-                         (incf index))))))))
+(defun ansi--sgr-control-p (string start end)
+  "Return true when STRING's control between START and END selects graphic rendition."
+  (and (>= (- end start) 2)
+       (char= (char string (1- end)) #\m)
+       (or (and (char= (char string start) +escape-character+)
+                (< (1+ start) end)
+                (char= (char string (1+ start)) #\[))
+           (= (char-code (char string start)) #x9b))))
+
+(defun ansi--sgr-reset-p (string start end)
+  "Return true when the SGR control between START and END resets every attribute."
+  (let ((parameters-start (ansi--control-payload-start string start))
+        (parameters-end (1- end)))
+    (or (>= parameters-start parameters-end)
+        (and (= (- parameters-end parameters-start) 1)
+             (char= (char string parameters-start) #\0)))))
+
+(defun ansi--hyperlink-control-p (string start end)
+  "Return true when STRING's control between START and END is an OSC 8 hyperlink."
+  (let ((payload-start (ansi--control-payload-start string start)))
+    (and (or (and (char= (char string start) +escape-character+)
+                  (< (1+ start) end)
+                  (char= (char string (1+ start)) #\]))
+             (= (char-code (char string start)) #x9d))
+         (< (1+ payload-start) end)
+         (char= (char string payload-start) #\8)
+         (char= (char string (1+ payload-start)) #\;))))
+
+(defun ansi--hyperlink-close-p (string start end)
+  "Return true when the OSC 8 control between START and END ends a hyperlink.
+
+A hyperlink ends when its URI is empty. The URI follows the second semicolon
+and runs to the string terminator, which is ESC backslash, BEL or C1 ST."
+  (let* ((payload-start (ansi--control-payload-start string start))
+         (terminator-start (if (and (>= (- end start) 2)
+                                    (char= (char string (1- end)) #\\)
+                                    (char= (char string (- end 2)) +escape-character+))
+                               (- end 2)
+                               (1- end)))
+         (separator (position #\; string :start (+ payload-start 2) :end end)))
+    (or (null separator)
+        (>= (1+ separator) terminator-start))))
+
+(defun ansi--visible-slices (string ranges)
+  "Return STRING's styled slices for RANGES, one string per (START END) pair.
+
+START and END index ANSI-stripped characters and the ranges ascend. Every slice
+stands alone: it opens with the graphic rendition and hyperlink in force at its
+first visible character, keeps the controls that occur inside it, and closes
+whatever it leaves open. Rows therefore paint correctly alone or in sequence
+without one row's controls being copied into every other row, and STRING is
+scanned once however many ranges there are."
+  (let ((slices nil)
+        (active-sgr nil)
+        (active-hyperlink nil)
+        (index 0)
+        (visible-index 0)
+        (length (length string)))
+    (labels ((note-control (start end)
+               "Track the presentation state a control between START and END leaves."
+               (cond
+                 ((ansi--sgr-control-p string start end)
+                  (if (ansi--sgr-reset-p string start end)
+                      (setf active-sgr nil)
+                      (push (subseq string start end) active-sgr)))
+                 ((ansi--hyperlink-control-p string start end)
+                  (setf active-hyperlink
+                        (if (ansi--hyperlink-close-p string start end)
+                            nil
+                            (subseq string start end))))))
+
+             (open-slice (slice)
+               "Write the state in force so the slice starts as STRING would."
+               (dolist (control (reverse active-sgr))
+                 (write-string control slice))
+               (when active-hyperlink
+                 (write-string active-hyperlink slice)))
+
+             (close-slice (slice)
+               "Neutralize whatever the slice leaves open."
+               (when active-hyperlink
+                 (format slice "~c]8;;~c\\" +escape-character+ +escape-character+))
+               (when active-sgr
+                 (format slice "~c[0m" +escape-character+)))
+
+             (scan-to (target slice)
+               "Consume STRING up to visible TARGET, copying into SLICE when given."
+               (loop while (and (< index length) (< visible-index target))
+                     do (let ((control-end (cl-colorist:ansi-control-end string index)))
+                          (if control-end
+                              (progn
+                                (note-control index control-end)
+                                (when slice
+                                  (write-string string slice
+                                                :start index :end control-end))
+                                (setf index control-end))
+                              (progn
+                                (when slice
+                                  (write-char (char string index) slice))
+                                (incf visible-index)
+                                (incf index)))))))
+      (loop for (start end) in ranges
+            do (push (if (= start end)
+                         ""
+                         (with-output-to-string (slice)
+                           (scan-to start nil)
+                           (open-slice slice)
+                           (scan-to end slice)
+                           (close-slice slice)))
+                     slices)))
+    (nreverse slices)))
+
+(defun ansi--visible-slice (string start end)
+  "Return STRING's standalone styled slice for visible characters START to END."
+  (first (ansi--visible-slices string (list (list start end)))))
 
 (defun wrap-styled-text (text display maximum-cells)
   "Return TEXT and trusted styled DISPLAY as paired word-wrapped rows.
@@ -133,9 +233,10 @@ visible character."
   (check-type maximum-cells integer)
   (unless (string= text (ansi-strip display))
     (error "Styled text does not preserve its plain visible content."))
-  (loop for (start end) in (unicode--wrap-text-ranges text maximum-cells)
-        collect (list (subseq text start end)
-                      (ansi--visible-slice display start end))))
+  (let ((ranges (unicode--wrap-text-ranges text maximum-cells)))
+    (loop for (start end) in ranges
+          for slice in (ansi--visible-slices display ranges)
+          collect (list (subseq text start end) slice))))
 
 (defun ansi-display-width (string)
   "Return the number of visible terminal cells STRING occupies."
