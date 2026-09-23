@@ -150,7 +150,9 @@
                     ("CSI-u alt-backspace with BS" "[8;3u")
                     ("CSI-u alt-backspace with DEL" "[127;3u")
                     ("modify-other-keys alt-backspace with BS" "[27;3;8~")
-                    ("modify-other-keys alt-backspace with DEL" "[27;3;127~")))
+                    ("modify-other-keys alt-backspace with DEL" "[27;3;127~")
+                    ("CSI-u control-w event" "[119;5u")
+                    ("modify-other-keys control-w event" "[27;5;119~")))
       (check-equal (first case)
                    :kill-word
                    (input-test--event

@@ -149,7 +149,8 @@ be balanced with DISABLE-KEYBOARD-ENHANCEMENT while the same terminal is owned."
         ((member body '("8;5u" "127;5u"
                         "27;5;8~" "27;5;127~"
                         "8;3u" "127;3u"
-                        "27;3;8~" "27;3;127~")
+                        "27;3;8~" "27;3;127~"
+                        "119;5u" "27;5;119~")
                  :test #'string=)
          :kill-word)
         ((member body '("98;3u" "27;3;98~") :test #'string=)
