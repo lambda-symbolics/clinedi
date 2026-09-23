@@ -77,14 +77,37 @@
   (check-equal "delete event"
                :delete
                (input-test--event (input-test--escape-sequence "[3~")))
-  (dolist (case '(("xterm control-left event" "[1;5D" :word-left)
-                  ("short control-left event" "[5D" :word-left)
-                  ("xterm control-right event" "[1;5C" :word-right)
-                  ("short control-right event" "[5C" :word-right)))
-    (check-equal (first case)
-                 (third case)
+    (dolist (case '(("xterm control-left event" "[1;5D" :word-left)
+                    ("short control-left event" "[5D" :word-left)
+                    ("xterm control-right event" "[1;5C" :word-right)
+                    ("short control-right event" "[5C" :word-right)
+                    ("xterm alt-left event" "[1;3D" :word-left)
+                    ("short alt-left event" "[3D" :word-left)
+                    ("xterm alt-right event" "[1;3C" :word-right)
+                    ("short alt-right event" "[3C" :word-right)))
+      (check-equal (first case)
+                   (third case)
+                   (input-test--event
+                    (input-test--escape-sequence (second case)))))
+    (dolist (case '(("meta-b event" "b" :word-left)
+                    ("meta-f event" "f" :word-right)
+                    ("meta-d event" "d" :kill-word-forward)))
+      (check-equal (first case)
+                   (third case)
+                   (input-test--event
+                    (input-test--escape-sequence (second case)))))
+    (check-equal "meta-backspace event"
+                 :kill-word
                  (input-test--event
-                  (input-test--escape-sequence (second case)))))
+                  (input-test--escape-sequence (string (code-char 8)))))
+    (check-equal "meta-delete event"
+                 :kill-word
+                 (input-test--event
+                  (input-test--escape-sequence (string (code-char 127)))))
+    (check-equal "unknown meta-letter event"
+                 :escape
+                 (input-test--event
+                  (input-test--escape-sequence "x")))
   (check-equal "legacy alt-enter event"
                :insert-newline
                (input-test--event
@@ -120,14 +143,28 @@
             (input-test--event
              (input-test--escape-sequence
               (format nil "[27;~D;13~C" modifier #\~)))))
-  (dolist (case '(("CSI-u control-backspace with BS" "[8;5u")
-                  ("CSI-u control-backspace with DEL" "[127;5u")
-                  ("modify-other-keys control-backspace with BS" "[27;5;8~")
-                  ("modify-other-keys control-backspace with DEL" "[27;5;127~")))
-    (check-equal (first case)
-                 :kill-word
-                 (input-test--event
-                  (input-test--escape-sequence (second case)))))
+    (dolist (case '(("CSI-u control-backspace with BS" "[8;5u")
+                    ("CSI-u control-backspace with DEL" "[127;5u")
+                    ("modify-other-keys control-backspace with BS" "[27;5;8~")
+                    ("modify-other-keys control-backspace with DEL" "[27;5;127~")
+                    ("CSI-u alt-backspace with BS" "[8;3u")
+                    ("CSI-u alt-backspace with DEL" "[127;3u")
+                    ("modify-other-keys alt-backspace with BS" "[27;3;8~")
+                    ("modify-other-keys alt-backspace with DEL" "[27;3;127~")))
+      (check-equal (first case)
+                   :kill-word
+                   (input-test--event
+                    (input-test--escape-sequence (second case)))))
+    (dolist (case '(("CSI-u alt-b event" "[98;3u" :word-left)
+                    ("modify-other-keys alt-b event" "[27;3;98~" :word-left)
+                    ("CSI-u alt-f event" "[102;3u" :word-right)
+                    ("modify-other-keys alt-f event" "[27;3;102~" :word-right)
+                    ("CSI-u alt-d event" "[100;3u" :kill-word-forward)
+                    ("modify-other-keys alt-d event" "[27;3;100~" :kill-word-forward)))
+      (check-equal (first case)
+                   (third case)
+                   (input-test--event
+                    (input-test--escape-sequence (second case)))))
   (dolist (case '(("CSI-u control-C event" "[99;5u")
                   ("modify-other-keys control-C event" "[27;5;99~")))
     (check-equal (first case)

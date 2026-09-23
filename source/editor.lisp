@@ -254,6 +254,20 @@
      :leave-history-p t))
   nil)
 
+(defun line-editor--kill-word-forward (editor)
+  "Delete separators and the word immediately after EDITOR's cursor."
+  (let* ((text   (line-editor-text editor))
+         (cursor (line-editor-cursor editor))
+         (end    (line-editor--word-end editor)))
+    (line-editor--set-state
+     editor
+     (concatenate 'string
+                  (subseq text 0 cursor)
+                  (subseq text end))
+     cursor
+     :leave-history-p t))
+  nil)
+
 (defun line-editor--history-entry-matches-p (editor query entry)
   "True when ENTRY is eligible for EDITOR's fixed history QUERY."
   (let ((function (line-editor-history-match-function editor)))
@@ -525,11 +539,14 @@ return values. NIL and :IGNORED are no-op commands returning :IGNORED."
        (:kill-line
         (line-editor-clear editor)
         (line-editor--continue-action))
-       (:kill-word
-        (line-editor--kill-word editor)
-        (line-editor--continue-action))
-       (:complete
-        (values :complete nil))
+        (:kill-word
+         (line-editor--kill-word editor)
+         (line-editor--continue-action))
+        (:kill-word-forward
+         (line-editor--kill-word-forward editor)
+         (line-editor--continue-action))
+        (:complete
+         (values :complete nil))
        (:complete-previous
         (values :complete-previous nil))
        (:up
@@ -569,7 +586,7 @@ return values. NIL and :IGNORED are no-op commands returning :IGNORED."
                                 :left :right :word-left :word-right
                                 :toggle-word-delimiter-mode :home :end
                                 :backspace :delete :history-previous :history-next
-                                :kill-to-end :kill-line :kill-word
+                                 :kill-to-end :kill-line :kill-word :kill-word-forward
                                 :complete :complete-previous :up :down :submit
                                 :interrupt :end-of-input :stream-end :escape
                                 :clear-screen :ignore :ignored)))))

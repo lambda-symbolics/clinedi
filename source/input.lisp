@@ -110,8 +110,8 @@ be balanced with DISABLE-KEYBOARD-ENHANCEMENT while the same terminal is owned."
   (cond ((string= body "A") :up)
         ((string= body "B") :down)
         ((string= body "Z") :complete-previous)
-        ((member body '("1;5C" "5C") :test #'string=) :word-right)
-        ((member body '("1;5D" "5D") :test #'string=) :word-left)
+        ((member body '("1;5C" "5C" "1;3C" "3C") :test #'string=) :word-right)
+        ((member body '("1;5D" "5D" "1;3D" "3D") :test #'string=) :word-left)
         ((string= body "C") :right)
         ((string= body "D") :left)
         ((string= body "H") :home)
@@ -147,9 +147,17 @@ be balanced with DISABLE-KEYBOARD-ENHANCEMENT while the same terminal is owned."
         ((member body '("100;5u" "27;5;100~") :test #'string=)
          :end-of-input)
         ((member body '("8;5u" "127;5u"
-                        "27;5;8~" "27;5;127~")
+                        "27;5;8~" "27;5;127~"
+                        "8;3u" "127;3u"
+                        "27;3;8~" "27;3;127~")
                  :test #'string=)
          :kill-word)
+        ((member body '("98;3u" "27;3;98~") :test #'string=)
+         :word-left)
+        ((member body '("102;3u" "27;3;102~") :test #'string=)
+         :word-right)
+        ((member body '("100;3u" "27;3;100~") :test #'string=)
+         :kill-word-forward)
         ((member body '("99;5u" "27;5;99~")
                  :test #'string=)
          :interrupt)
@@ -171,6 +179,15 @@ be balanced with DISABLE-KEYBOARD-ENHANCEMENT while the same terminal is owned."
                           (input--csi-event
                            (get-output-stream-string body) stream)))))))))
 
+(defun input--meta-letter-event (character)
+  "Map ESC+CHARACTER to a Meta editing event, or :ESCAPE."
+  (case character
+    ((#\b #\B) :word-left)
+    ((#\f #\F) :word-right)
+    ((#\d #\D) :kill-word-forward)
+    ((#\Backspace #\Rubout) :kill-word)
+    (t :escape)))
+
 (defun input--read-escape (stream escape-delay)
   "Read an escape sequence from STREAM, waiting ESCAPE-DELAY seconds."
   (let ((first (or (read-char-no-hang stream nil nil)
@@ -187,7 +204,7 @@ be balanced with DISABLE-KEYBOARD-ENHANCEMENT while the same terminal is owned."
          (#\F :end)
          (t :ignore)))
       ((#\newline #\return) :insert-newline)
-      (t :escape))))
+      (t (input--meta-letter-event first)))))
 
 (defun read-event (&key (stream *standard-input*) (escape-delay 0.002))
   "Read one semantic editing event from STREAM.
@@ -197,12 +214,14 @@ editing keywords. Bracketed paste becomes one (:PASTE text) event, with terminal
 controls sanitized before the text reaches an editor. CSI-u reports for Enter,
 Tab, Shift-Tab, Escape, Backspace, and Ctrl-D map to their raw semantic events.
 Modified Enter becomes :INSERT-NEWLINE when distinguishable from Enter.
-Ctrl-Backspace and Ctrl-W become :KILL-WORD. Ctrl-Left and Ctrl-Right become
-:WORD-LEFT and :WORD-RIGHT. When a line editor enables word-delimiter mode,
-these events also recognize that editor's configured word delimiters. Arrow Up
-and Down become :UP and :DOWN, while Ctrl-P and Ctrl-N retain explicit history
-traversal. Shift-Tab becomes :COMPLETE-PREVIOUS. Ctrl-D becomes
-:END-OF-INPUT; physical stream EOF becomes :STREAM-END."
+Ctrl-Backspace and Ctrl-W become :KILL-WORD. ESC Backspace and ESC DEL also
+become :KILL-WORD. ESC d becomes :KILL-WORD-FORWARD. Ctrl-Left, Alt-Left, and
+ESC b become :WORD-LEFT. Ctrl-Right, Alt-Right, and ESC f become :WORD-RIGHT.
+When a line editor enables word-delimiter mode, these events also recognize that
+editor's configured word delimiters. Arrow Up and Down become :UP and :DOWN,
+while Ctrl-P and Ctrl-N retain explicit history traversal. Shift-Tab becomes
+:COMPLETE-PREVIOUS. Ctrl-D becomes :END-OF-INPUT; physical stream EOF becomes
+:STREAM-END."
   (let ((character (read-char stream nil nil)))
     (cond ((null character)
            :stream-end)

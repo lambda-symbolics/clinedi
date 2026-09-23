@@ -124,11 +124,18 @@ events. The function receives the complete draft captured when traversal begins
 and each candidate entry. Down past the newest match restores that draft and
 its original cursor. An empty draft traverses every entry.
 
-Pass `:word-delimiter-mode-p t` to make Ctrl-Left, Ctrl-Right and
-Ctrl-Backspace stop at delimiters as well as whitespace. The default delimiter
-list is `-`, `_`, `/`, `.`, and `:`; override it with `:word-delimiters`.
+Pass `:word-delimiter-mode-p t` to make word movement and word deletion stop at
+delimiters as well as whitespace. The default delimiter list is `-`, `_`, `/`,
+`.`, and `:`; override it with `:word-delimiters`.
 `line-editor-toggle-word-delimiter-mode` and the built-in
 `:toggle-word-delimiter-mode` command switch the mode while an editor is active.
+
+`read-event` maps these sequences to the same commands:
+
+- Ctrl-Left, Alt-Left, and ESC `b` become `:word-left`
+- Ctrl-Right, Alt-Right, and ESC `f` become `:word-right`
+- Ctrl-W, Ctrl-Backspace, ESC Backspace, and ESC DEL become `:kill-word`
+- ESC `d` becomes `:kill-word-forward`
 
 ## Programmable keymaps
 
