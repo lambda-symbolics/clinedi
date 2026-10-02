@@ -105,7 +105,8 @@ action plus an optional payload. This API is suitable for event-driven terminal
 UIs that own their repaint loop.
 
 For application-owned transcript viewports, `read-event` also decodes Page Up
-and Page Down as `:page-up` and `:page-down`, Ctrl-Home and Ctrl-End as
+and Page Down as `:page-up` and `:page-down`, Ctrl-Page Up and Ctrl-Page Down
+as `:previous-section` and `:next-section`, Ctrl-Home and Ctrl-End as
 `:scroll-top` and `:scroll-bottom`, SGR mouse wheel reports as `(:scroll -1)`
 or `(:scroll 1)`, and an SGR left-button press as `(:click column row)` with
 one-based coordinates. Releases, motion, and other buttons decode as `:ignore`.

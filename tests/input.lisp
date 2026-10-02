@@ -21,6 +21,8 @@
   "Run semantic input-decoder regression tests."
   (dolist (case '(("[5~" :page-up)
                   ("[6~" :page-down)
+                  ("[5;5~" :previous-section)
+                  ("[6;5~" :next-section)
                   ("[1;5H" :scroll-top)
                   ("[7;5~" :scroll-top)
                   ("[1;5F" :scroll-bottom)

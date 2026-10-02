@@ -130,6 +130,8 @@ once the modifier bits are masked away."
         ((member body '("4~" "8~") :test #'string=) :end)
         ((string= body "5~") :page-up)
         ((string= body "6~") :page-down)
+        ((string= body "5;5~") :previous-section)
+        ((string= body "6;5~") :next-section)
         ((member body '("1;5H" "1;5~" "7;5~") :test #'string=) :scroll-top)
         ((member body '("1;5F" "4;5~" "8;5~") :test #'string=) :scroll-bottom)
         ((and (plusp (length body)) (char= (char body 0) #\<))
