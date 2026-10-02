@@ -84,8 +84,12 @@ be balanced with DISABLE-KEYBOARD-ENHANCEMENT while the same terminal is owned."
       (write-string marker payload :end matched))
     (sanitize-text (get-output-stream-string payload))))
 
-(defun input--mouse-wheel-event (body)
-  "Decode an SGR wheel report as (:SCROLL delta), ignoring other mouse reports."
+(defun input--mouse-event (body)
+  "Decode an SGR mouse report as (:SCROLL delta) or (:CLICK column row).
+
+Wheel presses become scroll steps and a left-button press becomes a click at
+its one-based column and row. Releases, motion, and other buttons are ignored
+once the modifier bits are masked away."
   (handler-case
       (let* ((end (1- (length body)))
              (first-separator (position #\; body))
@@ -94,14 +98,19 @@ be balanced with DISABLE-KEYBOARD-ENHANCEMENT while the same terminal is owned."
         (if (and (< 5 (length body) 64)
                  (char= (char body 0) #\<)
                  (char= (char body end) #\M)
-                 first-separator second-separator
-                 (plusp (parse-integer body :start (1+ first-separator)
-                                           :end second-separator))
-                 (plusp (parse-integer body :start (1+ second-separator) :end end)))
-            (case (logand (parse-integer body :start 1 :end first-separator) (lognot #x1c))
-              (#x40 (list :scroll -1))
-              (#x41 (list :scroll 1))
-              (otherwise :ignore))
+                 first-separator second-separator)
+            (let ((button (logand (parse-integer body :start 1 :end first-separator)
+                                  (lognot #x1c)))
+                  (column (parse-integer body :start (1+ first-separator)
+                                              :end second-separator))
+                  (row (parse-integer body :start (1+ second-separator) :end end)))
+              (if (and (plusp column) (plusp row))
+                  (case button
+                    (#x40 (list :scroll -1))
+                    (#x41 (list :scroll 1))
+                    (0 (list :click column row))
+                    (otherwise :ignore))
+                  :ignore))
             :ignore))
     (error () :ignore)))
 
@@ -124,7 +133,7 @@ be balanced with DISABLE-KEYBOARD-ENHANCEMENT while the same terminal is owned."
         ((member body '("1;5H" "1;5~" "7;5~") :test #'string=) :scroll-top)
         ((member body '("1;5F" "4;5~" "8;5~") :test #'string=) :scroll-bottom)
         ((and (plusp (length body)) (char= (char body 0) #\<))
-         (input--mouse-wheel-event body))
+         (input--mouse-event body))
         ((member body '("10u" "13u") :test #'string=)
          :submit)
         ((member body '("10;2u" "10;3u" "10;4u" "10;5u"
