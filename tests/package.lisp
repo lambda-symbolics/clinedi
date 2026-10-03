@@ -95,6 +95,9 @@
                 #:transcript-viewport-hit
                 #:transcript-viewport-checkpoint
                 #:transcript-viewport-rollback
+                #:make-frame-painter
+                #:frame-painter-invalidate
+                #:frame-painter-paint
                 #:ansi-strip
                 #:url-ranges
                 #:url-at

@@ -255,6 +255,14 @@ click region action, the chunk text, and the character index under it.
 `transcript-viewport-checkpoint` and `-rollback` undo appends and scrolling
 when painting fails.
 
+`clinedi:make-frame-painter` paints such a screen. `frame-painter-paint`
+takes trusted display rows, the screen height and width, the cursor position
+and visibility, and a write function that must write and flush the controls it
+receives. Rows are drawn at absolute positions with autowrap disabled, only
+rows that changed since the last frame are rewritten, and a write that fails
+or a size change makes the next frame repaint completely, as does
+`frame-painter-invalidate`.
+
 ## Semantic prompt markers and xterm controls
 
 `clinedi:semantic-prompt-marker-sequence` returns OSC 133 controls for terminal

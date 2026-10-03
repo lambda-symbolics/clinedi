@@ -120,6 +120,11 @@
    #:transcript-viewport-hit
    #:transcript-viewport-checkpoint
    #:transcript-viewport-rollback
+   ;; Fullscreen frame painting
+   #:frame-painter
+   #:make-frame-painter
+   #:frame-painter-invalidate
+   #:frame-painter-paint
    #:ansi-strip
    #:ansi-display-width
    #:wrap-styled-text
