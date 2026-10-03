@@ -11,6 +11,7 @@
                 ((:file "package")
                  (:file "unicode")
                  (:file "ansi")
+                 (:file "hyperlinks")
                  (:file "keymap")
                  (:file "editor")
                  (:file "editor-state")
@@ -34,6 +35,7 @@
                 :components
                 ((:file "package")
                  (:file "unicode")
+                 (:file "hyperlinks")
                  (:file "editor")
                  (:file "editor-state")
                  (:file "selector")

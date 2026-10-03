@@ -87,6 +87,15 @@
    #:wrap-styled-text
    #:wrap-styled-editor-text
 
+   ;; Web URLs and hyperlinks
+   #:*url-schemes*
+   #:*url-trailing-punctuation*
+   #:url-ranges
+   #:url-at
+   #:web-url-p
+   #:ansi-hyperlink
+   #:ansi-link-urls
+
    ;; Programmable keymaps
    #:keymap
    #:make-keymap

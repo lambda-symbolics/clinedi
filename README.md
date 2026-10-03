@@ -236,6 +236,21 @@ shell integration:
 
 The application chooses when these trusted controls are written and flushed.
 
+## Web URLs and hyperlinks
+
+`clinedi:url-ranges` returns the character ranges of the `http` and `https`
+URLs in a string. A URL runs to whitespace or a bracketing character and sheds
+trailing sentence punctuation and unbalanced closing brackets.
+`clinedi:url-at` returns the URL covering a character offset, and
+`clinedi:web-url-p` accepts a string that is exactly one URL.
+
+`clinedi:ansi-hyperlink` wraps text in an OSC 8 hyperlink, and
+`clinedi:ansi-link-urls` links every URL in a string to itself. Both leave the
+visible text unchanged, so `ansi-strip` and `wrap-styled-text` treat the result
+like the plain string; wrapped rows reopen the link. Targets that are not
+printable ASCII stay unlinked, and neither function emits controls while
+`*presentation-enabled*` is false.
+
 ## Tests
 
 ```sh

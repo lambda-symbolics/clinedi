@@ -6,6 +6,7 @@
   "Run all Clinedi tests, signaling an error when any check fails."
   (let ((*test-failures* nil))
     (run-unicode-tests)
+    (run-hyperlink-tests)
     (run-editor-tests)
     (run-editor-state-tests)
     (run-session-tests)

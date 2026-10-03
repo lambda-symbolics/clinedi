@@ -64,6 +64,11 @@
                 #:ansi-clear-line-right
                 #:semantic-prompt-marker-sequence
                 #:ansi-strip
+                #:url-ranges
+                #:url-at
+                #:web-url-p
+                #:ansi-hyperlink
+                #:ansi-link-urls
                 #:ansi-display-width
                   #:wrap-styled-text
                 #:make-keymap
