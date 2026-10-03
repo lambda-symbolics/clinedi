@@ -21,6 +21,11 @@ overruns the width is clipped instead of scrolling the screen."))
   "Return a painter whose first frame is painted completely."
   (make-instance 'frame-painter))
 
+(defun frame-painter-frame (painter)
+  "Return a fresh vector of the rows PAINTER last wrote, or NIL when none is known."
+  (let ((frame (frame-painter--frame painter)))
+    (and frame (copy-seq frame))))
+
 (defun frame-painter-invalidate (painter)
   "Make PAINTER's next frame repaint every row, as after the screen was disturbed."
   (setf (frame-painter--frame painter) nil)

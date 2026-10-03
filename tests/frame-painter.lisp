@@ -66,7 +66,13 @@
                        (frame-painter-tests--painted-rows
                         (frame-painter-tests--paint painter '("one" "TWO")
                                                     :height 3 :width 11))))
+    (check-equal "the last written frame is readable and padded to the height"
+                 #("one" "TWO" "")
+                 (frame-painter-frame painter))
     (frame-painter-invalidate painter)
+    (check-equal "an invalidated painter knows no frame"
+                 nil
+                 (frame-painter-frame painter))
     (check-equal "invalidating repaints every row"
                  '(1 2 3)
                  (frame-painter-tests--painted-rows

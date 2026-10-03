@@ -261,7 +261,8 @@ and visibility, and a write function that must write and flush the controls it
 receives. Rows are drawn at absolute positions with autowrap disabled, only
 rows that changed since the last frame are rewritten, and a write that fails
 or a size change makes the next frame repaint completely, as does
-`frame-painter-invalidate`.
+`frame-painter-invalidate`. `frame-painter-frame` returns the rows last
+written.
 
 ## Semantic prompt markers and xterm controls
 

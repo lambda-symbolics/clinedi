@@ -97,6 +97,7 @@
                 #:transcript-viewport-rollback
                 #:make-frame-painter
                 #:frame-painter-invalidate
+                #:frame-painter-frame
                 #:frame-painter-paint
                 #:ansi-strip
                 #:url-ranges

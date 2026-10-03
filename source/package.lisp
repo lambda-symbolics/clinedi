@@ -124,6 +124,7 @@
    #:frame-painter
    #:make-frame-painter
    #:frame-painter-invalidate
+   #:frame-painter-frame
    #:frame-painter-paint
    #:ansi-strip
    #:ansi-display-width
