@@ -79,20 +79,60 @@ Return TEXT unchanged when presentation is disabled."
       (format nil "~c[H~c[2J" +escape-character+ +escape-character+)
       ""))
 
-(defun semantic-prompt-marker-sequence (marker &optional (status 0))
-  "Return one OSC 133 control for semantic prompt MARKER and completion STATUS."
+(defun semantic-prompt-marker-sequence (marker &key (status 0) (redraw-p t))
+  "Return one OSC 133 control for semantic prompt MARKER.
+
+STATUS is the completion status of :COMMAND-FINISHED. A false REDRAW-P adds
+redraw=0 to :PROMPT-START, telling the terminal that the application repaints
+its own prompt after a resize; other markers accept only the default."
   (check-type status (integer 0))
+  (unless (or redraw-p (eq marker :prompt-start))
+    (error "Semantic prompt marker ~S has no redraw option." marker))
   (let ((payload
           (ecase marker
-            (:prompt-start "A")
+            (:prompt-start (if redraw-p "A" "A;redraw=0"))
             (:input-start "B")
             (:execution-start "C")
             (:command-finished (format nil "D;~D" status)))))
-    (format nil "~c]133;~a~c~c"
-            +escape-character+
-            payload
-            +escape-character+
-            #\\)))
+    (ansi--operating-system-command (format nil "133;~a" payload))))
+
+(defun window-title-sequence (title)
+  "Return the OSC 0 control setting the window and icon title to TITLE.
+Control characters are removed and newlines become spaces."
+  (ansi--operating-system-command
+   (format nil "0;~a"
+           (sanitize-text title :single-line-p t :replacement-character nil))))
+
+(defun default-color-sequence (layer color)
+  "Return the OSC 10 or 11 control making 24-bit COLOR the terminal default.
+LAYER is :FOREGROUND or :BACKGROUND; COLOR is a Colorist RGB color."
+  (unless (and (cl-colorist:color-p color)
+               (eq (cl-colorist:color-kind color) :rgb))
+    (error "Terminal default ~(~a~) color ~S is not a Colorist RGB color."
+           layer color))
+  (destructuring-bind (red green blue) (cl-colorist:color-value color)
+    (ansi--operating-system-command
+     (format nil "~d;rgb:~2,'0x/~2,'0x/~2,'0x"
+             (ansi--default-color-code layer) red green blue))))
+
+(defun default-color-reset-sequence (layer)
+  "Return the OSC 110 or 111 control restoring the terminal's own LAYER default.
+LAYER is :FOREGROUND or :BACKGROUND."
+  (ansi--operating-system-command
+   (format nil "~d" (+ 100 (ansi--default-color-code layer)))))
+
+(defun ansi--default-color-code (layer)
+  "Return the OSC number of the terminal default color LAYER."
+  (ecase layer
+    (:foreground 10)
+    (:background 11)))
+
+(defun ansi--operating-system-command (payload)
+  "Return PAYLOAD as an operating system command terminated by ST."
+  (format nil "~c]~a~c\\"
+          +escape-character+
+          payload
+          +escape-character+))
 
 (defun ansi-strip (string)
   "Remove ANSI control sequences from STRING."

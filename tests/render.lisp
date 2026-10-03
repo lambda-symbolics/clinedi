@@ -25,7 +25,47 @@
                  (semantic-prompt-marker-sequence :command-finished))
     (check-equal "semantic failed completion marker"
                  (expected-marker "D;7")
-                 (semantic-prompt-marker-sequence :command-finished 7)))
+                 (semantic-prompt-marker-sequence :command-finished :status 7))
+    (check-equal "semantic prompt-start marker without terminal redraw"
+                 (expected-marker "A;redraw=0")
+                 (semantic-prompt-marker-sequence :prompt-start :redraw-p nil))
+    (check-equal "redraw option belongs only to prompt start"
+                 :error
+                 (handler-case
+                     (semantic-prompt-marker-sequence :input-start :redraw-p nil)
+                   (error ()
+                     :error))))
+  (flet ((expected-command (payload)
+           "Return the exact operating system command ST control for PAYLOAD."
+           (format nil "~c]~a~c~c" (code-char 27) payload (code-char 27) #\\)))
+    (check-equal "window title"
+                 (expected-command "0;~/src")
+                 (window-title-sequence "~/src"))
+    (check-equal "window title drops escapes and joins lines"
+                 (expected-command "0;foo bar]0;x")
+                 (window-title-sequence
+                  (format nil "foo~cbar~c]0;x" #\Newline (code-char 27))))
+    (check-equal "default foreground color"
+                 (expected-command "10;rgb:19/3C/B8")
+                 (default-color-sequence :foreground
+                                         (cl-colorist:rgb-color 25 60 184)))
+    (check-equal "default background color"
+                 (expected-command "11;rgb:00/FF/0A")
+                 (default-color-sequence :background
+                                         (cl-colorist:hex-color "#00ff0a")))
+    (check-equal "default colors require an RGB color"
+                 :error
+                 (handler-case
+                     (default-color-sequence :background
+                                             (cl-colorist:indexed-color 17))
+                   (error ()
+                     :error)))
+    (check-equal "default foreground reset"
+                 (expected-command "110")
+                 (default-color-reset-sequence :foreground))
+    (check-equal "default background reset"
+                 (expected-command "111")
+                 (default-color-reset-sequence :background)))
   (let ((combined (format nil "e~c" (code-char #x301))))
     (check-equal "wide glyph ends at edge"
                  '(1 0 t)

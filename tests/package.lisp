@@ -63,6 +63,9 @@
                 #:ansi-clear-below
                 #:ansi-clear-line-right
                 #:semantic-prompt-marker-sequence
+                #:window-title-sequence
+                #:default-color-sequence
+                #:default-color-reset-sequence
                 #:ansi-strip
                 #:url-ranges
                 #:url-at

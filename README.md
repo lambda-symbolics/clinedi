@@ -231,15 +231,23 @@ Applications that manage their own presentation can use `clinedi:screen-window`
 to obtain grapheme-safe start, end, and cursor indexes for the same bounded
 multiline viewport behavior.
 
-## Semantic prompt markers
+## Semantic prompt markers and xterm controls
 
 `clinedi:semantic-prompt-marker-sequence` returns OSC 133 controls for terminal
 shell integration:
 
-- `:prompt-start`
+- `:prompt-start`, with `:redraw-p nil` adding `redraw=0` for applications
+  that repaint their own prompt after a resize
 - `:input-start`
 - `:execution-start`
-- `:command-finished`, with an optional nonnegative status defaulting to zero
+- `:command-finished`, with a nonnegative `:status` defaulting to zero
+
+`clinedi:window-title-sequence` returns the OSC 0 window title control with
+control characters removed and newlines joined. `clinedi:default-color-sequence`
+takes `:foreground` or `:background` and a Colorist RGB color and returns the
+OSC 10 or 11 control setting that terminal default;
+`clinedi:default-color-reset-sequence` returns the OSC 110 or 111 control
+restoring it. Every control ends with ST.
 
 The application chooses when these trusted controls are written and flushed.
 

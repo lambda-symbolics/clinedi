@@ -83,6 +83,9 @@
    #:ansi-clear-line-right
    #:ansi-clear-screen
    #:semantic-prompt-marker-sequence
+   #:window-title-sequence
+   #:default-color-sequence
+   #:default-color-reset-sequence
    #:ansi-strip
    #:ansi-display-width
    #:wrap-styled-text
