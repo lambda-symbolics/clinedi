@@ -23,6 +23,7 @@
                  (:file "render")
                  (:file "live-region")
                  (:file "mode-stream")
+                 (:file "viewport")
                  (:file "terminal-editor"))))
   :in-order-to ((asdf:test-op (asdf:test-op "clinedi/tests"))))
 
@@ -47,6 +48,7 @@
                  (:file "render")
                  (:file "live-region")
                  (:file "mode-stream")
+                 (:file "viewport")
                  (:file "terminal-editor")
                  (:file "check"))))
   :perform (asdf:test-op

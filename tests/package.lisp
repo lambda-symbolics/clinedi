@@ -73,6 +73,25 @@
                 #:make-mode-tracking-output-stream
                 #:mode-tracking-output-stream-imposed-modes
                 #:mode-tracking-output-stream-restore
+                #:make-transcript-viewport
+                #:transcript-viewport-width
+                #:transcript-viewport-top
+                #:transcript-viewport-height
+                #:transcript-viewport-maximum-top
+                #:transcript-viewport-row-count
+                #:transcript-viewport-row-display
+                #:transcript-viewport-following-p
+                #:transcript-viewport-append
+                #:transcript-viewport-resize
+                #:transcript-viewport-layout
+                #:transcript-viewport-scroll
+                #:transcript-viewport-scroll-to-top
+                #:transcript-viewport-follow
+                #:transcript-viewport-page-rows
+                #:transcript-viewport-jump
+                #:transcript-viewport-hit
+                #:transcript-viewport-checkpoint
+                #:transcript-viewport-rollback
                 #:ansi-strip
                 #:url-ranges
                 #:url-at

@@ -233,6 +233,26 @@ Applications that manage their own presentation can use `clinedi:screen-window`
 to obtain grapheme-safe start, end, and cursor indexes for the same bounded
 multiline viewport behavior.
 
+## Transcript viewport
+
+`clinedi:make-transcript-viewport` holds a scrollable transcript for a
+fullscreen application. `transcript-viewport-append` adds plain text, its
+styled display, and optional `(start end action)` click regions such as
+cl-termdown's widget regions. Chunks stay unwrapped and each wrapped row
+remembers the characters it shows, so `transcript-viewport-resize` reflows
+the whole transcript while keeping the same first visible line.
+
+`transcript-viewport-layout` fits the viewport to a height, optionally
+counting unfinished rows shown after it, and returns the first visible row;
+`transcript-viewport-row-display` returns each row's trusted display.
+`transcript-viewport-scroll`, `-scroll-to-top`, `-follow` and `-page-rows`
+move it, and following resumes at the newest output.
+`transcript-viewport-jump` moves to the nearest row a predicate accepts, such
+as a message header. `transcript-viewport-hit` maps a mouse position to the
+click region action, the chunk text, and the character index under it.
+`transcript-viewport-checkpoint` and `-rollback` undo appends and scrolling
+when painting fails.
+
 ## Semantic prompt markers and xterm controls
 
 `clinedi:semantic-prompt-marker-sequence` returns OSC 133 controls for terminal
