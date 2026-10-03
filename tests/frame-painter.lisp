@@ -67,8 +67,8 @@
                         (frame-painter-tests--paint painter '("one" "TWO")
                                                     :height 3 :width 11))))
     (check-equal "the last written frame is readable and padded to the height"
-                 #("one" "TWO" "")
-                 (frame-painter-frame painter))
+                 '("one" "TWO" "")
+                 (coerce (frame-painter-frame painter) 'list))
     (frame-painter-invalidate painter)
     (check-equal "an invalidated painter knows no frame"
                  nil
