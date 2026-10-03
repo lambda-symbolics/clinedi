@@ -192,6 +192,15 @@
             (input-test--event
              (input-test--escape-sequence
               (format nil "[27;~D;13~C" modifier #\~)))))
+  (loop for code in '(10 13)
+        do (loop for modifier from 2 to 8
+                 do (check-equal
+                     (format nil "xterm modified Enter code ~D modifier ~D"
+                             code modifier)
+                     :insert-newline
+                     (input-test--event
+                      (input-test--escape-sequence
+                       (format nil "[~D;~D~C" code modifier #\~))))))
     (dolist (case '(("CSI-u control-backspace with BS" "[8;5u")
                     ("CSI-u control-backspace with DEL" "[127;5u")
                     ("modify-other-keys control-backspace with BS" "[27;5;8~")
