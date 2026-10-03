@@ -121,6 +121,25 @@ LAYER is :FOREGROUND or :BACKGROUND."
   (ansi--operating-system-command
    (format nil "~d" (+ 100 (ansi--default-color-code layer)))))
 
+(defun alternate-screen-enter-sequence ()
+  "Return the control switching to the alternate screen buffer, saving the cursor."
+  (format nil "~c[?1049h" +escape-character+))
+
+(defun alternate-screen-leave-sequence ()
+  "Return the control restoring the normal screen buffer and its cursor."
+  (format nil "~c[?1049l" +escape-character+))
+
+(defun mouse-reporting-enable-sequence ()
+  "Return the controls requesting button reports in SGR encoding.
+
+READ-EVENT decodes the resulting wheel reports as (:SCROLL DELTA) and left
+presses as (:CLICK COLUMN ROW)."
+  (format nil "~c[?1000h~c[?1006h" +escape-character+ +escape-character+))
+
+(defun mouse-reporting-disable-sequence ()
+  "Return the controls ending SGR button reports, in reverse order of enabling."
+  (format nil "~c[?1006l~c[?1000l" +escape-character+ +escape-character+))
+
 (defun ansi--default-color-code (layer)
   "Return the OSC number of the terminal default color LAYER."
   (ecase layer

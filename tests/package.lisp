@@ -66,6 +66,10 @@
                 #:window-title-sequence
                 #:default-color-sequence
                 #:default-color-reset-sequence
+                #:alternate-screen-enter-sequence
+                #:alternate-screen-leave-sequence
+                #:mouse-reporting-enable-sequence
+                #:mouse-reporting-disable-sequence
                 #:ansi-strip
                 #:url-ranges
                 #:url-at

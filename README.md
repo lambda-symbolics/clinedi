@@ -249,6 +249,12 @@ OSC 10 or 11 control setting that terminal default;
 `clinedi:default-color-reset-sequence` returns the OSC 110 or 111 control
 restoring it. Every control ends with ST.
 
+For a fullscreen viewport, `clinedi:alternate-screen-enter-sequence` and
+`clinedi:alternate-screen-leave-sequence` switch to and from the alternate
+screen buffer, and `clinedi:mouse-reporting-enable-sequence` and
+`clinedi:mouse-reporting-disable-sequence` turn SGR button reports on and off,
+which `read-event` decodes as `:click` and `:scroll` events.
+
 The application chooses when these trusted controls are written and flushed.
 
 ## Web URLs and hyperlinks

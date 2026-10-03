@@ -66,6 +66,22 @@
     (check-equal "default background reset"
                  (expected-command "111")
                  (default-color-reset-sequence :background)))
+  (loop for (name expected actual)
+          in (list (list "alternate screen enter" "[?1049h"
+                         (alternate-screen-enter-sequence))
+                   (list "alternate screen leave" "[?1049l"
+                         (alternate-screen-leave-sequence))
+                   (list "SGR mouse reporting enable" "[?1000h[?1006h"
+                         (mouse-reporting-enable-sequence))
+                   (list "SGR mouse reporting disable" "[?1006l[?1000l"
+                         (mouse-reporting-disable-sequence)))
+        do (check-equal name
+                        (with-output-to-string (stream)
+                          (loop for character across expected
+                                do (when (char= character #\[)
+                                     (write-char (code-char 27) stream))
+                                   (write-char character stream)))
+                        actual))
   (let ((combined (format nil "e~c" (code-char #x301))))
     (check-equal "wide glyph ends at edge"
                  '(1 0 t)
