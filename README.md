@@ -244,7 +244,9 @@ the whole transcript while keeping the same first visible line.
 
 `transcript-viewport-layout` fits the viewport to a height, optionally
 counting unfinished rows shown after it, and returns the first visible row;
-`transcript-viewport-row-display` returns each row's trusted display.
+`transcript-viewport-row-display` returns each row's trusted display and
+`transcript-viewport-row-text` its plain characters;
+`transcript-viewport-chunk-count` and `-chunk-text` read the appended chunks.
 `transcript-viewport-scroll`, `-scroll-to-top`, `-follow` and `-page-rows`
 move it, and following resumes at the newest output.
 `transcript-viewport-jump` moves to the nearest row a predicate accepts, such

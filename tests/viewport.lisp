@@ -40,6 +40,11 @@
     (transcript-viewport-layout viewport 2)
     (transcript-viewport-scroll-to-top viewport)
     (transcript-viewport-scroll viewport 1)
+    (check-equal "chunks and rows expose their plain text"
+                 (list 2 (format nil "# one~%body~%") "ghij")
+                 (list (transcript-viewport-chunk-count viewport)
+                       (transcript-viewport-chunk-text viewport 1)
+                       (transcript-viewport-row-text viewport 1)))
     (check-equal "the anchored second row stays first after reflow"
                  '(t 0 ("abcdefghij" "# one" "body"))
                  (list (transcript-viewport-resize viewport 12)

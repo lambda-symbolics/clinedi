@@ -67,6 +67,22 @@ region."))
   "Return the trusted styled display of VIEWPORT's wrapped row INDEX."
   (viewport-row-display (aref (transcript-viewport--rows viewport) index)))
 
+(defun transcript-viewport-row-text (viewport index)
+  "Return the plain characters VIEWPORT's wrapped row INDEX shows."
+  (let* ((row (aref (transcript-viewport--rows viewport) index))
+         (start (viewport-row-offset row)))
+    (subseq (transcript-viewport-chunk-text viewport (viewport-row-chunk row))
+            start
+            (+ start (viewport-row-length row)))))
+
+(defun transcript-viewport-chunk-count (viewport)
+  "Return the number of chunks appended to VIEWPORT."
+  (length (transcript-viewport--chunks viewport)))
+
+(defun transcript-viewport-chunk-text (viewport index)
+  "Return the plain text of VIEWPORT's chunk INDEX, in append order."
+  (viewport-chunk-text (aref (transcript-viewport--chunks viewport) index)))
+
 (defun transcript-viewport-following-p (viewport)
   "Return true when VIEWPORT follows its newest output."
   (null (transcript-viewport-top viewport)))

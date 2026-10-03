@@ -105,6 +105,9 @@
    #:transcript-viewport-maximum-top
    #:transcript-viewport-row-count
    #:transcript-viewport-row-display
+   #:transcript-viewport-row-text
+   #:transcript-viewport-chunk-count
+   #:transcript-viewport-chunk-text
    #:transcript-viewport-following-p
    #:transcript-viewport-append
    #:transcript-viewport-resize
