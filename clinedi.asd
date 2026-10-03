@@ -4,7 +4,7 @@
   :license "ISC"
   :description "A portable, Unicode-aware terminal line editor"
   :encoding :utf-8
-  :depends-on ("cl-colorist")
+  :depends-on ("cl-colorist" "trivial-gray-streams")
   :components ((:module "source"
                 :serial t
                 :components
@@ -22,6 +22,7 @@
                  (:file "terminal-size")
                  (:file "render")
                  (:file "live-region")
+                 (:file "mode-stream")
                  (:file "terminal-editor"))))
   :in-order-to ((asdf:test-op (asdf:test-op "clinedi/tests"))))
 
@@ -45,6 +46,7 @@
                  (:file "transport")
                  (:file "render")
                  (:file "live-region")
+                 (:file "mode-stream")
                  (:file "terminal-editor")
                  (:file "check"))))
   :perform (asdf:test-op

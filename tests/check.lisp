@@ -15,6 +15,7 @@
     (run-input-tests)
     (run-render-tests)
     (run-live-region-tests)
+    (run-mode-stream-tests)
     (run-terminal-editor-tests)
     (when *test-failures*
       (error "~d Clinedi regression check~:p failed:~%  ~{~a~%  ~}"

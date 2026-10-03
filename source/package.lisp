@@ -90,6 +90,12 @@
    #:alternate-screen-leave-sequence
    #:mouse-reporting-enable-sequence
    #:mouse-reporting-disable-sequence
+   ;; Terminal mode tracking
+   #:mode-tracking-output-stream
+   #:make-mode-tracking-output-stream
+   #:mode-tracking-output-stream-output
+   #:mode-tracking-output-stream-imposed-modes
+   #:mode-tracking-output-stream-restore
    #:ansi-strip
    #:ansi-display-width
    #:wrap-styled-text

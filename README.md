@@ -81,7 +81,9 @@ Without a native adapter, use the remaining fallbacks; pass
 
 Clinedi is an ASDF system. It uses
 [cl-colorist](https://github.com/lambda-symbolics/cl-colorist) for ANSI text styling
-and control-sequence parsing.
+and control-sequence parsing, and
+[trivial-gray-streams](https://github.com/trivial-gray-streams/trivial-gray-streams)
+for its streams.
 
 ```lisp
 (ql:quickload :clinedi)
@@ -254,6 +256,17 @@ For a fullscreen viewport, `clinedi:alternate-screen-enter-sequence` and
 screen buffer, and `clinedi:mouse-reporting-enable-sequence` and
 `clinedi:mouse-reporting-disable-sequence` turn SGR button reports on and off,
 which `read-event` decodes as `:click` and `:scroll` events.
+
+`clinedi:make-mode-tracking-output-stream` wraps an output stream, such as the
+socket a remote session's output arrives on, and forwards everything unchanged
+while recognizing the modes that output imposes: alternate screen, mouse
+reporting, SGR mouse encoding, bracketed paste, hidden cursor, disabled
+autowrap, and OSC 10 or 11 default colors. Controls split across writes are
+still recognized. `mode-tracking-output-stream-imposed-modes` lists the modes
+currently held, and `mode-tracking-output-stream-restore` writes the controls
+returning each to its default, so a dropped connection never leaves the local
+terminal in the remote application's state. The stream is built on
+trivial-gray-streams.
 
 The application chooses when these trusted controls are written and flushed.
 

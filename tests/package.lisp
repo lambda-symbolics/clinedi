@@ -70,6 +70,9 @@
                 #:alternate-screen-leave-sequence
                 #:mouse-reporting-enable-sequence
                 #:mouse-reporting-disable-sequence
+                #:make-mode-tracking-output-stream
+                #:mode-tracking-output-stream-imposed-modes
+                #:mode-tracking-output-stream-restore
                 #:ansi-strip
                 #:url-ranges
                 #:url-at
