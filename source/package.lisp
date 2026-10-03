@@ -31,6 +31,7 @@
    #:terminal-activate-input-mode
    #:terminal-restore-input-mode
    #:terminal-file-descriptor-size
+   #:terminal-current-size
    #:terminal-error
    #:terminal-error-message
    #:terminal-error-operation

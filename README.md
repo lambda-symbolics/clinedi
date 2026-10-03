@@ -70,6 +70,13 @@ shutdown attempts every cleanup and reports the first failure as `terminal-error
 For another native backend, implement `terminal-capture-input-mode`,
 `terminal-activate-input-mode`, and `terminal-restore-input-mode` on a subclass.
 
+Call `terminal-current-size` for rows and columns with per-dimension fallbacks:
+native adapter dimensions, interactive `tput`, `LINES`/`COLUMNS`, then defaults.
+Pass `:file-descriptor` for native lookup and `:terminal-io` for the `tput`
+interactivity check. Customize `:default-rows` and `:default-columns` as needed.
+Without a native adapter, use the remaining fallbacks; pass
+`:file-descriptor nil` to skip native lookup.
+
 ## Loading
 
 Clinedi is an ASDF system. It uses

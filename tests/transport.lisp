@@ -388,9 +388,130 @@
         (ignore-errors (sb-ext:process-wait process)))))
   nil)
 
+(defun test-terminal-size-resolution ()
+  "Test per-dimension source precedence, invalid environment values and defaults."
+  (let* ((symbols '(clinedi:terminal-file-descriptor-size
+                    clinedi::terminal--query-dimension uiop:getenv))
+         (saved (mapcar (lambda (symbol)
+                         (and (fboundp symbol) (symbol-function symbol)))
+                       symbols))
+         (native nil)
+         (queried nil)
+         (environment nil)
+         (queries nil)
+         (environment-reads nil))
+    (unwind-protect
+         (progn
+           (setf (symbol-function 'clinedi:terminal-file-descriptor-size)
+                 (lambda (descriptor)
+                   (check-equal "size lookup passes the descriptor" 7 descriptor)
+                   (values (first native) (second native)))
+                 (symbol-function 'clinedi::terminal--query-dimension)
+                 (lambda (capability terminal-io)
+                   (declare (ignore terminal-io))
+                   (push capability queries)
+                   (if (string= capability "lines")
+                       (first queried) (second queried)))
+                 (symbol-function 'uiop:getenv)
+                 (lambda (name)
+                   (push name environment-reads)
+                   (if (string= name "LINES")
+                       (first environment) (second environment))))
+           (dolist (case '(((40 120) (30 90) ("20" "80") (40 120) nil nil)
+                           ((40 nil) (30 90) ("20" "80") (40 90) ("cols") nil)
+                           ((nil 120) (30 90) ("20" "80") (30 120) ("lines") nil)
+                           ((nil nil) (nil 90) ("20" "80") (20 90) ("lines" "cols") ("LINES"))
+                           ((nil nil) (nil nil) ("20" "80") (20 80) ("lines" "cols") ("LINES" "COLUMNS"))
+                           ((nil nil) (nil nil) ("0" "invalid") (17 71) ("lines" "cols") ("LINES" "COLUMNS"))
+                           ((nil nil) (nil nil) ("-4" "") (17 71) ("lines" "cols") ("LINES" "COLUMNS"))
+                           ((nil nil) (nil nil) (nil "143") (17 143) ("lines" "cols") ("LINES" "COLUMNS"))))
+             (setf native (first case)
+                   queried (second case)
+                   environment (third case)
+                   queries nil
+                   environment-reads nil)
+             (check-equal "size source precedence" (fourth case)
+                          (multiple-value-list
+                           (clinedi:terminal-current-size
+                            :file-descriptor 7 :default-rows 17 :default-columns 71)))
+             (check-equal "only missing native dimensions use tput" (fifth case)
+                          (reverse queries))
+             (check-equal "only missing native and tput dimensions use environment"
+                          (sixth case) (reverse environment-reads)))
+           (setf queried nil environment nil)
+           (let ((*terminal-default-rows* 19) (*terminal-default-columns* 73))
+             (check-equal "library size defaults are reloadable" '(19 73)
+                          (multiple-value-list
+                           (clinedi:terminal-current-size :file-descriptor nil))))
+           (fmakunbound 'clinedi:terminal-file-descriptor-size)
+           (check-equal "size lookup works without a native adapter" '(17 71)
+                        (multiple-value-list
+                         (clinedi:terminal-current-size
+                          :file-descriptor 7 :default-rows 17 :default-columns 71))))
+      (loop for symbol in symbols for definition in saved
+            do (if definition
+                   (setf (symbol-function symbol) definition)
+                   (fmakunbound symbol)))))
+  t)
+
+(defun test-terminal-size-noninteractive-query ()
+  "Test that size lookup does not run tput for noninteractive I/O."
+  (let ((saved (symbol-function 'uiop:run-program))
+        (calls nil))
+    (unwind-protect
+         (progn
+           (setf (symbol-function 'uiop:run-program)
+                 (lambda (&rest arguments)
+                   (push arguments calls)
+                   "99"))
+           (with-open-stream (terminal-io
+                               (make-two-way-stream (make-string-input-stream "")
+                                                    (make-string-output-stream)))
+             (clinedi:terminal-current-size
+              :file-descriptor nil :terminal-io terminal-io))
+           (check-equal "noninteractive size lookup skips tput" nil calls))
+      (setf (symbol-function 'uiop:run-program) saved)))
+  t)
+
+#+(and sbcl (not win32))
+(defun test-terminal-size-tput-output ()
+  "Test command output parsing and failed-command fallback with interactive I/O."
+  (let ((process (sb-ext:run-program "/bin/sh" '("-c" "sleep 10") :pty t :wait nil))
+        (saved-run (symbol-function 'uiop:run-program))
+        (saved-environment (symbol-function 'uiop:getenv))
+        (command-output nil))
+    (unwind-protect
+         (progn
+           (setf (symbol-function 'uiop:getenv) (lambda (name) (declare (ignore name)) nil)
+                 (symbol-function 'uiop:run-program)
+                 (lambda (command &key output error-output)
+                   (declare (ignore output error-output))
+                   (check-true "size query uses a tput dimension"
+                               (member command '(("tput" "lines") ("tput" "cols")) :test #'equal))
+                   (if (eq command-output ':fail)
+                       (error "Injected tput failure.")
+                       command-output)))
+           (dolist (case '((" 42 " (42 42)) ("42junk" (42 42))
+                           ("0" (17 71)) ("-1" (17 71)) ("" (17 71))
+                           ("unknown terminal" (17 71)) (:fail (17 71))))
+             (setf command-output (first case))
+             (check-equal "tput output and command failures" (second case)
+                          (multiple-value-list
+                           (clinedi:terminal-current-size
+                            :file-descriptor nil :terminal-io (sb-ext:process-pty process)
+                            :default-rows 17 :default-columns 71)))))
+      (setf (symbol-function 'uiop:run-program) saved-run
+            (symbol-function 'uiop:getenv) saved-environment)
+      (ignore-errors (sb-ext:process-kill process 15))
+      (ignore-errors (sb-ext:process-wait process))))
+  t)
+
 (defun run-transport-tests ()
   "Run buffered input and optional native transport checks."
   (test-terminal-input-decoding)
+  (test-terminal-size-resolution)
+  (test-terminal-size-noninteractive-query)
+  #+(and sbcl (not win32)) (test-terminal-size-tput-output)
   #+sbcl (test-terminal-descriptor-tty-detection)
   (run-transport-lifecycle-tests)
   t)

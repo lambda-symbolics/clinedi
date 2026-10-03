@@ -19,6 +19,7 @@
                  (:file "session")
                  (:file "input")
                  (:file "transport")
+                 (:file "terminal-size")
                  (:file "render")
                  (:file "live-region")
                  (:file "terminal-editor"))))
