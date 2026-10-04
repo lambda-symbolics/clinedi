@@ -4,7 +4,7 @@
   :license "ISC"
   :description "A portable, Unicode-aware terminal line editor"
   :encoding :utf-8
-  :depends-on ("cl-colorist" "trivial-gray-streams")
+  :depends-on ("bordeaux-threads" "cl-colorist" "trivial-gray-streams")
   :components ((:module "source"
                 :serial t
                 :components
@@ -18,6 +18,7 @@
                  (:file "selector")
                  (:file "session")
                  (:file "input")
+                 (:file "input-pump")
                  (:file "transport")
                  (:file "terminal-size")
                  (:file "render")
@@ -45,6 +46,7 @@
                  (:file "selector")
                  (:file "session")
                  (:file "input")
+                 (:file "input-pump")
                  (:file "transport")
                  (:file "render")
                  (:file "live-region")

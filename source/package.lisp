@@ -3,6 +3,19 @@
 (defpackage #:clinedi
   (:use #:cl)
   (:export
+   #:input-pump
+   #:input-pump-call-with-exclusive-input
+   #:input-pump-call-with-input-paused
+   #:input-pump-error
+   #:input-pump-error-message
+   #:input-pump-live-p
+   #:input-pump-name
+   #:input-pump-paused-p
+   #:input-pump-reader-thread-p
+   #:input-pump-start
+   #:input-pump-stop
+   #:input-pump-wake
+   #:make-input-pump
    #:terminal
    #:stream-terminal
    #:posix-terminal

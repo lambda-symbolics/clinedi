@@ -207,6 +207,28 @@ measures candidate cell widths against the available terminal width.
   (clinedi:selector-selected-item selector))
 ```
 
+## Input pump
+
+A multi-threaded program reads its terminal on one thread and still needs
+modal pickers that take the keyboard for a while. `clinedi:make-input-pump`
+creates that reader from a non-blocking `:ready-function` and a
+`:step-function` that reads and handles one event (returning `:stop` ends the
+reader). `input-pump-call-with-exclusive-input` gives a modal function sole
+ownership of the terminal: on the reader thread it runs in place, elsewhere it
+pauses and joins the reader and restarts it afterwards. Pauses nest; only the
+outermost one stops and restarts the thread, and `:startable-p-function` can
+veto a restart while the program shuts down.
+
+```lisp
+(let ((pump (clinedi:make-input-pump
+             :ready-function (lambda () (terminal-input-ready-p terminal))
+             :step-function (lambda () (handle (terminal-read-event terminal))))))
+  (clinedi:input-pump-start pump)
+  (clinedi:input-pump-call-with-exclusive-input
+   pump (lambda () (run-picker terminal)))
+  (clinedi:input-pump-stop pump))
+```
+
 ## Blocking frontend
 
 `clinedi:edit-line` owns key decoding and repainting while delegating terminal
