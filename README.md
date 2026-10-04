@@ -235,6 +235,13 @@ veto a restart while the program shuts down.
   (clinedi:input-pump-stop pump))
 ```
 
+## Pasted paths
+
+Terminals paste a dragged file as its path, quoted or escaped as a shell would
+read it, or as a `file://` URL. `clinedi:pasted-path` returns the local path
+such a paste names, decoding percent-escaped UTF-8 in a file URL, or `nil` when
+the text is not one path; `pasted-path-token` only reads the shell quoting.
+
 ## Blocking frontend
 
 `clinedi:edit-line` owns key decoding and repainting while delegating terminal

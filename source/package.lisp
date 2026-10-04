@@ -3,6 +3,8 @@
 (defpackage #:clinedi
   (:use #:cl)
   (:export
+   #:pasted-path
+   #:pasted-path-token
    #:terminal-disable-input-echo
    #:terminal-read-concealed-line
    #:terminal-restore-input-echo

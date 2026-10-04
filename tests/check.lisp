@@ -14,6 +14,7 @@
     (run-selector-tests)
     (run-input-tests)
     (run-input-pump-tests)
+    (run-paste-tests)
     (run-render-tests)
     (run-live-region-tests)
     (run-mode-stream-tests)
