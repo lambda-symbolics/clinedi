@@ -210,6 +210,30 @@
     (check-equal "styled editor reflow preserves visible content"
                  wrapped-text
                  (ansi-strip wrapped-display)))
+  (let ((text "aaaa bbbb of the string"))
+    (check-equal "a space at a flush wrap keeps its own cell"
+                 '("aaaa bbbb of" " the string")
+                 (mapcar #'first (clinedi:wrap-styled-editor-rows text text :columns 12)))
+    (dotimes (cursor (length text))
+      (multiple-value-bind (rows row column)
+          (clinedi:wrap-styled-editor-rows text text :cursor cursor :columns 12)
+        (check-equal (format nil "the editor cursor at ~D sits on its character" cursor)
+                     (char text cursor)
+                     (char (first (nth row rows)) column)))))
+  (multiple-value-bind (rows row column)
+      (clinedi:wrap-styled-editor-rows "aaaa bbbb of" "aaaa bbbb of" :columns 12)
+    (check-equal "a cursor after a filled final row opens an empty row"
+                 '(("aaaa bbbb of" "") 1 0)
+                 (list (mapcar #'first rows) row column)))
+  (multiple-value-bind (rows row column)
+      (clinedi:wrap-styled-editor-rows "say user" (ansi-colorize "say user" :green)
+                                       :cursor 5 :columns 6)
+    (check-equal "editor rows break before a word that no longer fits"
+                 '(("say " "user") 1 1)
+                 (list (mapcar #'first rows) row column))
+    (check-equal "every styled editor row stands alone with its own visible text"
+                 '("say " "user")
+                 (mapcar (lambda (pair) (ansi-strip (second pair))) rows)))
   (let* ((text "abcdef")
          (layout (clinedi::screen--editor-layout text 2 4)))
     (check-equal "long input words still wrap by grapheme"

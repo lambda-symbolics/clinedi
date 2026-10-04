@@ -372,6 +372,32 @@ string. Words wider than COLUMNS still wrap by grapheme."
            (aref (screen-editor-layout-display-indexes layout) safe-cursor)))
     (values wrapped-text wrapped-display wrapped-cursor)))
 
+(defun wrap-styled-editor-rows (text display &key (cursor (length text)) (columns 80))
+  "Return editable TEXT's physical display rows and its cursor's row and column.
+
+DISPLAY must have exactly TEXT as its ANSI-stripped visible content. The first
+value lists one (PLAIN STYLED) pair per terminal row. Words wrap as
+WRAP-STYLED-EDITOR-TEXT wraps them, and rows split exactly as SCREEN-POSITION
+models the terminal: a row that fills COLUMNS continues on the next row by
+character, so a space at that wrap keeps its own cell and the cursor stays on
+the character it edits. A cursor after a filled final row opens an empty last
+row. The second and third values are the cursor's zero-based row and column."
+  (multiple-value-bind (wrapped styled position)
+      (wrap-styled-editor-text text display :cursor cursor :columns columns)
+    (let* ((starts (screen--row-starts wrapped columns))
+           (ranges (loop for (start next) on starts
+                         for end = (or next (length wrapped))
+                         collect (list start
+                                       (if (and (> end start)
+                                                (char= (char wrapped (1- end)) #\newline))
+                                           (1- end)
+                                           end))))
+           (rows (loop for (start end) in ranges
+                       for slice in (ansi--visible-slices styled ranges)
+                       collect (list (subseq wrapped start end) slice))))
+      (multiple-value-bind (row column) (screen-position wrapped :columns columns :end position)
+        (values rows row column)))))
+
 (defun line-editor-move-vertical
     (editor direction &key (columns 80) (prompt-width 0))
   "Move EDITOR by one physical display row and return whether it moved.

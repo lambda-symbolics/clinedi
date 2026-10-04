@@ -130,6 +130,7 @@
    #:ansi-display-width
    #:wrap-styled-text
    #:wrap-styled-editor-text
+   #:wrap-styled-editor-rows
 
    ;; Web URLs and hyperlinks
    #:*url-schemes*
