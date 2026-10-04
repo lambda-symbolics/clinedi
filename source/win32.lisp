@@ -193,6 +193,21 @@ through the standard output or error handle of the same console."
     (terminal--set-console-output-cp *terminal-utf-8-code-page*)
     nil))
 
+(defmethod terminal-disable-input-echo ((terminal win32-terminal))
+  "Clear ENABLE_ECHO_INPUT on a console handle, keeping line input."
+  (let* ((descriptor (stream-terminal-input-file-descriptor terminal))
+         (mode (and (terminal--interactive-file-descriptor-p descriptor)
+                    (terminal--console-mode descriptor))))
+    (when mode
+      (when (zerop (terminal--set-console-mode descriptor (logandc2 mode #x4)))
+        (error 'terminal-error :message "Could not disable console echo; no input was read."
+                               :operation ':conceal :cause nil))
+      mode)))
+
+(defmethod terminal-restore-input-echo ((terminal win32-terminal) mode)
+  "Reinstall the console input MODE saved before concealed input."
+  (terminal--set-console-mode (stream-terminal-input-file-descriptor terminal) mode))
+
 (defmethod terminal-restore-input-mode ((terminal win32-terminal) mode)
   "Restore the exact console modes and code pages captured in MODE."
   (let ((descriptor (stream-terminal-input-file-descriptor terminal))

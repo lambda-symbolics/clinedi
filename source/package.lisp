@@ -3,6 +3,9 @@
 (defpackage #:clinedi
   (:use #:cl)
   (:export
+   #:terminal-disable-input-echo
+   #:terminal-read-concealed-line
+   #:terminal-restore-input-echo
    #:input-pump
    #:input-pump-call-with-exclusive-input
    #:input-pump-call-with-input-paused

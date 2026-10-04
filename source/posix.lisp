@@ -66,6 +66,26 @@
     (sb-posix:tcsetattr descriptor sb-posix:tcsanow
                       (terminal--configure-input-mode (sb-posix:tcgetattr descriptor)))))
 
+(defmethod terminal-disable-input-echo ((terminal posix-terminal))
+  "Clear ECHO on an interactive descriptor, keeping canonical line input."
+  (let ((descriptor (stream-terminal-input-file-descriptor terminal)))
+    (when (terminal--interactive-file-descriptor-p descriptor)
+      (handler-case
+          (let ((saved (sb-posix:tcgetattr descriptor))
+                (hidden (sb-posix:tcgetattr descriptor)))
+            (setf (sb-posix:termios-lflag hidden)
+                  (logandc2 (sb-posix:termios-lflag hidden) sb-posix:echo))
+            (sb-posix:tcsetattr descriptor sb-posix:tcsanow hidden)
+            saved)
+        (sb-posix:syscall-error (condition)
+          (error 'terminal-error :message "Could not disable terminal echo; no input was read."
+                                 :operation ':conceal :cause condition))))))
+
+(defmethod terminal-restore-input-echo ((terminal posix-terminal) mode)
+  "Reinstall the termios MODE saved before concealed input."
+  (sb-posix:tcsetattr (stream-terminal-input-file-descriptor terminal)
+                      sb-posix:tcsanow mode))
+
 (defmethod terminal-restore-input-mode ((terminal posix-terminal) mode)
   "Restore the exact termios MODE captured from TERMINAL."
   (sb-posix:tcsetattr (stream-terminal-input-file-descriptor terminal)

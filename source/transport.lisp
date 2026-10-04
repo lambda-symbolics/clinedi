@@ -342,6 +342,52 @@ text cannot invoke editing commands."
   (declare (ignore terminal mode))
   nil)
 
+;;; Concealed line input
+
+(defgeneric terminal-disable-input-echo (terminal)
+  (:documentation "Stop TERMINAL echoing typed input while keeping line input, returning the mode to restore.
+
+Return NIL when the input descriptor is not interactive, since nothing echoes
+there. Signal TERMINAL-ERROR when an interactive descriptor cannot be
+concealed, so callers fail closed instead of reading a visible secret."))
+(defgeneric terminal-restore-input-echo (terminal mode)
+  (:documentation "Restore the exact input MODE returned by TERMINAL-DISABLE-INPUT-ECHO."))
+
+(defmethod terminal-disable-input-echo ((terminal stream-terminal))
+  "A plain stream terminal has no native mode, so nothing is changed."
+  (declare (ignore terminal))
+  nil)
+(defmethod terminal-restore-input-echo ((terminal stream-terminal) mode)
+  (declare (ignore terminal mode))
+  nil)
+
+(defun terminal--strip-bracketed-paste (text)
+  "Remove one terminal bracketed-paste wrapper around the whole of TEXT."
+  (let* ((start (format nil "~C[200~~" #\Escape))
+         (end (format nil "~C[201~~" #\Escape))
+         (start-length (length start))
+         (end-length (length end)))
+    (if (and (>= (length text) (+ start-length end-length))
+             (string= start text :end2 start-length)
+             (string= end text :start2 (- (length text) end-length)))
+        (subseq text start-length (- (length text) end-length))
+        text)))
+
+(defun terminal-read-concealed-line (terminal)
+  "Read one line from TERMINAL's input without echoing it, or NIL at end of input.
+
+Echo is turned off before reading and restored exactly once afterwards, also
+when reading fails; when echo cannot be turned off on an interactive
+descriptor, TERMINAL-ERROR is signaled before anything is read. A
+bracketed-paste wrapper around the whole line is removed, since a pasted secret
+arrives inside one."
+  (let ((mode (terminal-disable-input-echo terminal)))
+    (unwind-protect
+         (let ((line (read-line (stream-terminal-input-stream terminal) nil nil)))
+           (and line (terminal--strip-bracketed-paste line)))
+      (when mode
+        (terminal-restore-input-echo terminal mode)))))
+
 (defmethod terminal-start ((terminal stream-terminal))
   "Enter interactive mode, rolling back both protocols and native mode on failure."
   (unless (terminal-started-p terminal)

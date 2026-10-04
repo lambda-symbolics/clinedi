@@ -70,6 +70,12 @@ shutdown attempts every cleanup and reports the first failure as `terminal-error
 For another native backend, implement `terminal-capture-input-mode`,
 `terminal-activate-input-mode`, and `terminal-restore-input-mode` on a subclass.
 
+`terminal-read-concealed-line` reads one secret line, such as an API key, with
+echo off: it turns echo off through `terminal-disable-input-echo`, reads the
+line, strips a bracketed-paste wrapper, and restores the mode exactly once, also
+when the read fails. When echo cannot be turned off on an interactive
+descriptor it signals `terminal-error` before reading anything.
+
 Call `terminal-current-size` for rows and columns with per-dimension fallbacks:
 native adapter dimensions, interactive `tput`, `LINES`/`COLUMNS`, then defaults.
 Pass `:file-descriptor` for native lookup and `:terminal-io` for the `tput`

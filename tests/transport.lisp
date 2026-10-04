@@ -506,8 +506,71 @@
       (ignore-errors (sb-ext:process-wait process))))
   t)
 
+(defclass concealed-test-terminal (clinedi:stream-terminal)
+  ((events :initform nil :accessor concealed-test-terminal-events
+           :documentation "The echo changes requested, oldest last.")
+   (refuse-p :initarg :refuse-p :initform nil :reader concealed-test-terminal-refuse-p
+             :documentation "Whether turning echo off fails."))
+  (:documentation "A stream terminal recording concealment instead of changing a tty."))
+
+(defmethod clinedi:terminal-disable-input-echo ((terminal concealed-test-terminal))
+  (when (concealed-test-terminal-refuse-p terminal)
+    (error 'clinedi:terminal-error :message "refused" :operation :conceal))
+  (push :disable (concealed-test-terminal-events terminal))
+  :saved-mode)
+
+(defmethod clinedi:terminal-restore-input-echo ((terminal concealed-test-terminal) mode)
+  (push (list :restore mode) (concealed-test-terminal-events terminal)))
+
+(defclass concealed-test-failing-stream (trivial-gray-streams:fundamental-character-input-stream)
+  ()
+  (:documentation "An input stream failing on its first read."))
+
+(defmethod trivial-gray-streams:stream-read-char ((stream concealed-test-failing-stream))
+  (error "synthetic input failure"))
+
+(defun concealed-test--terminal (input &rest arguments)
+  "Return a recording concealment terminal reading INPUT."
+  (apply #'make-instance 'concealed-test-terminal
+         :input-stream input :output-stream (make-broadcast-stream)
+         :input-file-descriptor -1
+         :event-prefix-p-function (lambda (character) (declare (ignore character)) nil)
+         :event-decoder (lambda (&rest arguments) (declare (ignore arguments)) nil)
+         :styling-p-function (constantly nil)
+         arguments))
+
+(defun test-terminal-concealed-line ()
+  "Test concealed reads strip pasted wrappers, restore once, and fail closed."
+  (let ((plain (clinedi:stream-terminal-create
+                :input-stream (make-string-input-stream
+                               (format nil "~C[200~~secret~C[201~~~%" #\Escape #\Escape))
+                :output-stream (make-broadcast-stream)
+                :input-file-descriptor -1)))
+    (check-equal "a pasted line loses its bracketed-paste wrapper" "secret"
+                 (clinedi:terminal-read-concealed-line plain))
+    (check-equal "end of input reads as NIL" nil (clinedi:terminal-read-concealed-line plain)))
+  (let ((terminal (concealed-test--terminal (make-string-input-stream (format nil "key~%")))))
+    (check-equal "a concealed line is returned" "key" (clinedi:terminal-read-concealed-line terminal))
+    (check-equal "echo is disabled before reading and restored once after"
+                 '(:disable (:restore :saved-mode))
+                 (reverse (concealed-test-terminal-events terminal))))
+  (let ((terminal (concealed-test--terminal (make-instance 'concealed-test-failing-stream))))
+    (check-true "a read failure propagates"
+                (handler-case (progn (clinedi:terminal-read-concealed-line terminal) nil)
+                  (simple-error () t)))
+    (check-equal "a failed read still restores echo exactly once"
+                 '(:disable (:restore :saved-mode))
+                 (reverse (concealed-test-terminal-events terminal))))
+  (let* ((input (make-string-input-stream (format nil "unread~%")))
+         (terminal (concealed-test--terminal input :refuse-p t)))
+    (check-true "failed concealment signals a terminal error"
+                (handler-case (progn (clinedi:terminal-read-concealed-line terminal) nil)
+                  (clinedi:terminal-error () t)))
+    (check-equal "failed concealment reads nothing" "unread" (read-line input))))
+
 (defun run-transport-tests ()
   "Run buffered input and optional native transport checks."
+  (test-terminal-concealed-line)
   (test-terminal-input-decoding)
   (test-terminal-size-resolution)
   (test-terminal-size-noninteractive-query)
