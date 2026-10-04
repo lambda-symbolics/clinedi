@@ -168,6 +168,7 @@ still needs to be materialized."
   (display-indexes #() :type vector)
   (positions nil :type list)
   (soft-breaks nil :type list)
+  (hidden nil :type list)
   (end-row 0 :type integer)
   (end-column 0 :type integer)
   (pending-wrap-p nil :type boolean))
@@ -203,7 +204,12 @@ still needs to be materialized."
 The first display row begins after PROMPT-WIDTH cells and later rows use all
 COLUMNS cells. STABLE-END limits words that begin before it, preventing a
 transient suffix from reflowing accepted input. Soft wraps preserve source
-spaces and insert display-only newlines immediately before the next word."
+spaces and insert display-only newlines immediately before the next word.
+
+A run of spaces beginning exactly where a row filled hangs past the edge, as
+word wrapping shows it: the display replaces the whole run with one newline
+that consumes the pending wrap, the hidden source indexes are listed, and a
+cursor inside the run sits at the start of the next row."
   (check-type text string)
   (unless (and (integerp columns) (plusp columns))
     (error 'type-error :datum columns :expected-type '(integer 1 *)))
@@ -220,6 +226,8 @@ spaces and insert display-only newlines immediately before the next word."
                                         :initial-element nil))
            (positions nil)
            (soft-breaks nil)
+           (hidden nil)
+           (hanging-p nil)
            (display-index 0)
            (row (floor prompt-width columns))
            (column (mod prompt-width columns))
@@ -273,7 +281,16 @@ spaces and insert display-only newlines immediately before the next word."
                     (write-soft-break index))
                   (record-boundary index)
                   (let ((character (char text index)))
-                    (cond ((char= character #\newline)
+                    (unless (char= character #\space)
+                      (setf hanging-p nil))
+                    (cond ((and (char= character #\space)
+                                (or pending-wrap-p hanging-p))
+                           (unless hanging-p
+                             (write-soft-break index)
+                             (setf hanging-p t))
+                           (push index hidden)
+                           (incf index))
+                          ((char= character #\newline)
                            (write-char character display)
                            (incf display-index)
                            (incf index)
@@ -300,6 +317,7 @@ spaces and insert display-only newlines immediately before the next word."
           :positions (nreverse
                       (remove-duplicates positions :key #'first :from-end t))
           :soft-breaks (nreverse soft-breaks)
+          :hidden (nreverse hidden)
           :end-row row
           :end-column column
           :pending-wrap-p pending-wrap-p))))))
@@ -315,8 +333,11 @@ spaces and insert display-only newlines immediately before the next word."
              :expected-type 'integer))
     (values (second position) (third position))))
 
-(defun render--insert-soft-breaks (text display soft-breaks)
-  "Insert SOFT-BREAKS into trusted styled DISPLAY for visible TEXT indexes."
+(defun render--insert-soft-breaks (text display soft-breaks &key hidden)
+  "Insert SOFT-BREAKS into trusted styled DISPLAY for visible TEXT indexes.
+
+The visible characters at the ascending HIDDEN indexes are left out, keeping
+the controls around them."
   (unless (string= text (ansi-strip display))
     (error "Highlighted text does not preserve its plain visible content."))
   (with-output-to-string (wrapped)
@@ -338,7 +359,9 @@ spaces and insert display-only newlines immediately before the next word."
                                        :start index :end control-end)
                          (setf index control-end))
                        (progn
-                         (write-char (char display index) wrapped)
+                         (if (and hidden (= (first hidden) visible-index))
+                             (setf hidden (rest hidden))
+                             (write-char (char display index) wrapped))
                          (incf index)
                          (incf visible-index)))))
         (write-breaks)))))
@@ -367,7 +390,8 @@ string. Words wider than COLUMNS still wrap by grapheme."
          (wrapped-text (screen-editor-layout-display layout))
          (wrapped-display
            (render--insert-soft-breaks
-            text display (screen-editor-layout-soft-breaks layout)))
+            text display (screen-editor-layout-soft-breaks layout)
+            :hidden (screen-editor-layout-hidden layout)))
          (wrapped-cursor
            (aref (screen-editor-layout-display-indexes layout) safe-cursor)))
     (values wrapped-text wrapped-display wrapped-cursor)))
@@ -377,9 +401,8 @@ string. Words wider than COLUMNS still wrap by grapheme."
 
 DISPLAY must have exactly TEXT as its ANSI-stripped visible content. The first
 value lists one (PLAIN STYLED) pair per terminal row. Words wrap as
-WRAP-STYLED-EDITOR-TEXT wraps them, and rows split exactly as SCREEN-POSITION
-models the terminal: a row that fills COLUMNS continues on the next row by
-character, so a space at that wrap keeps its own cell and the cursor stays on
+WRAP-STYLED-EDITOR-TEXT wraps them, spaces at a flush wrap included, and rows
+split exactly as SCREEN-POSITION models the terminal, so the cursor stays on
 the character it edits. A cursor after a filled final row opens an empty last
 row. The second and third values are the cursor's zero-based row and column."
   (multiple-value-bind (wrapped styled position)
@@ -565,7 +588,8 @@ ANSI presentation below the editor. Their visible contents must match."
             (concatenate 'string
                          highlighted
                          (ansi-colorize suffix :bright-black))
-            (screen-editor-layout-soft-breaks combined-layout))))
+            (screen-editor-layout-soft-breaks combined-layout)
+            :hidden (screen-editor-layout-hidden combined-layout))))
     (multiple-value-bind (prompt-row prompt-column prompt-wrap)
         (screen-position "" :prompt-width prompt-width :columns columns)
       (declare (ignore prompt-wrap))
