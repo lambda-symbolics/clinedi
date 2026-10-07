@@ -230,6 +230,15 @@
             do (setf cursor (next-boundary)))
       cursor)))
 
+(defun line-editor--kill-to-start (editor)
+  "Delete EDITOR's text before its cursor and move to the start."
+  (line-editor--set-state editor
+                          (subseq (line-editor-text editor)
+                                  (line-editor-cursor editor))
+                          0
+                          :leave-history-p t)
+  nil)
+
 (defun line-editor--kill-to-end (editor)
   "Delete EDITOR's text after its cursor."
   (line-editor--set-state editor
@@ -537,7 +546,7 @@ return values. NIL and :IGNORED are no-op commands returning :IGNORED."
         (line-editor--kill-to-end editor)
         (line-editor--continue-action))
        (:kill-line
-        (line-editor-clear editor)
+        (line-editor--kill-to-start editor)
         (line-editor--continue-action))
        (:kill-word
         (line-editor--kill-word editor)

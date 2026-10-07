@@ -132,6 +132,20 @@
         (check-equal "reported keys edit the draft at the moved cursor"
                      "YSabc猫dzEA!" line)
         (check-equal "reported keys preserve ordinary submission" :line kind))))
+  (dolist (report (list (string (code-char 21))
+                       (input-test--escape-sequence "[117;5u")
+                       (input-test--escape-sequence "[27;5;117~")))
+    (multiple-value-bind (line kind output restores)
+        (terminal-editor-test--read
+         (concatenate 'string "abcde"
+                      (input-test--escape-sequence "[D")
+                      (input-test--escape-sequence "[D")
+                      report "X" (string #\Newline))
+         :raw-mode-function (lambda () t))
+      (declare (ignore output restores))
+      (check-equal "Ctrl-U deletes only the prefix and resets the cursor"
+                   "Xde" line)
+      (check-equal "Ctrl-U edited input submits normally" :line kind)))
   (multiple-value-bind (line kind output restores)
       (terminal-editor-test--read
        (format nil "first~c[13;2usecond~%" (code-char 27))

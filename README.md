@@ -150,6 +150,9 @@ delimiters as well as whitespace. The default delimiter list is `-`, `_`, `/`,
 
 `read-event` maps these sequences to the same commands:
 
+- Ctrl-U becomes `:kill-line`, deleting text before the cursor and moving it to
+  the start of the buffer
+- Ctrl-K becomes `:kill-to-end`, deleting text after the cursor
 - Ctrl-Left, Alt-Left, and ESC `b` become `:word-left`
 - Ctrl-Right, Alt-Right, and ESC `f` become `:word-right`
 - Ctrl-W, Ctrl-Backspace, ESC Backspace, and ESC DEL become `:kill-word`

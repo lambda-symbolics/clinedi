@@ -178,6 +178,20 @@
     (editor-tests--assert (and (string= (line-editor-text editor) "")
                                (zerop (line-editor-cursor editor)))
                           "Kill-line must clear text and cursor."))
+  (dolist (case '(("" 0 "")
+                  ("alpha beta" 0 "alpha beta")
+                  ("alpha beta" 5 " beta")
+                  ("alpha beta" 10 "")
+                  ("abc猫é尾" 3 "猫é尾")
+                  ("猫é尾" 3 "尾")))
+    (destructuring-bind (text cursor suffix) case
+      (let ((editor (make-line-editor :text text :cursor cursor)))
+        (editor-tests--event editor :kill-line :continue)
+        (editor-tests--assert
+         (and (string= (line-editor-text editor) suffix)
+              (zerop (line-editor-cursor editor)))
+         "Kill-line at cursor ~D in ~S must retain ~S at cursor zero."
+         cursor text suffix))))
   (let ((editor (make-line-editor :text "alpha  beta gamma" :cursor 5)))
     (editor-tests--event editor :kill-word-right :continue)
     (editor-tests--assert
