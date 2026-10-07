@@ -112,6 +112,26 @@
                          while position
                          count 1
                          do (setf start (+ position 7))))))
+  (dolist (reports '(("[97;5u" "[101;5u" "[97:65;2u" "[49:33;2u")
+                     ("[27;5;97~" "[27;5;101~" "[27;2;65~" "[27;2;33~")))
+    (destructuring-bind (home end uppercase punctuation) reports
+      (multiple-value-bind (line kind output restores)
+          (terminal-editor-test--read
+           (concatenate 'string
+                        "abcd" (input-test--escape-sequence "[1;1D") "猫"
+                        (input-test--escape-sequence "[1;1C")
+                        (input-test--escape-sequence "[1;1H") "S"
+                        (input-test--escape-sequence "[1;1F") "z"
+                        (input-test--escape-sequence home) "Y"
+                        (input-test--escape-sequence end) "E"
+                        (input-test--escape-sequence uppercase)
+                        (input-test--escape-sequence punctuation)
+                        (string #\Newline))
+           :raw-mode-function (lambda () t))
+        (declare (ignore output restores))
+        (check-equal "reported keys edit the draft at the moved cursor"
+                     "YSabc猫dzEA!" line)
+        (check-equal "reported keys preserve ordinary submission" :line kind))))
   (multiple-value-bind (line kind output restores)
       (terminal-editor-test--read
        (format nil "first~c[13;2usecond~%" (code-char 27))
@@ -123,7 +143,7 @@
                  line)
     (check-equal "enhanced multiline input still submits" :line kind)
     (check-true "raw editor enables keyboard enhancement"
-                (search (format nil "~c[>1u" (code-char 27)) output))
+                (search (clinedi:terminal-keyboard-enhancement-enable-sequence) output))
     (check-true "raw editor restores keyboard reporting"
                 (search (format nil "~c[<u" (code-char 27)) output)))
   (multiple-value-bind (line kind output restores)
