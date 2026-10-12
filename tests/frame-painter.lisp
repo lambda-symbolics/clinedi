@@ -33,7 +33,7 @@
       (check-true "rows past the height are never written"
                   (not (search "four" controls)))
       (check-true "painting disables autowrap and the cursor until it finishes"
-                  (and (eql 0 (search (format nil "~c[?25l~c[?7l" escape escape) controls))
+                  (and (search (format nil "~c[?25l~c[?7l" escape escape) controls)
                        (search (format nil "~c[?7h~c[?25h" escape escape) controls)))
       (check-true "the cursor is clamped to the screen"
                   (search (format nil "~c[3;10H" escape) controls)))
@@ -78,4 +78,24 @@
                  (frame-painter-tests--painted-rows
                   (frame-painter-tests--paint painter '("one" "TWO")
                                               :height 3 :width 11))))
+  (let* ((painter (make-frame-painter))
+         (begin (format nil "~c[?2026h" (code-char 27)))
+         (end (format nil "~c[?2026l" (code-char 27)))
+         (large-row (make-string 20000 :initial-element #\x)))
+    (dolist (rows (list (list large-row "second")
+                       (list large-row "changed")
+                       (list large-row "changed")))
+      (let ((writes nil))
+        (frame-painter-paint painter rows (lambda (controls) (push controls writes))
+                             :height 2 :width 100)
+        (check-equal "a frame reaches the writer in one call" 1 (length writes))
+        (let ((controls (first writes)))
+          (check-true "synchronized output begins before all frame controls"
+                      (eql 0 (search begin controls)))
+          (check-equal "synchronized output ends after all frame controls"
+                       (- (length controls) (length end))
+                       (search end controls)))))
+    (check-equal "large synchronized frames are recorded after writing"
+                 (list large-row "changed")
+                 (coerce (frame-painter-frame painter) 'list)))
   (values))

@@ -295,12 +295,12 @@ when painting fails.
 
 `clinedi:make-frame-painter` paints such a screen. `frame-painter-paint`
 takes trusted display rows, the screen height and width, the cursor position
-and visibility, and a write function that must write and flush the controls it
-receives. Rows are drawn at absolute positions with autowrap disabled, only
-rows that changed since the last frame are rewritten, and a write that fails
-or a size change makes the next frame repaint completely, as does
-`frame-painter-invalidate`. `frame-painter-frame` returns the rows last
-written.
+and visibility, and a write function. Write and flush the complete control string
+once. Each frame is bracketed by DEC 2026 synchronized-output controls, including
+its cursor and autowrap changes. Rows are drawn at absolute positions with
+autowrap disabled; only changed rows are rewritten. A failed write, size change
+or `frame-painter-invalidate` makes the next frame repaint completely.
+`frame-painter-frame` returns the rows last written.
 
 ## Semantic prompt markers and xterm controls
 
@@ -329,8 +329,8 @@ which `read-event` decodes as `:click` and `:scroll` events.
 `clinedi:make-mode-tracking-output-stream` wraps an output stream, such as the
 socket a remote session's output arrives on, and forwards everything unchanged
 while recognizing the modes that output imposes: alternate screen, mouse
-reporting, SGR mouse encoding, bracketed paste, hidden cursor, disabled
-autowrap, and OSC 10 or 11 default colors. Controls split across writes are
+reporting, SGR mouse encoding, bracketed paste, hidden cursor, disabled autowrap,
+synchronized output, and OSC 10 or 11 default colors. Controls split across writes are
 still recognized. `mode-tracking-output-stream-imposed-modes` lists the modes
 currently held, and `mode-tracking-output-stream-restore` writes the controls
 returning each to its default, so a dropped connection never leaves the local

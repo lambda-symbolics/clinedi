@@ -8,11 +8,12 @@
     (1006 :sgr-mouse-encoding nil)
     (2004 :bracketed-paste nil)
     (25 :cursor-visible t)
-    (7 :autowrap t))
+    (7 :autowrap t)
+    (2026 :synchronized-output nil))
   "Tracked DEC private modes as (NUMBER NAME DEFAULT-SET-P).
 
 The order is the restoring order, so the alternate screen is left first and
-the normal screen then receives the remaining resets.")
+the normal screen then receives the remaining resets before synchronization ends.")
 
 (defparameter *mode-tracking-parameter-limit* 32
   "Longest private-mode parameter text collected before the control is ignored.")
@@ -43,9 +44,9 @@ the normal screen then receives the remaining resets.")
    "Forward output while tracking the terminal modes it imposes.
 
 Alternate screen, mouse reporting, SGR mouse encoding, bracketed paste, cursor
-visibility, autowrap and OSC 10 and 11 default colors are recognized even when
-a control arrives split across several writes. Nothing but parser state is
-retained, so arbitrary output can pass through."))
+visibility, autowrap, synchronized output and OSC 10 and 11 default colors are
+recognized even when a control arrives split across several writes. Nothing but
+parser state is retained, so arbitrary output can pass through."))
 
 (defun make-mode-tracking-output-stream (output)
   "Return a stream forwarding to OUTPUT while tracking the modes it imposes."
@@ -56,7 +57,7 @@ retained, so arbitrary output can pass through."))
 
 Names are :ALTERNATE-SCREEN, :MOUSE-REPORTING, :SGR-MOUSE-ENCODING,
 :BRACKETED-PASTE, :CURSOR-VISIBLE (hidden), :AUTOWRAP (disabled),
-:DEFAULT-FOREGROUND and :DEFAULT-BACKGROUND."
+:SYNCHRONIZED-OUTPUT, :DEFAULT-FOREGROUND and :DEFAULT-BACKGROUND."
   (copy-list (mode-tracking-output-stream--imposed stream)))
 
 (defun mode-tracking-output-stream-restore (stream)

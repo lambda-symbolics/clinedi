@@ -94,4 +94,25 @@
     (check-equal "an overlong control is abandoned without hiding the next"
                  nil
                  (mode-tracking-output-stream-imposed-modes stream)))
+  (let* ((destination (make-string-output-stream))
+         (stream (make-mode-tracking-output-stream destination))
+         (partial-frame (mode-stream-tests--controls "[?2026h[?25l[?7lpartial")))
+    (mode-stream-tests--feed stream
+                             (loop for character across partial-frame
+                                   collect (string character)))
+    (check-equal "a split frame begin keeps synchronized output imposed"
+                 '(:autowrap :cursor-visible :synchronized-output)
+                 (sort (mode-tracking-output-stream-imposed-modes stream) #'string<))
+    (get-output-stream-string destination)
+    (mode-tracking-output-stream-restore stream)
+    (check-equal "interrupted frame cleanup ends synchronization after restoring the cursor"
+                 (mode-stream-tests--controls "[0m[?25h[?7h[?2026l")
+                 (get-output-stream-string destination))
+    (frame-painter-paint (make-frame-painter) '("complete")
+                         (lambda (controls)
+                           (write-string controls stream)
+                           (finish-output stream))
+                         :height 1 :width 10)
+    (check-equal "a completed frame releases synchronized output"
+                 nil (mode-tracking-output-stream-imposed-modes stream)))
   (values))

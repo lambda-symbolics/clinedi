@@ -38,11 +38,11 @@ overruns the width is clipped instead of scrolling the screen."))
 
 ROWS beyond HEIGHT are dropped and missing rows are blank. Only rows that
 differ from PAINTER's last frame are rewritten, unless that frame is unknown
-or had another size. WRITE receives the complete control string and must
-write and flush it. The frame is recorded only when WRITE returns; when it
-exits non-locally PAINTER repaints completely next time. The cursor is left at
-zero-based CURSOR-ROW and CURSOR-COLUMN, clamped to the screen, and shown when
-CURSOR-VISIBLE-P."
+or had another size. WRITE receives one complete control string bracketed by
+DEC 2026 synchronized-output controls and must write and flush it. The frame
+is recorded only when WRITE returns; when it exits non-locally PAINTER
+repaints completely next time. The cursor is left at zero-based CURSOR-ROW
+and CURSOR-COLUMN, clamped to the screen, and shown when CURSOR-VISIBLE-P."
   (check-type height (integer 1))
   (check-type width (integer 1))
   (let* ((frame (make-array height :initial-element ""))
@@ -76,16 +76,17 @@ CURSOR-VISIBLE-P."
   "Return the controls drawing FRAME's rows that differ from PREVIOUS, or every row."
   (let ((close-link (format nil "~c]8;;~c\\" +escape-character+ +escape-character+)))
     (with-output-to-string (output)
-      (format output "~c[?25l~c[?7l" +escape-character+ +escape-character+)
+      (format output "~c[?2026h~c[?25l~c[?7l"
+              +escape-character+ +escape-character+ +escape-character+)
       (loop for row across frame
             for index from 0
             when (or (null previous) (string/= row (aref previous index)))
               do (format output "~c[~d;1H~c[0m~a~c[2K~a~a~c[0m"
                          +escape-character+ (1+ index) +escape-character+ close-link
                          +escape-character+ row close-link +escape-character+))
-      (format output "~c[~d;~dH~c[?7h~c[?25~:[l~;h~]"
+      (format output "~c[~d;~dH~c[?7h~c[?25~:[l~;h~]~c[?2026l"
               +escape-character+
               (1+ (max 0 (min cursor-row (1- height))))
               (1+ (max 0 (min cursor-column (1- width))))
               +escape-character+ +escape-character+
-              cursor-visible-p))))
+              cursor-visible-p +escape-character+))))
