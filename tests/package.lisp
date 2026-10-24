@@ -119,6 +119,7 @@
                 #:line-editor-create
                 #:line-editor-text
                 #:line-editor-cursor
+                #:line-editor-auto-pair-p
                 #:line-editor-word-delimiter-mode-p
                 #:line-editor-toggle-word-delimiter-mode
                 #:line-editor-word-delimiters

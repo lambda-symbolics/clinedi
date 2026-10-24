@@ -137,6 +137,11 @@ Enable mouse reporting only while that viewport owns the terminal.
   width, falling back to explicit history events when it reports no adjacent
   visual row
 
+Pass `:auto-pair-p t` to insert matching `)`, `]`, and `}` when typing opening
+braces, with the cursor between them. Type a closing brace to move over one
+already at the cursor. Backspace between an empty pair deletes both braces.
+An odd number of preceding backslashes escapes a typed brace.
+
 Pass `:history-match-function` to the constructor to filter those history
 events. The function receives the complete draft captured when traversal begins
 and each candidate entry. Down past the newest match restores that draft and

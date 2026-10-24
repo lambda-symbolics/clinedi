@@ -31,6 +31,12 @@
     :reader line-editor-keymap
     :type keymap
     :documentation "Programmable event-to-command mappings for this editor.")
+   (auto-pair-p
+    :initarg :auto-pair-p
+    :initform nil
+    :reader line-editor-auto-pair-p
+    :type boolean
+    :documentation "Whether typed braces insert their matching closing braces.")
    (word-delimiter-mode-p
     :initarg :word-delimiter-mode-p
     :initform nil
@@ -149,6 +155,66 @@
                        (+ cursor (length inserted-text)))))
     (line-editor--set-state editor new-text new-cursor
                             :leave-history-p t))
+  nil)
+
+(defun line-editor--closing-brace (character)
+  "Return the closing brace matching CHARACTER, or NIL."
+  (case character
+    (#\( #\))
+    (#\[ #\])
+    (#\{ #\})))
+
+(defun line-editor--escaped-p (text index)
+  "Return true when an odd run of backslashes precedes INDEX in TEXT."
+  (oddp (loop for position downfrom (1- index) to 0
+              while (char= (char text position) #\\)
+              count t)))
+
+(defun line-editor--insert-brace (editor character)
+  "Insert CHARACTER with pairing, or move over a matching closing brace."
+  (let* ((text (line-editor-text editor))
+         (cursor (line-editor-cursor editor))
+         (closing (line-editor--closing-brace character)))
+    (cond
+      ((line-editor--escaped-p text cursor)
+       (line-editor--insert editor (string character)))
+      (closing
+       (line-editor--insert editor (coerce (list character closing) 'string))
+       (line-editor--set-cursor editor (1+ cursor)))
+      ((and (< cursor (length text))
+            (char= character (char text cursor)))
+       (line-editor--set-cursor editor (1+ cursor)))
+      (t
+       (line-editor--insert editor (string character)))))
+  nil)
+
+(defun line-editor--insert-typed-text (editor inserted-text)
+  "Insert typed text, including coalesced key bursts, with optional brace pairing."
+  (if (line-editor-auto-pair-p editor)
+      (loop with start = 0
+            for index from 0 below (length inserted-text)
+            for character = (char inserted-text index)
+            when (find character "()[]{}")
+              do (line-editor--insert editor (subseq inserted-text start index))
+                 (line-editor--insert-brace editor character)
+                 (setf start (1+ index))
+            finally (line-editor--insert editor (subseq inserted-text start)))
+      (line-editor--insert editor inserted-text))
+  nil)
+
+(defun line-editor--delete-backward-pair (editor)
+  "Delete an empty brace pair around the cursor, or the preceding grapheme."
+  (let* ((text (line-editor-text editor))
+         (cursor (line-editor-cursor editor))
+         (closing (and (plusp cursor)
+                       (line-editor--closing-brace (char text (1- cursor))))))
+    (when (and (line-editor-auto-pair-p editor)
+               closing
+               (< cursor (length text))
+               (char= closing (char text cursor))
+               (not (line-editor--escaped-p text (1- cursor))))
+      (line-editor--delete-forward editor))
+    (line-editor--delete-backward editor))
   nil)
 
 (defun line-editor--delete-backward (editor)
@@ -342,6 +408,7 @@
                            (history-limit +default-history-limit+)
                            history-match-function
                            (keymap (default-line-editor-keymap))
+                           (auto-pair-p nil)
                            (word-delimiter-mode-p nil)
                            (word-delimiters *default-word-delimiters*))
   "Create an editor initialized with TEXT, CURSOR, and copied HISTORY.
@@ -351,6 +418,10 @@ receives the fixed draft and each candidate entry during traversal. An empty
 draft always traverses every entry. CURSOR is clamped to TEXT and advanced when
 necessary so that it never divides a grapheme. KEYMAP controls semantic event
 dispatch and is retained so callers can update it deliberately.
+
+AUTO-PAIR-P enables pairing for typed parentheses, square brackets, and braces.
+Type a closing brace to move over one at the cursor. Backspace between an empty
+pair deletes both braces. Paste events insert literal text.
 
 When WORD-DELIMITER-MODE-P is true, WORD-DELIMITERS separate words for Ctrl-Left,
 Ctrl-Right and Ctrl-Backspace behavior. WORD-DELIMITERS defaults to hyphen,
@@ -366,6 +437,7 @@ underscore, slash, dot, and colon, and is copied into the editor."
            :datum history-match-function
            :expected-type '(or null function)))
   (check-type keymap keymap)
+  (check-type auto-pair-p boolean)
   (check-type word-delimiter-mode-p boolean)
   (check-type word-delimiters (satisfies line-editor--word-delimiters-p))
   (let* ((owned-text (copy-seq text))
@@ -374,6 +446,7 @@ underscore, slash, dot, and colon, and is copied into the editor."
                    :text owned-text
                    :cursor safe-cursor
                    :keymap keymap
+                   :auto-pair-p auto-pair-p
                    :word-delimiter-mode-p word-delimiter-mode-p
                    :word-delimiters (copy-list word-delimiters)
                    :history (line-editor--make-history history history-limit)
@@ -387,6 +460,7 @@ underscore, slash, dot, and colon, and is copied into the editor."
                              (history-limit +default-history-limit+)
                              history-match-function
                              (keymap (default-line-editor-keymap))
+                             (auto-pair-p nil)
                              (word-delimiter-mode-p nil)
                              (word-delimiters *default-word-delimiters*))
   "Create a line editor through the application-oriented named constructor."
@@ -396,6 +470,7 @@ underscore, slash, dot, and colon, and is copied into the editor."
                     :history-limit history-limit
                     :history-match-function history-match-function
                     :keymap keymap
+                    :auto-pair-p auto-pair-p
                     :word-delimiter-mode-p word-delimiter-mode-p
                     :word-delimiters word-delimiters))
 
@@ -484,7 +559,7 @@ return values. NIL and :IGNORED are no-op commands returning :IGNORED."
     ((keywordp command)
      (case command
        (:insert
-        (line-editor--insert
+        (line-editor--insert-typed-text
          editor (line-editor--require-event-text event :insert))
         (line-editor--continue-action))
        (:paste
@@ -531,7 +606,7 @@ return values. NIL and :IGNORED are no-op commands returning :IGNORED."
         (line-editor--set-cursor editor (length (line-editor-text editor)))
         (line-editor--continue-action))
        (:backspace
-        (line-editor--delete-backward editor)
+        (line-editor--delete-backward-pair editor)
         (line-editor--continue-action))
        (:delete
         (line-editor--delete-forward editor)
