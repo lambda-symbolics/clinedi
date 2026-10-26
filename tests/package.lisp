@@ -3,6 +3,15 @@
 (defpackage #:clinedi/tests
   (:use #:cl)
   (:import-from #:clinedi
+                #:program-status-sequence
+                #:program-status-identifier-p
+                #:program-status-text
+                #:program-status-records
+                #:program-status-records-current
+                #:program-status-records-update
+                #:program-status-records-replay
+                #:program-status-records-reset
+                #:*program-status-record-limit*
                 #:terminal
                 #:stream-terminal
                 #:posix-terminal

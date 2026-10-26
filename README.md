@@ -359,6 +359,15 @@ like the plain string; wrapped rows reopen the link. Targets that are not
 printable ASCII stay unlinked, and neither function emits controls while
 `*presentation-enabled*` is false.
 
+`clinedi:program-status-sequence` builds an OSC 7501 Program Status Protocol
+report for an application, either about the program itself or about an
+independent record such as `jobs/1234`. Titles and messages lose their control
+characters and are truncated at whole UTF-8 characters to 192 and 2048 octets.
+A `clinedi:program-status-records` set keeps up to 63 records:
+`program-status-records-update` returns the controls that clear removed records
+and send changed ones, and `program-status-records-replay` resends the working
+records after an OSC 133 prompt start has expired them.
+
 ## Tests
 
 ```sh

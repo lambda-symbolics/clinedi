@@ -101,6 +101,18 @@
    #:ansi-clear-line-right
    #:ansi-clear-screen
    #:semantic-prompt-marker-sequence
+   #:program-status-sequence
+   #:program-status-identifier-p
+   #:program-status-text
+   #:program-status-records
+   #:program-status-records-application
+   #:program-status-records-current
+   #:program-status-records-update
+   #:program-status-records-replay
+   #:program-status-records-reset
+   #:*program-status-record-limit*
+   #:*program-status-title-octets*
+   #:*program-status-message-octets*
    #:window-title-sequence
    #:default-color-sequence
    #:default-color-reset-sequence

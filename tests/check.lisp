@@ -7,6 +7,7 @@
   (let ((*test-failures* nil))
     (run-unicode-tests)
     (run-hyperlink-tests)
+    (run-program-status-tests)
     (run-editor-tests)
     (run-editor-state-tests)
     (run-session-tests)
