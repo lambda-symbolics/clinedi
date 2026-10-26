@@ -166,35 +166,76 @@ Reaching the last layout's maximum resumes following the newest output."
   "Return how many rows one page of VIEWPORT moves, keeping one row of context."
   (max 1 (1- (transcript-viewport-height viewport))))
 
-(defun transcript-viewport-jump (viewport direction predicate)
+(defun transcript-viewport-jump (viewport direction predicate &key (align :top))
   "Scroll VIEWPORT to the nearest row in DIRECTION accepted by PREDICATE.
 
-DIRECTION is -1 to search above the first visible row and 1 below it.
-PREDICATE receives a row's chunk text and the row's offset within it. A
-target inside the final page resumes following. Return true when a row was
-found."
+DIRECTION is -1 to search towards older rows and 1 towards newer ones.
+PREDICATE receives a row's chunk text and the row's offset within it, and
+accepts the first row of each section, such as a message header. With ALIGN
+:TOP the accepted row becomes the first visible row, searching from the
+current first row. With ALIGN :END the section it opens is shown ending on
+the bottom row, so a reader's eyes stay where they were; the search starts
+from the section under the bottom row, and a section taller than the window
+shows its first row on top instead. A position inside the final page resumes
+following. Return true when a row was found."
   (check-type direction (member -1 1))
+  (check-type align (member :top :end))
   (let* ((rows (transcript-viewport--rows viewport))
          (chunks (transcript-viewport--chunks viewport))
          (maximum (transcript-viewport-maximum-top viewport))
-         (current (or (transcript-viewport-top viewport) maximum))
-         (target
-           (flet ((accepted-p (index)
-                    (let ((row (aref rows index)))
-                      (funcall predicate
-                               (viewport-chunk-text (aref chunks (viewport-row-chunk row)))
-                               (viewport-row-offset row)))))
-             (if (minusp direction)
-                 (loop for index from (1- current) downto 0
-                       when (accepted-p index)
-                         return index)
-                 (loop for index from (1+ current) below (length rows)
-                       when (accepted-p index)
-                         return index)))))
-    (when target
-      (let ((top (min target maximum)))
-        (setf (transcript-viewport-top viewport) (unless (= top maximum) top)))
-      t)))
+         (current (or (transcript-viewport-top viewport) maximum)))
+    (labels ((accepted-p (index)
+               (let ((row (aref rows index)))
+                 (funcall predicate
+                          (viewport-chunk-text (aref chunks (viewport-row-chunk row)))
+                          (viewport-row-offset row))))
+
+             (above (index)
+               (loop for candidate from (1- index) downto 0
+                     when (accepted-p candidate)
+                       return candidate))
+
+             (below (index)
+               (loop for candidate from (1+ index) below (length rows)
+                     when (accepted-p candidate)
+                       return candidate))
+
+             (section-end (start)
+               (let ((end (1- (or (below start) (length rows)))))
+                 (loop while (and (> end start)
+                                  (zerop (viewport-row-length (aref rows end))))
+                       do (decf end))
+                 end))
+
+             (show (top)
+               (let ((top (max 0 (min top maximum))))
+                 (setf (transcript-viewport-top viewport) (unless (= top maximum) top)))))
+      (let ((target nil))
+        (if (eq align :top)
+            (progn
+              (setf target (if (minusp direction) (above current) (below current)))
+              (when target
+                (show target)))
+            (let* ((bottom  (min (1- (length rows))
+                                 (+ current (1- (transcript-viewport-height viewport)))))
+                   (section (and (>= bottom 0)
+                                 (if (accepted-p bottom) bottom (above bottom)))))
+              (setf target
+                    (cond
+                      ((plusp direction)
+                       (below (max bottom 0)))
+                      ((null section)
+                       nil)
+                      ((< section current)
+                       section)
+                      (t
+                       (above section))))
+              (when target
+                (let ((end (section-end target)))
+                  (show (if (> (1+ (- end target)) (transcript-viewport-height viewport))
+                            target
+                            (1+ (- end (transcript-viewport-height viewport)))))))))
+        (and target t)))))
 
 (defun transcript-viewport-hit (viewport column row)
   "Return what VIEWPORT shows at one-based screen COLUMN and ROW of the last layout.

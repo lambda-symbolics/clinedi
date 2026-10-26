@@ -293,7 +293,8 @@ counting unfinished rows shown after it, and returns the first visible row;
 `transcript-viewport-scroll`, `-scroll-to-top`, `-follow` and `-page-rows`
 move it, and following resumes at the newest output.
 `transcript-viewport-jump` moves to the nearest row a predicate accepts, such
-as a message header. `transcript-viewport-hit` maps a mouse position to the
+as a message header; with `:align :end` it instead shows the section that row
+opens ending on the bottom row, and steps from the section under that row. `transcript-viewport-hit` maps a mouse position to the
 click region action, the chunk text, and the character index under it.
 `transcript-viewport-checkpoint` and `-rollback` undo appends and scrolling
 when painting fails.

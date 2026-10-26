@@ -68,6 +68,41 @@
     (check-equal "page rows keep one row of context"
                  1
                  (transcript-viewport-page-rows viewport)))
+  (let ((viewport (make-transcript-viewport :width 20)))
+    (dolist (chunk (list (format nil "# a~%a1~%~%") (format nil "# b~%b1~%b2~%~%")
+                         (format nil "# c~%c1~%~%") (format nil "# d~%d1~%")))
+      (viewport-tests--append viewport chunk))
+    (transcript-viewport-layout viewport 4)
+    (flet ((header-p (text offset)
+             (and (< offset (length text)) (char= (char text offset) #\#)))
+           (window ()
+             (let ((top (or (transcript-viewport-top viewport)
+                            (transcript-viewport-maximum-top viewport))))
+               (loop for index from top below (min (+ top 4)
+                                                   (transcript-viewport-row-count viewport))
+                     collect (transcript-viewport-row-text viewport index)))))
+      (check-equal "an end-aligned jump up ends the previous section on the bottom row"
+                   '(t ("b2" "" "# c" "c1"))
+                   (list (transcript-viewport-jump viewport -1 #'header-p :align :end)
+                         (window)))
+      (check-equal "the next jump up starts from the section on the bottom row"
+                   '(t ("" "# b" "b1" "b2"))
+                   (list (transcript-viewport-jump viewport -1 #'header-p :align :end)
+                         (window)))
+      (check-equal "an end-aligned jump down ends the following section on the bottom row"
+                   '(t ("b2" "" "# c" "c1"))
+                   (list (transcript-viewport-jump viewport 1 #'header-p :align :end)
+                         (window)))
+      (check-equal "reaching the newest section follows again"
+                   '(t nil)
+                   (list (transcript-viewport-jump viewport 1 #'header-p :align :end)
+                         (transcript-viewport-top viewport)))
+      (transcript-viewport-layout viewport 2)
+      (transcript-viewport-jump viewport -1 #'header-p :align :end)
+      (transcript-viewport-jump viewport -1 #'header-p :align :end)
+      (check-equal "a section taller than the window shows its first row on top"
+                   "# b"
+                   (transcript-viewport-row-text viewport (transcript-viewport-top viewport)))))
   (let ((viewport (make-transcript-viewport :width 10))
         (text (format nil "猫 copy x~%")))
     (viewport-tests--append viewport text (list 2 6 '(:copy "source")))
