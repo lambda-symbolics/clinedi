@@ -176,8 +176,9 @@ accepts the first row of each section, such as a message header. With ALIGN
 current first row. With ALIGN :END the section it opens is shown ending on
 the bottom row, so a reader's eyes stay where they were; the search starts
 from the section under the bottom row, and a section taller than the window
-shows its first row on top instead. A position inside the final page resumes
-following. Return true when a row was found."
+shows its first row on top instead, and the newest section follows the newest
+output again. A position inside the final page resumes following. Return true
+when a row was found."
   (check-type direction (member -1 1))
   (check-type align (member :top :end))
   (let* ((rows (transcript-viewport--rows viewport))
@@ -232,9 +233,13 @@ following. Return true when a row was found."
                        (above section))))
               (when target
                 (let ((end (section-end target)))
-                  (show (if (> (1+ (- end target)) (transcript-viewport-height viewport))
-                            target
-                            (1+ (- end (transcript-viewport-height viewport)))))))))
+                  (cond
+                    ((> (1+ (- end target)) (transcript-viewport-height viewport))
+                     (show target))
+                    ((null (below target))
+                     (transcript-viewport-follow viewport))
+                    (t
+                     (show (1+ (- end (transcript-viewport-height viewport))))))))))
         (and target t)))))
 
 (defun transcript-viewport-hit (viewport column row)

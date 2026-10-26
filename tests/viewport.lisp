@@ -70,7 +70,7 @@
                  (transcript-viewport-page-rows viewport)))
   (let ((viewport (make-transcript-viewport :width 20)))
     (dolist (chunk (list (format nil "# a~%a1~%~%") (format nil "# b~%b1~%b2~%~%")
-                         (format nil "# c~%c1~%~%") (format nil "# d~%d1~%")))
+                         (format nil "# c~%c1~%~%") (format nil "# d~%d1~%~%")))
       (viewport-tests--append viewport chunk))
     (transcript-viewport-layout viewport 4)
     (flet ((header-p (text offset)
@@ -93,7 +93,7 @@
                    '(t ("b2" "" "# c" "c1"))
                    (list (transcript-viewport-jump viewport 1 #'header-p :align :end)
                          (window)))
-      (check-equal "reaching the newest section follows again"
+      (check-equal "reaching the newest section follows again, past its blank separator"
                    '(t nil)
                    (list (transcript-viewport-jump viewport 1 #'header-p :align :end)
                          (transcript-viewport-top viewport)))
