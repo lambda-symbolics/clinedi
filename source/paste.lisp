@@ -40,9 +40,11 @@ quote or escape open, gives NIL."
                (cond
                  ((char= character #\%)
                   (let ((value (and (<= (+ index 3) (length text))
-                                    (ignore-errors
-                                     (parse-integer text :start (1+ index) :end (+ index 3)
-                                                         :radix 16)))))
+                                    (handler-case
+                                        (parse-integer text :start (1+ index) :end (+ index 3)
+                                                            :radix 16)
+                                      (parse-error ()
+                                        nil)))))
                     (unless value
                       (return-from paste--percent-decode nil))
                     (vector-push value octets)
@@ -52,6 +54,7 @@ quote or escape open, gives NIL."
                   (incf index))
                  (t
                   (return-from paste--percent-decode nil)))))
+    ; mallet:suppress no-ignore-errors -- malformed UTF-8 signals no portable condition; CCL signals an array index error
     (ignore-errors
      #+sbcl (sb-ext:octets-to-string (coerce octets '(vector (unsigned-byte 8)))
                                      :external-format :utf-8)
