@@ -325,9 +325,7 @@ cursor inside the run sits at the start of the next row."
                         (screen-editor-layout-positions layout)
                         :key #'first)))
     (unless position
-      (error 'type-error
-             :datum source-index
-             :expected-type 'integer))
+      (error 'screen-layout-position-error :layout layout :source-index source-index))
     (values (second position) (third position))))
 
 (defun render--insert-soft-breaks (text display soft-breaks &key hidden)
@@ -661,3 +659,21 @@ ANSI presentation below the editor. Their visible contents must match."
     (if break
         (values (subseq prompt 0 (1+ break)) (subseq prompt (1+ break)))
         (values "" prompt))))
+
+
+;;;; -- Conditions --
+
+(define-condition screen-layout-position-error (error)
+  ((layout
+    :initarg       :layout
+    :reader        screen-layout-position-error-layout
+    :documentation "The editor layout that was searched.")
+   (source-index
+    :initarg       :source-index
+    :reader        screen-layout-position-error-source-index
+    :documentation "The source index the layout has no position for."))
+  (:report
+   (lambda (condition stream)
+     (format stream "The editor layout has no position for source index ~S."
+             (screen-layout-position-error-source-index condition))))
+  (:documentation "An editor layout was asked for a source index it did not lay out."))
