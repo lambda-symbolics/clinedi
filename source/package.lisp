@@ -219,6 +219,9 @@
    #:line-editor-command-for-event
    #:line-editor-execute-command
    #:line-editor-handle-event
+   #:line-editor-event-error
+   #:line-editor-event-error-event
+   #:line-editor-event-error-kind
    #:line-editor-move-vertical
    #:line-editor-render
 

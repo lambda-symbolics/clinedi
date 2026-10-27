@@ -513,9 +513,7 @@ underscore, slash, dot, and colon, and is copied into the editor."
 (defun line-editor--require-event-text (event kind)
   "Return the text carried by EVENT, requiring compound event KIND."
   (unless (line-editor--text-event-p event kind)
-    (error 'type-error
-           :datum event
-           :expected-type `(cons (eql ,kind) (cons string null))))
+    (error 'line-editor-event-error :event event :kind kind))
   (second event))
 
 (defun line-editor--continue-action ()
@@ -680,3 +678,22 @@ the returned cursor offset."
                          (concatenate 'string text suggestion)
                          (copy-seq text))))
     (values display (text-cell-width text :end cursor))))
+
+
+;;;; -- Conditions --
+
+(define-condition line-editor-event-error (error)
+  ((event
+    :initarg       :event
+    :reader        line-editor-event-error-event
+    :documentation "The malformed event.")
+   (kind
+    :initarg       :kind
+    :reader        line-editor-event-error-kind
+    :documentation "The compound event kind the command required, such as :INSERT."))
+  (:report
+   (lambda (condition stream)
+     (format stream "Line editor event ~S is not a ~S event carrying one string."
+             (line-editor-event-error-event condition)
+             (line-editor-event-error-kind condition))))
+  (:documentation "A command that needs a compound text event received another event."))
