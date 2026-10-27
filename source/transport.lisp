@@ -181,6 +181,7 @@
         (terminal-write terminal (terminal-bracketed-paste-enable-sequence))
         (terminal-flush terminal))
     (error (condition)
+      ; mallet:suppress no-ignore-errors -- the rollback must not mask the original failure
       (ignore-errors (terminal--disable-input-protocols terminal))
       (error condition)))
   nil)
@@ -406,6 +407,7 @@ arrives inside one."
                       (terminal-started-p terminal) t)
                 (terminal--enable-input-protocols terminal))
             (error (condition)
+              ; mallet:suppress no-ignore-errors -- the rollback must not mask the original failure
               (ignore-errors (terminal-restore-input-mode terminal saved-mode))
               (setf (stream-terminal-saved-terminal-mode terminal) nil
                     (terminal-interactive-p terminal) nil

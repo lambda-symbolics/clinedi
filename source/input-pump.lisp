@@ -195,6 +195,7 @@ other thread pauses the reader for FUNCTION's dynamic extent."
                          (lambda (condition)
                            (declare (ignore condition))
                            (setf backtrace
+                                 ; mallet:suppress no-ignore-errors -- a failing backtrace must not replace the reader's own failure
                                  (ignore-errors
                                   (funcall (input-pump-backtrace-function pump)))))))
           (loop
