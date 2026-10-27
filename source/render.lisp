@@ -213,10 +213,9 @@ cursor inside the run sits at the start of the next row."
   (check-type text string)
   (check-type columns (integer 1 *))
   (check-type prompt-width (integer 0 *))
-  (unless (and (integerp stable-end) (<= 0 stable-end (length text)))
-    (error 'type-error
-           :datum stable-end
-           :expected-type `(integer 0 ,(length text))))
+  (check-type stable-end integer)
+  (unless (<= 0 stable-end (length text))
+    (error 'text-range-error :text text :start 0 :end stable-end))
   (unicode--call-with-cell-locale
    (lambda ()
      (let ((display (make-string-output-stream))
