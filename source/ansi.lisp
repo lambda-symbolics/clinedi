@@ -291,7 +291,7 @@ visible character."
   (check-type display string)
   (check-type maximum-cells integer)
   (unless (string= text (ansi-strip display))
-    (error "Styled text does not preserve its plain visible content."))
+    (error 'styled-text-error :text text :display display))
   (let ((ranges (unicode--wrap-text-ranges text maximum-cells)))
     (loop for (start end) in ranges
           for slice in (ansi--visible-slices display ranges)
@@ -300,3 +300,21 @@ visible character."
 (defun ansi-display-width (string)
   "Return the number of visible terminal cells STRING occupies."
   (text-cell-width (ansi-strip string)))
+
+
+;;;; -- Conditions --
+
+(define-condition styled-text-error (error)
+  ((text
+    :initarg       :text
+    :reader        styled-text-error-text
+    :documentation "The plain visible text.")
+   (display
+    :initarg       :display
+    :reader        styled-text-error-display
+    :documentation "The styled text that should show TEXT."))
+  (:report
+   (lambda (condition stream)
+     (declare (ignore condition))
+     (write-string "Styled text does not preserve its plain visible content." stream)))
+  (:documentation "Styled DISPLAY text does not have TEXT as its visible content."))

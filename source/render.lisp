@@ -339,7 +339,7 @@ cursor inside the run sits at the start of the next row."
 The visible characters at the ascending HIDDEN indexes are left out, keeping
 the controls around them."
   (unless (string= text (ansi-strip display))
-    (error "Highlighted text does not preserve its plain visible content."))
+    (error 'styled-text-error :text text :display display))
   (with-output-to-string (wrapped)
     (let ((breaks soft-breaks)
           (index 0)
@@ -381,7 +381,7 @@ string. Words wider than COLUMNS still wrap by grapheme."
   (unless (and (integerp columns) (plusp columns))
     (error 'type-error :datum columns :expected-type '(integer 1 *)))
   (unless (string= text (ansi-strip display))
-    (error "Styled editor text does not preserve its plain visible content."))
+    (error 'styled-text-error :text text :display display))
   (let* ((safe-cursor
            (grapheme-boundary-at-or-after
             text

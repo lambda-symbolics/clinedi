@@ -162,6 +162,9 @@
    #:frame-painter-paint
    #:ansi-strip
    #:ansi-display-width
+   #:styled-text-error
+   #:styled-text-error-text
+   #:styled-text-error-display
    #:wrap-styled-text
    #:wrap-styled-editor-text
    #:wrap-styled-editor-rows

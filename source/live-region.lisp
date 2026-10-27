@@ -119,7 +119,7 @@
   (unless (live-region--geometry-text-p text)
     (error "Live-region geometry text contains an unmodeled terminal control."))
   (unless (string= text (ansi-strip display))
-    (error "Live-region display text does not preserve its visible content."))
+    (error 'styled-text-error :text text :display display))
   (values))
 
 
