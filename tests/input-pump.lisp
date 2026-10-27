@@ -41,7 +41,7 @@
                    (push event (source-handled source))
                    (and (eq event :quit) :stop)))))
          :poll-seconds 0.01
-         (loop for (key value) on arguments by #'cddr
+         (loop for (key value) on arguments by (lambda (tail) (nthcdr 2 tail))
                unless (eq key :step-function)
                  append (list key value))))
 
