@@ -103,9 +103,9 @@ printable ASCII; percent-encode other URLs first."
   (check-type url string)
   (if (and *presentation-enabled* (hyperlink--target-p url))
       (format nil "~c]8;;~a~c\\~a~c]8;;~c\\"
-              +escape-character+ url +escape-character+
+              *escape-character* url *escape-character*
               text
-              +escape-character+ +escape-character+)
+              *escape-character* *escape-character*)
       text))
 
 (defun ansi-link-urls (text)

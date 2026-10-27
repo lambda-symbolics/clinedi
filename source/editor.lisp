@@ -2,7 +2,7 @@
 
 ;;;; -- Incremental Line Editor --
 
-(defconstant +default-history-limit+ 10000
+(defparameter *default-history-limit* 10000
   "Default number of entries retained by a line editor.")
 
 (defparameter *default-word-delimiters*
@@ -405,7 +405,7 @@
                            (text "")
                            (cursor (length text))
                            (history #())
-                           (history-limit +default-history-limit+)
+                           (history-limit *default-history-limit*)
                            history-match-function
                            (keymap (default-line-editor-keymap))
                            (auto-pair-p nil)
@@ -457,7 +457,7 @@ underscore, slash, dot, and colon, and is copied into the editor."
                              (text "")
                              (cursor (length text))
                              (history #())
-                             (history-limit +default-history-limit+)
+                             (history-limit *default-history-limit*)
                              history-match-function
                              (keymap (default-line-editor-keymap))
                              (auto-pair-p nil)

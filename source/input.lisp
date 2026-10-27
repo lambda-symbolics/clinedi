@@ -3,13 +3,13 @@
 (in-package #:clinedi)
 
 (defparameter *keyboard-enhancement-enable-sequence*
-  (format nil "~c[>4;1m~c[>5u" +escape-character+ +escape-character+)
+  (format nil "~c[>4;1m~c[>5u" *escape-character* *escape-character*)
   "Terminal controls requesting disambiguated keys and shifted alternate codes.")
 
 (defparameter *keyboard-enhancement-disable-sequence*
   (format nil "~c[<u~c[>4;0m"
-          +escape-character+
-          +escape-character+)
+          *escape-character*
+          *escape-character*)
   "Terminal controls restoring ordinary key reports after enhanced input.")
 
 (defun enable-keyboard-enhancement (&key (stream *standard-output*))
@@ -30,11 +30,11 @@ buffer."
   (values))
 
 (defparameter *bracketed-paste-enable-sequence*
-  (format nil "~c[?2004h" +escape-character+)
+  (format nil "~c[?2004h" *escape-character*)
   "The terminal control enabling bracketed paste mode.")
 
 (defparameter *bracketed-paste-disable-sequence*
-  (format nil "~c[?2004l" +escape-character+)
+  (format nil "~c[?2004l" *escape-character*)
   "The terminal control disabling bracketed paste mode.")
 
 (defun enable-bracketed-paste (&key (stream *standard-output*))
@@ -50,7 +50,7 @@ buffer."
   (values))
 
 (defparameter *bracketed-paste-end*
-  (concatenate 'string (string +escape-character+) "[201~")
+  (concatenate 'string (string *escape-character*) "[201~")
   "Terminal sequence ending a bracketed paste payload.")
 
 (defun input--terminal-control-p (character)
@@ -340,7 +340,7 @@ traversal. Shift-Tab becomes :COMPLETE-PREVIOUS. Ctrl-D becomes
   (let ((character (read-char stream nil nil)))
     (cond ((null character)
            :stream-end)
-          ((char= character +escape-character+)
+          ((char= character *escape-character*)
            (input--read-escape stream escape-delay))
           (t
            (case (char-code character)

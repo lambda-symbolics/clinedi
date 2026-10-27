@@ -74,19 +74,19 @@ and CURSOR-COLUMN, clamped to the screen, and shown when CURSOR-VISIBLE-P."
 (defun frame-painter--controls (frame previous
                                 &key height width cursor-row cursor-column cursor-visible-p)
   "Return the controls drawing FRAME's rows that differ from PREVIOUS, or every row."
-  (let ((close-link (format nil "~c]8;;~c\\" +escape-character+ +escape-character+)))
+  (let ((close-link (format nil "~c]8;;~c\\" *escape-character* *escape-character*)))
     (with-output-to-string (output)
       (format output "~c[?2026h~c[?25l~c[?7l"
-              +escape-character+ +escape-character+ +escape-character+)
+              *escape-character* *escape-character* *escape-character*)
       (loop for row across frame
             for index from 0
             when (or (null previous) (string/= row (aref previous index)))
               do (format output "~c[~d;1H~c[0m~a~c[2K~a~a~c[0m"
-                         +escape-character+ (1+ index) +escape-character+ close-link
-                         +escape-character+ row close-link +escape-character+))
+                         *escape-character* (1+ index) *escape-character* close-link
+                         *escape-character* row close-link *escape-character*))
       (format output "~c[~d;~dH~c[?7h~c[?25~:[l~;h~]~c[?2026l"
-              +escape-character+
+              *escape-character*
               (1+ (max 0 (min cursor-row (1- height))))
               (1+ (max 0 (min cursor-column (1- width))))
-              +escape-character+ +escape-character+
-              cursor-visible-p +escape-character+))))
+              *escape-character* *escape-character*
+              cursor-visible-p *escape-character*))))

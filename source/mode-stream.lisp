@@ -80,11 +80,11 @@ idempotent, and the stream keeps tracking later output."
       (write-string (default-color-reset-sequence :foreground) sequence))
     (when (member :default-background imposed)
       (write-string (default-color-reset-sequence :background) sequence))
-    (format sequence "~c[0m" +escape-character+)
+    (format sequence "~c[0m" *escape-character*)
     (loop for (number name default-set-p) in *mode-tracking-private-modes*
           when (member name imposed)
             do (format sequence "~c[?~d~:[l~;h~]"
-                       +escape-character+ number default-set-p))))
+                       *escape-character* number default-set-p))))
 
 (defun mode-tracking--note (stream name imposed-p)
   "Record whether mode NAME is held away from its default in STREAM."
@@ -149,7 +149,7 @@ OSC 10 and 11 impose a default color once their payload begins; OSC 110 and
   "Advance STREAM's control parser over one output CHARACTER."
   (let ((state (mode-tracking-output-stream--state stream)))
     (cond
-      ((and (char= character +escape-character+) (not (eq state :osc)))
+      ((and (char= character *escape-character*) (not (eq state :osc)))
        (setf (mode-tracking-output-stream--state stream) :escape))
       (t
        (ecase state
@@ -182,7 +182,7 @@ OSC 10 and 11 impose a default color once their payload begins; OSC 110 and
                                             (mode-tracking--parameters stream)
                                             character)
                 (setf (mode-tracking-output-stream--state stream)
-                      (if (char= character +escape-character+) :escape :ground))))))))))
+                      (if (char= character *escape-character*) :escape :ground))))))))))
 
 (defmethod trivial-gray-streams:stream-write-char
     ((stream mode-tracking-output-stream) character)

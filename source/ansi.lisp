@@ -2,7 +2,7 @@
 
 (in-package #:clinedi)
 
-(defconstant +escape-character+ (code-char 27)
+(defparameter *escape-character* (code-char 27)
   "The ASCII escape character used in terminal control sequences.")
 
 (defvar *presentation-enabled* t
@@ -34,49 +34,49 @@ Return TEXT unchanged when presentation is disabled."
 (defun ansi-cursor-up (lines)
   "Return the sequence moving the cursor LINES up, or an empty string."
   (if (and *presentation-enabled* (plusp lines))
-      (format nil "~c[~dA" +escape-character+ lines)
+      (format nil "~c[~dA" *escape-character* lines)
       ""))
 
 (defun ansi-cursor-down (lines)
   "Return the sequence moving the cursor LINES down, or an empty string."
   (if (and *presentation-enabled* (plusp lines))
-      (format nil "~c[~dB" +escape-character+ lines)
+      (format nil "~c[~dB" *escape-character* lines)
       ""))
 
 (defun ansi-cursor-column (column)
   "Return the sequence moving the cursor to zero-based COLUMN."
   (if *presentation-enabled*
-      (format nil "~c[~dG" +escape-character+ (1+ column))
+      (format nil "~c[~dG" *escape-character* (1+ column))
       ""))
 
 (defun ansi-cursor-hide ()
   "Return the sequence that hides the terminal cursor."
   (if *presentation-enabled*
-      (format nil "~c[?25l" +escape-character+)
+      (format nil "~c[?25l" *escape-character*)
       ""))
 
 (defun ansi-cursor-show ()
   "Return the sequence that makes the terminal cursor visible."
   (if *presentation-enabled*
-      (format nil "~c[?25h" +escape-character+)
+      (format nil "~c[?25h" *escape-character*)
       ""))
 
 (defun ansi-clear-below ()
   "Return the sequence clearing from the cursor to the screen end."
   (if *presentation-enabled*
-      (format nil "~c[J" +escape-character+)
+      (format nil "~c[J" *escape-character*)
       ""))
 
 (defun ansi-clear-line-right ()
   "Return the sequence clearing from the cursor to the line end."
   (if *presentation-enabled*
-      (format nil "~c[K" +escape-character+)
+      (format nil "~c[K" *escape-character*)
       ""))
 
 (defun ansi-clear-screen ()
   "Return the sequence clearing the whole screen and homing the cursor."
   (if *presentation-enabled*
-      (format nil "~c[H~c[2J" +escape-character+ +escape-character+)
+      (format nil "~c[H~c[2J" *escape-character* *escape-character*)
       ""))
 
 (defun semantic-prompt-marker-sequence (marker &key (status 0) (redraw-p t))
@@ -123,22 +123,22 @@ LAYER is :FOREGROUND or :BACKGROUND."
 
 (defun alternate-screen-enter-sequence ()
   "Return the control switching to the alternate screen buffer, saving the cursor."
-  (format nil "~c[?1049h" +escape-character+))
+  (format nil "~c[?1049h" *escape-character*))
 
 (defun alternate-screen-leave-sequence ()
   "Return the control restoring the normal screen buffer and its cursor."
-  (format nil "~c[?1049l" +escape-character+))
+  (format nil "~c[?1049l" *escape-character*))
 
 (defun mouse-reporting-enable-sequence ()
   "Return the controls requesting button reports in SGR encoding.
 
 READ-EVENT decodes the resulting wheel reports as (:SCROLL DELTA) and left
 presses as (:CLICK COLUMN ROW)."
-  (format nil "~c[?1000h~c[?1006h" +escape-character+ +escape-character+))
+  (format nil "~c[?1000h~c[?1006h" *escape-character* *escape-character*))
 
 (defun mouse-reporting-disable-sequence ()
   "Return the controls ending SGR button reports, in reverse order of enabling."
-  (format nil "~c[?1006l~c[?1000l" +escape-character+ +escape-character+))
+  (format nil "~c[?1006l~c[?1000l" *escape-character* *escape-character*))
 
 (defun ansi--default-color-code (layer)
   "Return the OSC number of the terminal default color LAYER."
@@ -149,9 +149,9 @@ presses as (:CLICK COLUMN ROW)."
 (defun ansi--operating-system-command (payload)
   "Return PAYLOAD as an operating system command terminated by ST."
   (format nil "~c]~a~c\\"
-          +escape-character+
+          *escape-character*
           payload
-          +escape-character+))
+          *escape-character*))
 
 (defun ansi-strip (string)
   "Remove ANSI control sequences from STRING."
@@ -159,7 +159,7 @@ presses as (:CLICK COLUMN ROW)."
 
 (defun ansi--control-payload-start (string start)
   "Return the index after the introducer of the control beginning at START."
-  (if (char= (char string start) +escape-character+)
+  (if (char= (char string start) *escape-character*)
       (+ start 2)
       (1+ start)))
 
@@ -167,7 +167,7 @@ presses as (:CLICK COLUMN ROW)."
   "Return true when STRING's control between START and END selects graphic rendition."
   (and (>= (- end start) 2)
        (char= (char string (1- end)) #\m)
-       (or (and (char= (char string start) +escape-character+)
+       (or (and (char= (char string start) *escape-character*)
                 (< (1+ start) end)
                 (char= (char string (1+ start)) #\[))
            (= (char-code (char string start)) #x9b))))
@@ -183,7 +183,7 @@ presses as (:CLICK COLUMN ROW)."
 (defun ansi--hyperlink-control-p (string start end)
   "Return true when STRING's control between START and END is an OSC 8 hyperlink."
   (let ((payload-start (ansi--control-payload-start string start)))
-    (and (or (and (char= (char string start) +escape-character+)
+    (and (or (and (char= (char string start) *escape-character*)
                   (< (1+ start) end)
                   (char= (char string (1+ start)) #\]))
              (= (char-code (char string start)) #x9d))
@@ -199,7 +199,7 @@ and runs to the string terminator, which is ESC backslash, BEL or C1 ST."
   (let* ((payload-start (ansi--control-payload-start string start))
          (terminator-start (if (and (>= (- end start) 2)
                                     (char= (char string (1- end)) #\\)
-                                    (char= (char string (- end 2)) +escape-character+))
+                                    (char= (char string (- end 2)) *escape-character*))
                                (- end 2)
                                (1- end)))
          (separator (position #\; string :start (+ payload-start 2) :end end)))
@@ -244,9 +244,9 @@ scanned once however many ranges there are."
              (close-slice (slice)
                "Neutralize whatever the slice leaves open."
                (when active-hyperlink
-                 (format slice "~c]8;;~c\\" +escape-character+ +escape-character+))
+                 (format slice "~c]8;;~c\\" *escape-character* *escape-character*))
                (when active-sgr
-                 (format slice "~c[0m" +escape-character+)))
+                 (format slice "~c[0m" *escape-character*)))
 
              (scan-to (target slice)
                "Consume STRING up to visible TARGET, copying into SLICE when given."
