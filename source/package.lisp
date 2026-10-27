@@ -87,6 +87,10 @@
    #:text-cell-window
    #:wrap-text
    #:sanitize-text
+   #:text-range-error
+   #:text-range-error-text
+   #:text-range-error-start
+   #:text-range-error-end
 
    ;; ANSI presentation
    #:*presentation-enabled*

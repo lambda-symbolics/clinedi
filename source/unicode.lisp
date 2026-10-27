@@ -390,8 +390,7 @@ indivisible. START and END are character indexes and must delimit STRING."
   (check-type start (integer 0 *))
   (check-type end (integer 0 *))
   (unless (<= start end (length string))
-    (error "Invalid grapheme slice ~d..~d for a string of length ~d."
-           start end (length string)))
+    (error 'text-range-error :text string :start start :end end))
   (when (>= start end)
     (return-from grapheme-next-boundary end))
   ;; Printable ASCII never extends and is never extended by printable
@@ -457,8 +456,7 @@ modifiers and joined pictographs do not add cells to the base glyph."
   (check-type start (integer 0 *))
   (check-type end (integer 0 *))
   (unless (<= start end (length string))
-    (error "Invalid grapheme slice ~d..~d for a string of length ~d."
-           start end (length string)))
+    (error 'text-range-error :text string :start start :end end))
   ;; A single printable ASCII character is one cell in every locale.
   (when (and (= end (1+ start))
              (<= 32 (char-code (char string start)) 126))
@@ -502,8 +500,7 @@ Newlines, returns and other controls occupy no horizontal cells."
   (check-type start (integer 0 *))
   (check-type end (integer 0 *))
   (unless (<= start end (length text))
-    (error "Invalid text slice ~d..~d for a string of length ~d."
-           start end (length text)))
+    (error 'text-range-error :text text :start start :end end))
   (unicode--call-with-cell-locale
    (lambda ()
      (loop with index = start
@@ -523,8 +520,7 @@ when necessary, so the returned string never contains a partial grapheme."
   (check-type start (integer 0 *))
   (check-type end (integer 0 *))
   (unless (<= start end (length text))
-    (error "Invalid text slice ~d..~d for a string of length ~d."
-           start end (length text)))
+    (error 'text-range-error :text text :start start :end end))
   (unicode--call-with-cell-locale
    (lambda ()
      (let* ((safe-start (grapheme-boundary-at-or-after text start))
@@ -733,3 +729,27 @@ positive effective width. Nonpositive widths use an effective width of one."
         do (setf start (1+ newline))
       else
         do (return (nreverse rows)))))
+
+
+;;;; -- Conditions --
+
+(define-condition text-range-error (error)
+  ((text
+    :initarg       :text
+    :reader        text-range-error-text
+    :documentation "The string the range was meant to delimit.")
+   (start
+    :initarg       :start
+    :reader        text-range-error-start
+    :documentation "The requested start index.")
+   (end
+    :initarg       :end
+    :reader        text-range-error-end
+    :documentation "The requested end index."))
+  (:report
+   (lambda (condition stream)
+     (format stream "Invalid text slice ~D..~D for a string of length ~D."
+             (text-range-error-start condition)
+             (text-range-error-end condition)
+             (length (text-range-error-text condition)))))
+  (:documentation "A START and END pair does not delimit a slice of a string."))
