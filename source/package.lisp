@@ -106,6 +106,10 @@
    #:ansi-clear-screen
    #:semantic-prompt-marker-sequence
    #:program-status-sequence
+   #:program-status-error
+   #:program-status-error-field
+   #:program-status-error-value
+   #:program-status-error-state
    #:program-status-identifier-p
    #:program-status-text
    #:program-status-records

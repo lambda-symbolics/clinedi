@@ -43,15 +43,15 @@ is reported only as an integer percentage of :WORKING or :BLOCKED work, and is
 otherwise omitted. MESSAGE and TITLE lose their control characters and are
 truncated at whole UTF-8 characters to their octet limits."
   (unless (program-status--token-p application)
-    (error "Program status application ~S is not a short token." application))
+    (error 'program-status-error :field ':application :value application :state state))
   (unless (member state *program-status-states*)
-    (error "Program status state ~S is not one of ~S." state *program-status-states*))
+    (error 'program-status-error :field ':state :value state :state state))
   (unless (or (null id) (program-status-identifier-p id))
-    (error "Program status record identifier ~S is not a valid path." id))
+    (error 'program-status-error :field ':id :value id :state state))
   (unless (if (eq state :blocked)
               (member kind *program-status-blocked-kinds*)
               (null kind))
-    (error "Program status kind ~S does not fit state ~S." kind state))
+    (error 'program-status-error :field ':kind :value kind :state state))
   (ansi--operating-system-command
    (format nil "7501;app=~a:state=~(~a~)~@[:id=~a~]~@[:kind=~(~a~)~]~@[:progress=~d~]~@[:msg=~a~]~@[:title=~a~]"
            application state id kind
@@ -180,3 +180,34 @@ replays them right after writing one."
                                  (char alphabet (logand (ash group (* -6 (- 3 position))) #x3f))
                                  #\=)
                              stream))))))
+
+
+;;;; -- Conditions --
+
+(define-condition program-status-error (error)
+  ((field
+    :initarg       :field
+    :reader        program-status-error-field
+    :documentation "The rejected report field: :APPLICATION, :STATE, :ID or :KIND.")
+   (value
+    :initarg       :value
+    :reader        program-status-error-value
+    :documentation "The rejected value of FIELD.")
+   (state
+    :initarg       :state
+    :reader        program-status-error-state
+    :documentation "The program state the report was for."))
+  (:report
+   (lambda (condition stream)
+     (let ((value (program-status-error-value condition))
+           (state (program-status-error-state condition)))
+       (ecase (program-status-error-field condition)
+         (:application
+          (format stream "Program status application ~S is not a short token." value))
+         (:state
+          (format stream "Program status state ~S is not one of ~S." value *program-status-states*))
+         (:id
+          (format stream "Program status record identifier ~S is not a valid path." value))
+         (:kind
+          (format stream "Program status kind ~S does not fit state ~S." value state))))))
+  (:documentation "A program status report field has a value the protocol does not allow."))
