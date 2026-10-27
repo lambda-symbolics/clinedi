@@ -334,12 +334,15 @@ text cannot invoke editing commands."
   (:documentation "Restore an exact previously captured native input MODE."))
 
 (defmethod terminal-capture-input-mode ((terminal stream-terminal))
+  "Return NIL, since a plain stream terminal has no native input mode."
   (declare (ignore terminal))
   nil)
 (defmethod terminal-activate-input-mode ((terminal stream-terminal))
+  "Do nothing, since a plain stream terminal has no native input mode."
   (declare (ignore terminal))
   nil)
 (defmethod terminal-restore-input-mode ((terminal stream-terminal) mode)
+  "Do nothing, since a plain stream terminal has no native input mode."
   (declare (ignore terminal mode))
   nil)
 
@@ -359,6 +362,7 @@ concealed, so callers fail closed instead of reading a visible secret."))
   (declare (ignore terminal))
   nil)
 (defmethod terminal-restore-input-echo ((terminal stream-terminal) mode)
+  "Do nothing, since a plain stream terminal never turned echo off."
   (declare (ignore terminal mode))
   nil)
 

@@ -333,21 +333,26 @@ through the standard output or error handle of the same console."
          :eof)))
 
 (defmethod sb-gray:stream-read-char ((stream console-input-stream))
+  "Return the next character from STREAM, waiting for console input."
   (console-input-stream--next stream t))
 
 (defmethod sb-gray:stream-read-char-no-hang ((stream console-input-stream))
+  "Return the next character from STREAM, or NIL when no console input is ready."
   (console-input-stream--next stream nil))
 
 (defmethod sb-gray:stream-unread-char ((stream console-input-stream) character)
+  "Make CHARACTER the next character STREAM returns."
   (setf (console-input-stream-unread stream) character)
   nil)
 
 (defmethod sb-gray:stream-listen ((stream console-input-stream))
+  "Return true when STREAM has a buffered character or a pending console key."
   (and (not (console-input-stream-end-p stream))
        (or (console-input-stream--buffered-p stream)
            (console-input-stream--key-pending-p stream))))
 
 (defmethod sb-gray:stream-clear-input ((stream console-input-stream))
+  "Discard STREAM's buffered characters and the console's pending input."
   (setf (fill-pointer (console-input-stream-buffer stream)) 0
         (console-input-stream-position stream) 0
         (console-input-stream-unread stream) nil)
