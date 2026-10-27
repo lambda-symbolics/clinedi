@@ -1,0 +1,3 @@
+git cheque https://github.com/lambda-symbolics/cheque.git
+git trivial-glob https://github.com/fukamachi/trivial-glob.git :ref 0c2675d9452ed164970f2fc4a0e41784ebee819a
+git mallet https://github.com/fukamachi/mallet.git :ref 553c9092239e8a215dfb88650cc8facd2569be2b
