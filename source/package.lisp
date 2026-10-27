@@ -105,6 +105,8 @@
    #:ansi-clear-line-right
    #:ansi-clear-screen
    #:semantic-prompt-marker-sequence
+   #:semantic-prompt-redraw-error
+   #:semantic-prompt-redraw-error-marker
    #:program-status-sequence
    #:program-status-error
    #:program-status-error-field

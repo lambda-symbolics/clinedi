@@ -87,7 +87,7 @@ redraw=0 to :PROMPT-START, telling the terminal that the application repaints
 its own prompt after a resize; other markers accept only the default."
   (check-type status (integer 0))
   (unless (or redraw-p (eq marker :prompt-start))
-    (error "Semantic prompt marker ~S has no redraw option." marker))
+    (error 'semantic-prompt-redraw-error :marker marker))
   (let ((payload
           (ecase marker
             (:prompt-start (if redraw-p "A" "A;redraw=0"))
@@ -318,3 +318,14 @@ visible character."
      (declare (ignore condition))
      (write-string "Styled text does not preserve its plain visible content." stream)))
   (:documentation "Styled DISPLAY text does not have TEXT as its visible content."))
+
+(define-condition semantic-prompt-redraw-error (error)
+  ((marker
+    :initarg       :marker
+    :reader        semantic-prompt-redraw-error-marker
+    :documentation "The marker that was asked to turn redraw off."))
+  (:report
+   (lambda (condition stream)
+     (format stream "Semantic prompt marker ~S has no redraw option."
+             (semantic-prompt-redraw-error-marker condition))))
+  (:documentation "Redraw was turned off for a semantic prompt marker other than :PROMPT-START."))
