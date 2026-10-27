@@ -4,7 +4,7 @@
   "Create duplicate-label candidates with distinct stable identities."
   (clinedi:make-selection-session
    :items '((1 . "same red") (2 . "same blue") (3 . "other red"))
-   :identity-key #'car :search-key #'cdr :search-p search-p
+   :identity-key #'first :search-key #'rest :search-p search-p
    :initial-id 2 :query-limit query-limit :visible-count 2))
 
 (defun run-session-tests ()
@@ -56,7 +56,7 @@
            (result (clinedi:run-selection-session
                     session :read-event (lambda () (pop events))
                     :on-close (lambda () (incf closed)))))
-      (check-equal "modal event result" (second case) (car result))
+      (check-equal "modal event result" (second case) (first result))
       (check-equal "modal cleanup exactly once" 1 closed)))
   (let ((events nil) (refreshes 0) (paints 0) (polls 0) (locked-p nil))
     (declare (special locked-p))

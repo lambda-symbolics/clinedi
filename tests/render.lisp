@@ -223,7 +223,7 @@
                    (check-equal (format nil "a cursor in the hanging run of ~S starts the next row" text)
                                 (if (and (= cursor (length text)) (not (member (1- cursor) hidden)))
                                     (list (1- (length cursor-rows))
-                                          (length (first (car (last cursor-rows)))))
+                                          (length (first (first (last cursor-rows)))))
                                     '(1 0))
                                 (list row column))
                    (check-equal (format nil "the editor cursor at ~D of ~S sits on its character"

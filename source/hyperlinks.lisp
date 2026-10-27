@@ -83,8 +83,8 @@ brackets that have no opening partner inside it. A scheme alone is not a URL."
   (and (stringp value)
        (let ((ranges (url-ranges value)))
          (and (= (length ranges) 1)
-              (zerop (car (first ranges)))
-              (= (cdr (first ranges)) (length value))))))
+              (zerop (first (first ranges)))
+              (= (rest (first ranges)) (length value))))))
 
 (defun hyperlink--target-p (url)
   "Return true when URL fits an OSC 8 payload, meaning printable ASCII only."
