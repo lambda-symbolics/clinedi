@@ -369,10 +369,19 @@ A `clinedi:program-status-records` set keeps up to 63 records:
 and send changed ones, and `program-status-records-replay` resends the working
 records after an OSC 133 prompt start has expired them.
 
-## Tests
+## Development
 
 ```sh
-./check
+./script/bootstrap
+./script/check
+./script/check --fix
 ```
+
+`./script/check` runs the tests on CCL and SBCL through `./check`, then checks
+the source with [cheque](https://github.com/lambda-symbolics/cheque) as
+`cheque.sexp` configures it. `--fix` skips the tests and repairs what cheque
+can repair. cheque and its tools are development dependencies: `checks/qlfile`
+lists them, and the check installs them on first use into
+`~/.cache/cheque/tools/`. `./check` runs only the tests.
 
 Part of the [Lambda Symbolics library shelf](https://www.lambda-symbolics.com/libraries).
