@@ -545,8 +545,6 @@ return values. NIL and :IGNORED are no-op commands returning :IGNORED."
      (funcall command editor event))
     ((and (symbolp command)
           (not (keywordp command)))
-     (unless (fboundp command)
-       (error 'undefined-function :name command))
      (funcall command editor event))
     ((keywordp command)
      (ecase command
