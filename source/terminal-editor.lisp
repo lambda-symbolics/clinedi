@@ -22,7 +22,7 @@
             (rest strings)
             :initial-value (first strings))))
 
-(defun terminal-editor--replace-range (editor start end replacement)
+(defun terminal-editor--replace-range (editor replacement &key start end)
   "Replace EDITOR text from START through END with REPLACEMENT."
   (let ((text (line-editor-text editor)))
     (line-editor-set-text
@@ -100,7 +100,7 @@
 
 
 (defun terminal-completion--make-session
-    (editor start end candidates displays accept-function arrangement)
+    (editor &key start end candidates displays accept-function arrangement)
   "Create a completion session for EDITOR and preview its first candidate."
   (let* ((items (terminal-completion--candidates candidates displays))
          (selector (make-selector :items items
@@ -222,7 +222,7 @@
                 (get-output-stream-string presented))))))
 
 (defun terminal-completion--row-budget
-    (text prompt-width columns terminal-rows)
+    (text &key prompt-width columns terminal-rows)
   "Return the footer row budget beneath editor TEXT."
   (let ((layout (screen--editor-layout text prompt-width columns)))
     (max 1
@@ -288,19 +288,27 @@
              (let* ((candidate (first candidates))
                     (replacement
                       (funcall completion-accept-function candidate)))
-               (terminal-editor--replace-range
-                editor start cursor replacement)
+               (terminal-editor--replace-range editor replacement
+                                               :start start
+                                               :end   cursor)
                nil))
             (t
              (let* ((common (funcall common-prefix-function candidates))
                     (prefix-length (- cursor start)))
                (if (> (length common) prefix-length)
                    (progn
-                     (terminal-editor--replace-range editor start cursor common)
+                     (terminal-editor--replace-range editor common
+                                                     :start start
+                                                     :end   cursor)
                      nil)
                    (terminal-completion--make-session
-                    editor start cursor candidates displays
-                    completion-accept-function completion-arrangement))))))))
+                    editor
+                    :start           start
+                    :end             cursor
+                    :candidates      candidates
+                    :displays        displays
+                    :accept-function completion-accept-function
+                    :arrangement     completion-arrangement))))))))
 
 (defun terminal-editor--finish
     (editor kind &key payload prompt-width columns previous-row
@@ -337,7 +345,7 @@
      (values nil :eof))))
 
 (defun terminal-editor--fallback
-    (prompt input-stream output-stream before-prompt-function after-prompt-function)
+    (prompt &key input-stream output-stream before-prompt-function after-prompt-function)
   "Read a plain line after PROMPT when raw mode is unavailable."
   (when before-prompt-function
     (funcall before-prompt-function output-stream))
@@ -431,8 +439,11 @@ prints the final prompt line and uses ordinary READ-LINE."
               (unless raw-p
                 (return-from edit-line
                   (terminal-editor--fallback
-                   editable-prompt input-stream output-stream
-                   before-prompt-function after-prompt-function)))
+                   editable-prompt
+                   :input-stream           input-stream
+                   :output-stream          output-stream
+                   :before-prompt-function before-prompt-function
+                   :after-prompt-function  after-prompt-function)))
                (when keyboard-enhancement-p
                  (enable-keyboard-enhancement :stream output-stream))
                (when bracketed-paste-p
@@ -440,8 +451,10 @@ prints the final prompt line and uses ordinary READ-LINE."
               (when before-prompt-function
                 (funcall before-prompt-function output-stream))
                (setf previous-row
-                     (render--write-prompt editable-prompt prompt-width columns
-                                           output-stream))
+                     (render--write-prompt editable-prompt
+                                           :prompt-width prompt-width
+                                           :columns      columns
+                                           :stream       output-stream))
               (when after-prompt-function
                 (funcall after-prompt-function output-stream))
                (labels ((refresh-terminal-size ()
@@ -544,8 +557,10 @@ prints the final prompt line and uses ordinary READ-LINE."
                                                   :stream output-stream)
                                    (setf previous-row
                                          (render--write-prompt
-                                          editable-prompt prompt-width columns
-                                          output-stream)
+                                          editable-prompt
+                                          :prompt-width prompt-width
+                                          :columns      columns
+                                          :stream       output-stream)
                                          rendered-text ""
                                          rendered-cursor 0))
                                   ((:continue :escape :ignored)
@@ -569,7 +584,9 @@ prints the final prompt line and uses ordinary READ-LINE."
                           columns
                           (terminal-completion--row-budget
                            (line-editor-text editor)
-                           prompt-width columns rows))))
+                           :prompt-width  prompt-width
+                           :columns       columns
+                           :terminal-rows rows))))
                      (setf previous-row
                            (render-line
                             (line-editor-text editor)

@@ -99,7 +99,7 @@ still needs to be materialized."
                        (setf index next))))))
        (nreverse starts)))))
 
-(defun screen--row-count (text columns start end)
+(defun screen--row-count (text &key columns start end)
   "Return the physical row count for TEXT between START and END."
   (multiple-value-bind (row column pending-wrap)
       (screen-position text :columns columns :start start :end end)
@@ -495,7 +495,7 @@ are extended-grapheme boundaries."
                     (length text))))
       (setf start (min start safe-cursor)
             end (max end safe-cursor))
-      (loop while (> (screen--row-count text columns start end) rows)
+      (loop while (> (screen--row-count text :columns columns :start start :end end) rows)
             do (cond
                  ((> end safe-cursor)
                   (setf end (grapheme-previous-boundary text end)))
@@ -534,7 +534,7 @@ are extended-grapheme boundaries."
                (write-char character stream)))
   (values))
 
-(defun render--write-prompt (prompt prompt-width columns stream)
+(defun render--write-prompt (prompt &key prompt-width columns stream)
   "Write the static editable PROMPT and return its ending row."
   (write-string prompt stream)
   (multiple-value-bind (row column pending-wrap)

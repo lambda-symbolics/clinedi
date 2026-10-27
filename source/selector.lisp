@@ -130,7 +130,7 @@ end and never exceeds SELECTOR-VISIBLE-COUNT."
                    (max (aref column-widths column) width)))
     (coerce column-widths 'list)))
 
-(defun selector--fitting-column-count (selector widths columns column-gap)
+(defun selector--fitting-column-count (selector widths &key columns column-gap)
   "Return the widest permitted column count fitting WIDTHS in COLUMNS."
   (if (eq (selector-arrangement selector) :vertical)
       1
@@ -176,8 +176,9 @@ to SELECTOR-ITEMS, and the second value contains each column's measured width."
                                   :expected-type '(integer 0 *)))
                       collect width)))
           (let* ((column-count
-                   (selector--fitting-column-count
-                    selector widths columns column-gap))
+                   (selector--fitting-column-count selector widths
+                                                   :columns    columns
+                                                   :column-gap column-gap))
                  (column-widths
                    (selector--column-widths widths column-count)))
             (setf (slot-value selector 'column-count) column-count)

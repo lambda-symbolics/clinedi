@@ -202,7 +202,7 @@
    text cursor (live-region-columns region)))
 
 (defun live-region--write-presentation
-    (stream display end-row cursor-row cursor-column pending-wrap)
+    (stream display &key end-row cursor-row cursor-column pending-wrap)
   "Write DISPLAY and its logical cursor placement to STREAM."
   (write-display display :stream stream)
   (when pending-wrap
@@ -212,7 +212,7 @@
   (values))
 
 (defun live-region--record-presentation
-    (region end-row cursor-row cursor-column)
+    (region &key end-row cursor-row cursor-column)
   "Record REGION's painted END-ROW and cursor geometry."
   (setf (live-region-row-count region) (1+ end-row)
         (live-region-cursor-row region) cursor-row
@@ -228,8 +228,10 @@
     (multiple-value-bind (end-row cursor-row cursor-column pending-wrap)
         (live-region--text-geometry text cursor columns)
       (declare (ignore pending-wrap))
-      (live-region--record-presentation
-       region end-row cursor-row cursor-column))))
+      (live-region--record-presentation region
+                                        :end-row       end-row
+                                        :cursor-row    cursor-row
+                                        :cursor-column cursor-column))))
 
 (defun live-region--paint (region)
   "Paint REGION's retained presentation and restore its logical cursor."
@@ -242,14 +244,19 @@
       (live-region--emit-update
        region
        (lambda (stream)
-         (live-region--write-presentation
-          stream display end-row cursor-row cursor-column pending-wrap)))
-      (live-region--record-presentation
-       region end-row cursor-row cursor-column)))
+         (live-region--write-presentation stream display
+                                          :end-row       end-row
+                                          :cursor-row    cursor-row
+                                          :cursor-column cursor-column
+                                          :pending-wrap  pending-wrap)))
+      (live-region--record-presentation region
+                                        :end-row       end-row
+                                        :cursor-row    cursor-row
+                                        :cursor-column cursor-column)))
   region)
 
 (defun live-region--replace
-    (region text display cursor appended-text appended-display)
+    (region text &key display cursor (appended-text "") (appended-display ""))
   "Replace REGION, atomically writing optional appended scrollback first."
   (setf (live-region--text region) (copy-seq text)
         (live-region--display region) (copy-seq display)
@@ -270,11 +277,15 @@
            (unless (char= (char appended-text (1- (length appended-text)))
                           #\newline)
              (live-region--write-newline stream)))
-         (live-region--write-presentation
-          stream window-display end-row cursor-row cursor-column
-          pending-wrap)))
-      (live-region--record-presentation
-       region end-row cursor-row cursor-column)))
+         (live-region--write-presentation stream window-display
+                                          :end-row       end-row
+                                          :cursor-row    cursor-row
+                                          :cursor-column cursor-column
+                                          :pending-wrap  pending-wrap)))
+      (live-region--record-presentation region
+                                        :end-row       end-row
+                                        :cursor-row    cursor-row
+                                        :cursor-column cursor-column)))
   region)
 
 
@@ -363,7 +374,7 @@ content. CURSOR is normalized to a complete grapheme boundary within TEXT."
           (grapheme-boundary-at-or-after
            text
            (min (length text) (max 0 cursor)))))
-    (live-region--replace region text display safe-cursor "" "")))
+    (live-region--replace region text :display display :cursor safe-cursor)))
 
 (defun live-region-append-and-present
     (region appended-text text
@@ -384,8 +395,11 @@ normalized to a complete grapheme boundary within TEXT."
           (grapheme-boundary-at-or-after
            text
            (min (length text) (max 0 cursor)))))
-    (live-region--replace region text display safe-cursor
-                          appended-text appended-display)))
+    (live-region--replace region text
+                          :display          display
+                          :cursor           safe-cursor
+                          :appended-text    appended-text
+                          :appended-display appended-display)))
 
 (defun live-region-append (region text &key (display text))
   "Append TEXT to ordinary scrollback and repaint REGION beneath it.
@@ -449,5 +463,5 @@ atomic frame."
       (when maximum-rows-p
         (setf (live-region-maximum-rows region) maximum-rows))
       (when (and visible-p repaint-p)
-        (live-region--replace region text display cursor "" ""))))
+        (live-region--replace region text :display display :cursor cursor))))
   region)

@@ -350,7 +350,7 @@
         (null function)
         (not (null (funcall function query entry))))))
 
-(defun line-editor--history-matching-index (editor query start direction)
+(defun line-editor--history-matching-index (editor query &key start direction)
   "Find a history entry matching QUERY from START in DIRECTION."
   (let ((history (slot-value editor 'history)))
     (loop for index = start then (+ index direction)
@@ -368,8 +368,8 @@
                       (line-editor-text editor)))
          (match   (line-editor--history-matching-index
                    editor query
-                   (if index (1- index) (1- (length history)))
-                   -1)))
+                   :start     (if index (1- index) (1- (length history)))
+                   :direction -1)))
     (when match
       (unless index
         (setf (slot-value editor 'history-stash) (copy-seq query)
@@ -388,7 +388,7 @@
       (let* ((draft (slot-value editor 'history-stash))
              (next-index
                (line-editor--history-matching-index
-                editor draft (1+ index) 1)))
+                editor draft :start (1+ index) :direction 1)))
         (if next-index
             (let ((entry (aref history next-index)))
               (setf (slot-value editor 'history-index) next-index)

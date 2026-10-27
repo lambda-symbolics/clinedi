@@ -224,8 +224,10 @@
                            restores)))))))
   (check-equal "completion budget follows soft-wrapped editor rows"
                1
-               (clinedi::terminal-completion--row-budget
-                "aaa aaa aaa" 0 6 4))
+               (clinedi::terminal-completion--row-budget "aaa aaa aaa"
+                                                          :prompt-width  0
+                                                          :columns       6
+                                                          :terminal-rows 4))
   (multiple-value-bind (line kind output restores)
       (terminal-editor-test--read
        (format nil "first~c~csecond~%" (code-char 27) #\return)

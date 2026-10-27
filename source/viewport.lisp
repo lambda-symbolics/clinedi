@@ -263,7 +263,7 @@ the wrapped rows, outside the layout, or beyond a row's last cell return NIL."
              (text (viewport-chunk-text chunk))
              (start (viewport-row-offset anchor))
              (end (min (length text) (+ start (viewport-row-length anchor))))
-             (index (viewport--column-character-index text start end column)))
+             (index (viewport--column-character-index text column :start start :end end)))
         (when index
           (values (loop for (region-start region-end action) in (viewport-chunk-regions chunk)
                         when (and (<= region-start index) (< index region-end))
@@ -302,7 +302,7 @@ Only appends and scrolling are undone; take a new checkpoint after a resize."
              (when (and (< offset (length text)) (char= (char text offset) #\Newline))
                (incf offset)))))
 
-(defun viewport--column-character-index (text start end column)
+(defun viewport--column-character-index (text column &key start end)
   "Return the index of the character of TEXT between START and END shown at COLUMN.
 
 COLUMN is one-based. Zero-width characters belong to the cell before them and
