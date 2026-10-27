@@ -3,9 +3,9 @@
 ;;;; -- Terminal Methods --
 
 (defparameter *terminal-window-size-request*
-  #+linux #x5413
-  #+bsd #x40087468
-  #-(or linux bsd) #x5413
+  (if (member :bsd *features*)
+      #x40087468
+      #x5413)
   "The platform TIOCGWINSZ ioctl request for reading terminal dimensions.")
 (defun terminal-file-descriptor-size (file-descriptor)
   "Return positive terminal rows and columns for FILE-DESCRIPTOR, or NIL values."
