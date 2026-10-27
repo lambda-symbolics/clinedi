@@ -41,6 +41,7 @@
                 :serial t
                 :components
                 ((:file "package")
+                 (:file "assertions")
                  (:file "unicode")
                  (:file "hyperlinks")
                  (:file "program-status")
