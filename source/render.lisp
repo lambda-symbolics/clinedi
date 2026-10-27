@@ -211,10 +211,8 @@ word wrapping shows it: the display replaces the whole run with one newline
 that consumes the pending wrap, the hidden source indexes are listed, and a
 cursor inside the run sits at the start of the next row."
   (check-type text string)
-  (unless (and (integerp columns) (plusp columns))
-    (error 'type-error :datum columns :expected-type '(integer 1 *)))
-  (unless (and (integerp prompt-width) (not (minusp prompt-width)))
-    (error 'type-error :datum prompt-width :expected-type '(integer 0 *)))
+  (check-type columns (integer 1 *))
+  (check-type prompt-width (integer 0 *))
   (unless (and (integerp stable-end) (<= 0 stable-end (length text)))
     (error 'type-error
            :datum stable-end
@@ -378,8 +376,7 @@ string. Words wider than COLUMNS still wrap by grapheme."
   (check-type text string)
   (check-type display string)
   (check-type cursor integer)
-  (unless (and (integerp columns) (plusp columns))
-    (error 'type-error :datum columns :expected-type '(integer 1 *)))
+  (check-type columns (integer 1 *))
   (unless (string= text (ansi-strip display))
     (error 'styled-text-error :text text :display display))
   (let* ((safe-cursor
@@ -429,12 +426,9 @@ DIRECTION is -1 for the previous row or 1 for the next row. COLUMNS and
 PROMPT-WIDTH describe the current terminal layout in cells. Repeated movement
 retains the original preferred cell column across shorter rows."
   (check-type editor line-editor)
-  (unless (member direction '(-1 1))
-    (error 'type-error :datum direction :expected-type '(member -1 1)))
-  (unless (and (integerp columns) (plusp columns))
-    (error 'type-error :datum columns :expected-type '(integer 1 *)))
-  (unless (and (integerp prompt-width) (not (minusp prompt-width)))
-    (error 'type-error :datum prompt-width :expected-type '(integer 0 *)))
+  (check-type direction (member -1 1))
+  (check-type columns (integer 1 *))
+  (check-type prompt-width (integer 0 *))
   (let* ((layout
            (screen--editor-layout
             (line-editor-text editor) prompt-width columns))
@@ -469,10 +463,8 @@ The values are start index, end index, cursor index relative to the window,
 whether content precedes the window, and whether content follows it. Indexes
 are extended-grapheme boundaries."
   (check-type text string)
-  (unless (and (integerp columns) (plusp columns))
-    (error 'type-error :datum columns :expected-type '(integer 1 *)))
-  (unless (and (integerp rows) (plusp rows))
-    (error 'type-error :datum rows :expected-type '(integer 1 *)))
+  (check-type columns (integer 1 *))
+  (check-type rows (integer 1 *))
   (check-type cursor integer)
   (let* ((safe-cursor
            (grapheme-boundary-at-or-after

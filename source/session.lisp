@@ -156,6 +156,7 @@ except READ-EVENT, INPUT-READY-P and WAIT run through CALL-WITH-LOCK."
                   (let ((custom (and on-event
                                       (funcall on-event event
                                                (selection-session-selector session)))))
+                    (check-type custom (or null (eql :continue) (cons (member :accept :cancel))))
                     (cond
                       ((null custom)
                        (multiple-value-bind (action item)
@@ -167,8 +168,5 @@ except READ-EVENT, INPUT-READY-P and WAIT run through CALL-WITH-LOCK."
                       ((and (consp custom) (eq (first custom) ':accept))
                        (return-from run-selection-session (second custom)))
                       ((and (consp custom) (eq (first custom) ':cancel))
-                       (return-from run-selection-session nil))
-                      (t
-                       (error 'type-error :datum custom
-                              :expected-type '(or null (eql :continue) cons))))))))))
+                       (return-from run-selection-session nil)))))))))
       (when on-close (locked on-close)))))

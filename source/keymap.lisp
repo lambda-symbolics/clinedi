@@ -27,14 +27,10 @@ the parent chain."))
 PARENT must be another keymap or NIL. BINDINGS is an association list whose
 entries are dotted EVENT-to-COMMAND pairs. Events and command values are
 retained as application-owned objects."
-  (unless (or (null parent) (typep parent 'keymap))
-    (error 'type-error
-           :datum parent
-           :expected-type '(or null keymap)))
+  (check-type parent (or null keymap))
   (let ((keymap (make-instance 'keymap :parent parent)))
     (dolist (binding bindings)
-      (unless (consp binding)
-        (error 'type-error :datum binding :expected-type 'cons))
+      (check-type binding cons)
       (keymap-bind keymap (first binding) (rest binding)))
     keymap))
 

@@ -100,8 +100,7 @@
 
 (defun line-editor--make-history (history history-limit)
   "Copy the newest HISTORY entries into an adjustable vector."
-  (unless (typep history 'sequence)
-    (error 'type-error :datum history :expected-type 'sequence))
+  (check-type history sequence)
   (let* ((length (length history))
          (start  (max 0 (- length history-limit)))
          (copy   (make-array (max 1 (- length start))
@@ -109,8 +108,7 @@
                              :fill-pointer 0)))
     (loop for index from start below length
           for entry = (elt history index)
-          do (unless (stringp entry)
-               (error 'type-error :datum entry :expected-type 'string))
+          do (check-type entry string)
              (vector-push-extend (copy-seq entry) copy))
     copy))
 
@@ -427,15 +425,8 @@ When WORD-DELIMITER-MODE-P is true, WORD-DELIMITERS separate words for Ctrl-Left
 Ctrl-Right and Ctrl-Backspace behavior. WORD-DELIMITERS defaults to hyphen,
 underscore, slash, dot, and colon, and is copied into the editor."
   (check-type text string)
-  (unless (and (integerp history-limit) (plusp history-limit))
-    (error 'type-error
-           :datum history-limit
-           :expected-type '(integer 1 *)))
-  (unless (or (null history-match-function)
-              (functionp history-match-function))
-    (error 'type-error
-           :datum history-match-function
-           :expected-type '(or null function)))
+  (check-type history-limit (integer 1 *))
+  (check-type history-match-function (or null function))
   (check-type keymap keymap)
   (check-type auto-pair-p boolean)
   (check-type word-delimiter-mode-p boolean)
@@ -546,6 +537,7 @@ Standard keyword commands implement Clinedi editing behavior. A function or a
 non-keyword fbound symbol is called with EDITOR and EVENT and controls both
 return values. NIL and :IGNORED are no-op commands returning :IGNORED."
   (check-type editor line-editor)
+  (check-type command (or function symbol))
   (cond
     ((null command)
      (values :ignored nil))
@@ -557,7 +549,7 @@ return values. NIL and :IGNORED are no-op commands returning :IGNORED."
        (error 'undefined-function :name command))
      (funcall command editor event))
     ((keywordp command)
-     (case command
+     (ecase command
        (:insert
         (line-editor--insert-typed-text
          editor (line-editor--require-event-text event :insert))
@@ -661,24 +653,7 @@ return values. NIL and :IGNORED are no-op commands returning :IGNORED."
        (:clear-screen
         (values :clear-screen nil))
        ((:ignore :ignored)
-        (values :ignored nil))
-       (otherwise
-        (error 'type-error
-               :datum command
-               :expected-type '(member
-                                :insert :paste :insert-newline :line
-                                :left :right :word-left :word-right
-                                :toggle-word-delimiter-mode :home :end
-                                :backspace :delete :history-previous :history-next
-                                :kill-to-end :kill-line :kill-word
-                                :kill-word-right
-                                :complete :complete-previous :up :down :submit
-                                :interrupt :end-of-input :stream-end :escape
-                                :clear-screen :ignore :ignored)))))
-    (t
-     (error 'type-error
-            :datum command
-            :expected-type '(or function symbol)))))
+        (values :ignored nil))))))
 
 (defun line-editor-handle-event (editor event)
   "Resolve and apply semantic EVENT, returning an action and optional payload.

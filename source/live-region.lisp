@@ -89,12 +89,8 @@
                               (write-function #'live-region--standard-write)
                               (flush-function #'live-region--standard-flush))
   "Create a live region using COLUMNS, optional MAXIMUM-ROWS, and callbacks."
-  (unless (and (integerp columns) (plusp columns))
-    (error 'type-error :datum columns :expected-type '(integer 1 *)))
-  (unless (or (null maximum-rows)
-              (and (integerp maximum-rows) (plusp maximum-rows)))
-    (error 'type-error :datum maximum-rows
-                       :expected-type '(or null (integer 1 *))))
+  (check-type columns (integer 1 *))
+  (check-type maximum-rows (or null (integer 1 *)))
   (check-type write-function function)
   (check-type flush-function function)
   (make-instance 'live-region
@@ -442,13 +438,8 @@ When REPAINT-P is false, record the terminal's reflowed geometry but leave the
 painted content in place. A following presentation can then replace it in one
 atomic frame."
   (check-type region live-region)
-  (unless (and (integerp columns) (plusp columns))
-    (error 'type-error :datum columns :expected-type '(integer 1 *)))
-  (when maximum-rows-p
-    (unless (or (null maximum-rows)
-                (and (integerp maximum-rows) (plusp maximum-rows)))
-      (error 'type-error :datum maximum-rows
-                         :expected-type '(or null (integer 1 *)))))
+  (check-type columns (integer 1 *))
+  (check-type maximum-rows (or null (integer 1 *)))
   (check-type repaint-p boolean)
   (unless (and (= columns (live-region-columns region))
                (or (not maximum-rows-p)

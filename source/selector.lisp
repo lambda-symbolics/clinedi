@@ -36,8 +36,7 @@ descriptions, filtering, styling and accepted-value semantics."))
 
 (defun selector--copy-items (items)
   "Return a fresh list containing the candidate values from ITEMS."
-  (unless (typep items 'sequence)
-    (error 'type-error :datum items :expected-type 'sequence))
+  (check-type items sequence)
   (loop for item across (coerce items 'vector)
         collect item))
 
@@ -49,14 +48,8 @@ VISIBLE-COUNT must be positive. The sequence container is copied, while its
 opaque candidate values are retained. ARRANGEMENT is :VERTICAL for one item
 per row or :GRID for as many measured columns as the available width permits.
 An empty selector has no selected item."
-  (unless (and (integerp visible-count) (plusp visible-count))
-    (error 'type-error
-           :datum visible-count
-           :expected-type '(integer 1 *)))
-  (unless (member arrangement '(:vertical :grid))
-    (error 'type-error
-           :datum arrangement
-           :expected-type '(member :vertical :grid)))
+  (check-type visible-count (integer 1 *))
+  (check-type arrangement (member :vertical :grid))
   (make-instance 'selector
                  :items (selector--copy-items items)
                  :visible-count visible-count
@@ -156,10 +149,8 @@ selectors always return one index per row. Grid selectors choose the greatest
 row-major column count whose measured columns fit. The returned indexes refer
 to SELECTOR-ITEMS, and the second value contains each column's measured width."
   (check-type selector selector)
-  (unless (and (integerp columns) (plusp columns))
-    (error 'type-error :datum columns :expected-type '(integer 1 *)))
-  (unless (and (integerp column-gap) (not (minusp column-gap)))
-    (error 'type-error :datum column-gap :expected-type '(integer 0 *)))
+  (check-type columns (integer 1 *))
+  (check-type column-gap (integer 0 *))
   (multiple-value-bind (visible-items start local-selection)
       (selector-window selector)
     (declare (ignore local-selection))
@@ -170,10 +161,7 @@ to SELECTOR-ITEMS, and the second value contains each column's measured width."
         (let ((widths
                 (loop for item in visible-items
                       for width = (funcall width-function item)
-                      do (unless (and (integerp width) (not (minusp width)))
-                           (error 'type-error
-                                  :datum width
-                                  :expected-type '(integer 0 *)))
+                      do (check-type width (integer 0 *))
                       collect width)))
           (let* ((column-count
                    (selector--fitting-column-count selector widths

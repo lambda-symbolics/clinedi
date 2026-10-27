@@ -410,10 +410,7 @@ for redraws, so applications can emit one-shot trusted prompt boundary controls.
 
 When raw mode is unavailable, this function invokes the same boundary callbacks,
 prints the final prompt line and uses ordinary READ-LINE."
-  (unless (member completion-arrangement '(:vertical :grid))
-    (error 'type-error
-           :datum completion-arrangement
-           :expected-type '(member :vertical :grid)))
+  (check-type completion-arrangement (member :vertical :grid))
   (multiple-value-bind (preamble editable-prompt)
       (split-prompt prompt)
     (multiple-value-bind (rows columns)
