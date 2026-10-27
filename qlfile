@@ -1,0 +1,3 @@
+ql bordeaux-threads 2026-01-01
+ql trivial-gray-streams 2026-01-01
+git cl-colorist https://github.com/lambda-symbolics/cl-colorist.git :ref a70749493fbdbe79d6766f254a664119042102b9
