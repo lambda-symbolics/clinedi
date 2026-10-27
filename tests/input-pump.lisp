@@ -3,9 +3,12 @@
 ;;;; -- Input pump --
 
 (defclass input-pump-tests--source ()
-  ((lock :initform (bt2:make-lock :name "input pump test source") :reader source-lock)
-   (pending :initform nil :accessor source-pending)
-   (handled :initform nil :accessor source-handled))
+  ((lock :initform (bt2:make-lock :name "input pump test source") :reader source-lock
+         :documentation "The lock guarding the pending and handled events.")
+   (pending :initform nil :accessor source-pending
+            :documentation "The events still to be read, oldest first.")
+   (handled :initform nil :accessor source-handled
+            :documentation "The events the pump handled, newest first."))
   (:documentation "A queue of fake terminal events and the events a pump handled."))
 
 (defun input-pump-tests--push (source &rest events)

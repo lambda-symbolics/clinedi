@@ -514,12 +514,14 @@
   (:documentation "A stream terminal recording concealment instead of changing a tty."))
 
 (defmethod clinedi:terminal-disable-input-echo ((terminal concealed-test-terminal))
+  "Record the echo change, or signal TERMINAL-ERROR when TERMINAL refuses it."
   (when (concealed-test-terminal-refuse-p terminal)
     (error 'clinedi:terminal-error :message "refused" :operation :conceal))
   (push :disable (concealed-test-terminal-events terminal))
   :saved-mode)
 
 (defmethod clinedi:terminal-restore-input-echo ((terminal concealed-test-terminal) mode)
+  "Record the restore of MODE."
   (push (list :restore mode) (concealed-test-terminal-events terminal)))
 
 (defclass concealed-test-failing-stream (trivial-gray-streams:fundamental-character-input-stream)
@@ -527,6 +529,7 @@
   (:documentation "An input stream failing on its first read."))
 
 (defmethod trivial-gray-streams:stream-read-char ((stream concealed-test-failing-stream))
+  "Signal an error, as a failing read does."
   (error "synthetic input failure"))
 
 (defun concealed-test--terminal (input &rest arguments)
@@ -596,17 +599,22 @@
     (error "Injected lifecycle failure at ~S" event)))
 
 (defmethod clinedi:terminal-capture-input-mode ((terminal lifecycle-terminal))
+  "Record the capture and return a fixed mode."
   (lifecycle-note terminal ':capture)
   ':saved)
 (defmethod clinedi:terminal-activate-input-mode ((terminal lifecycle-terminal))
+  "Record the activation."
   (lifecycle-note terminal ':activate))
 (defmethod clinedi:terminal-restore-input-mode ((terminal lifecycle-terminal) mode)
+  "Check that MODE is the captured mode and record the restore."
   (check-equal "restore exact mode snapshot" ':saved mode)
   (lifecycle-note terminal ':restore))
 (defmethod clinedi:terminal-write ((terminal lifecycle-terminal) text)
+  "Record the write by its number."
   (declare (ignore text))
   (lifecycle-note terminal (incf (lifecycle-writes terminal))))
 (defmethod clinedi:terminal-flush ((terminal lifecycle-terminal))
+  "Record the flush."
   (lifecycle-note terminal ':flush))
 
 (defun run-transport-lifecycle-tests ()
