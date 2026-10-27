@@ -259,6 +259,8 @@
    #:live-region-resume
    #:live-region-dismiss
    #:live-region-resize
+   #:live-region-text-error
+   #:live-region-text-error-text
    #:call-with-live-region-suspended
    #:with-live-region-suspended
 

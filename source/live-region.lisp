@@ -117,7 +117,7 @@
   (check-type text string)
   (check-type display string)
   (unless (live-region--geometry-text-p text)
-    (error "Live-region geometry text contains an unmodeled terminal control."))
+    (error 'live-region-text-error :text text))
   (unless (string= text (ansi-strip display))
     (error 'styled-text-error :text text :display display))
   (values))
@@ -465,3 +465,17 @@ atomic frame."
       (when (and visible-p repaint-p)
         (live-region--replace region text :display display :cursor cursor))))
   region)
+
+
+;;;; -- Conditions --
+
+(define-condition live-region-text-error (error)
+  ((text
+    :initarg       :text
+    :reader        live-region-text-error-text
+    :documentation "The rejected text."))
+  (:report
+   (lambda (condition stream)
+     (declare (ignore condition))
+     (write-string "Live-region geometry text contains an unmodeled terminal control." stream)))
+  (:documentation "Live-region text holds a control character whose cursor motion the region cannot model."))
