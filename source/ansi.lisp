@@ -108,8 +108,7 @@ Control characters are removed and newlines become spaces."
 LAYER is :FOREGROUND or :BACKGROUND; COLOR is a Colorist RGB color."
   (unless (and (cl-colorist:color-p color)
                (eq (cl-colorist:color-kind color) :rgb))
-    (error "Terminal default ~(~a~) color ~S is not a Colorist RGB color."
-           layer color))
+    (error 'default-color-error :layer layer :color color))
   (destructuring-bind (red green blue) (cl-colorist:color-value color)
     (ansi--operating-system-command
      (format nil "~d;rgb:~2,'0x/~2,'0x/~2,'0x"
@@ -329,3 +328,19 @@ visible character."
      (format stream "Semantic prompt marker ~S has no redraw option."
              (semantic-prompt-redraw-error-marker condition))))
   (:documentation "Redraw was turned off for a semantic prompt marker other than :PROMPT-START."))
+
+(define-condition default-color-error (error)
+  ((layer
+    :initarg       :layer
+    :reader        default-color-error-layer
+    :documentation "The terminal color layer, :FOREGROUND or :BACKGROUND.")
+   (color
+    :initarg       :color
+    :reader        default-color-error-color
+    :documentation "The rejected color."))
+  (:report
+   (lambda (condition stream)
+     (format stream "Terminal default ~(~a~) color ~S is not a Colorist RGB color."
+             (default-color-error-layer condition)
+             (default-color-error-color condition))))
+  (:documentation "A terminal default color is not a Colorist RGB color."))

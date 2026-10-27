@@ -125,6 +125,9 @@
    #:*program-status-message-octets*
    #:window-title-sequence
    #:default-color-sequence
+   #:default-color-error
+   #:default-color-error-layer
+   #:default-color-error-color
    #:default-color-reset-sequence
    #:alternate-screen-enter-sequence
    #:alternate-screen-leave-sequence
