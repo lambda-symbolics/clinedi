@@ -1,6 +1,7 @@
 ;;;; -- Test package --
 
 (defpackage #:clinedi/tests
+  (:documentation "Regression tests for Clinedi.")
   (:use #:cl)
   (:import-from #:clinedi
                 #:program-status-sequence
