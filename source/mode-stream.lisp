@@ -21,24 +21,24 @@ the normal screen then receives the remaining resets before synchronization ends
 (defclass mode-tracking-output-stream
     (trivial-gray-streams:fundamental-character-output-stream)
   ((output
-    :initarg :output
-    :reader mode-tracking-output-stream-output
+    :initarg       :output
+    :reader        mode-tracking-output-stream-output
     :documentation "The destination receiving every character unchanged.")
    (state
-    :initform :ground
-    :accessor mode-tracking-output-stream--state
+    :initform      :ground
+    :accessor      mode-tracking-output-stream--state
     :documentation "The control parser state: :GROUND, :ESCAPE, :CSI, :PRIVATE or :OSC.")
    (parameters
-    :initform (make-string-output-stream)
-    :accessor mode-tracking-output-stream--parameters
+    :initform      (make-string-output-stream)
+    :accessor      mode-tracking-output-stream--parameters
     :documentation "Parameter characters of the control being parsed.")
    (parameter-count
-    :initform 0
-    :accessor mode-tracking-output-stream--parameter-count
+    :initform      0
+    :accessor      mode-tracking-output-stream--parameter-count
     :documentation "Characters collected into PARAMETERS.")
    (imposed
-    :initform nil
-    :accessor mode-tracking-output-stream--imposed
+    :initform      nil
+    :accessor      mode-tracking-output-stream--imposed
     :documentation "Names of the modes the output currently holds away from their defaults."))
   (:documentation
    "Forward output while tracking the terminal modes it imposes.
@@ -66,7 +66,7 @@ Names are :ALTERNATE-SCREEN, :MOUSE-REPORTING, :SGR-MOUSE-ENCODING,
 Return the restored mode names, or NIL when nothing was imposed. Restoring is
 idempotent, and the stream keeps tracking later output."
   (let ((imposed (mode-tracking-output-stream--imposed stream))
-        (output (mode-tracking-output-stream-output stream)))
+        (output  (mode-tracking-output-stream-output stream)))
     (when imposed
       (setf (mode-tracking-output-stream--imposed stream) nil)
       (write-string (mode-tracking--restore-sequence imposed) output)
@@ -157,9 +157,12 @@ OSC 10 and 11 impose a default color once their payload begins; OSC 110 and
           nil)
          (:escape
           (case character
-            (#\[ (mode-tracking--begin stream :csi))
-            (#\] (mode-tracking--begin stream :osc))
-            (t (setf (mode-tracking-output-stream--state stream) :ground))))
+            (#\[
+             (mode-tracking--begin stream :csi))
+            (#\]
+             (mode-tracking--begin stream :osc))
+            (t
+             (setf (mode-tracking-output-stream--state stream) :ground))))
          (:csi
           (setf (mode-tracking-output-stream--state stream)
                 (if (char= character #\?) :private :ground)))

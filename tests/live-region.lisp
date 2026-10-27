@@ -21,12 +21,12 @@
 
 (defun run-live-region-tests ()
   "Run scrollback-safe live-region lifecycle regression tests."
-  (let ((stream (make-string-output-stream))
-        (flushes 0)
-        (writes 0)
-        (write-log (make-array 0 :adjustable t :fill-pointer 0))
+  (let ((stream       (make-string-output-stream))
+        (flushes      0)
+        (writes       0)
+        (write-log    (make-array 0 :adjustable t :fill-pointer 0))
         (cursor-shows 0)
-        (last-write ""))
+        (last-write   ""))
     (let* ((write-function
              (lambda (text)
                (incf writes)
@@ -37,7 +37,7 @@
                (write-string text stream)))
            (region
              (make-live-region
-              :columns 6
+              :columns        6
               :write-function write-function
               :flush-function (lambda () (incf flushes))))
            (text (format nil "> abcdef~%x~%")))
@@ -68,15 +68,15 @@
                      1
                      (- writes previous-writes)))
       (let ((previous-flushes flushes)
-            (previous-writes writes)
-            (replacement (format nil "> updated~%")))
+            (previous-writes  writes)
+            (replacement      (format nil "> updated~%")))
         (live-region-append-and-present
          region
          (format nil "STREAMED~%")
          replacement
-         :cursor 3
+         :cursor           3
          :appended-display (ansi-colorize (format nil "STREAMED~%") :blue)
-         :display (ansi-colorize replacement :green))
+         :display          (ansi-colorize replacement :green))
         (check-equal "atomic append and repaint uses one terminal write"
                      1
                      (- writes previous-writes))
@@ -148,7 +148,7 @@
       (check-true "viewport caps retained multiline content"
                   (<= (live-region-row-count region) 2))
       (live-region-present region text
-                           :cursor (length text)
+                           :cursor  (length text)
                            :display (ansi-colorize text :green))
       (check-true "viewport follows the cursor through styled content"
                   (<= (live-region-row-count region) 2))
@@ -179,7 +179,7 @@
                text
                :foreground (cl-colorist:indexed-color 114 :fallback :green)
                :background (cl-colorist:indexed-color 236 :fallback :black)
-               :level :indexed)))
+               :level      :indexed)))
         (live-region-present region text :cursor 0 :display styled)
         (check-true "live region accepts indexed foreground and background"
                     (search (format nil "~c[38;5;114;48;5;236m"

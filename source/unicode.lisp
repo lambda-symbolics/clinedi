@@ -173,7 +173,7 @@
     (ccl::with-utf-8-cstr (encoded name)
       (let ((locale
               (ccl:external-call "newlocale"
-                                 :int +unicode-lc-ctype-mask+
+                                 :int     +unicode-lc-ctype-mask+
                                  :address encoded
                                  :address (ccl:%null-ptr)
                                  :address)))
@@ -341,7 +341,7 @@ through USELOCALE is safe. The cached locale is deliberately never freed."
 
 (defun unicode--hangul-no-break-p (previous current)
   "True when PREVIOUS and CURRENT Hangul classes form one grapheme."
-  (let ((left (unicode--hangul-class previous))
+  (let ((left  (unicode--hangul-class previous))
         (right (unicode--hangul-class current)))
     (not (null
           (or (and (eq left ':l) (member right '(:l :v :lv :lvt)))
@@ -352,7 +352,7 @@ through USELOCALE is safe. The cached locale is deliberately never freed."
     (string &key cluster-start previous-index current-index)
   "True when STRING has no grapheme break before CURRENT-INDEX."
   (let ((previous (char string previous-index))
-        (current (char string current-index)))
+        (current  (char string current-index)))
     (cond ((and (char= previous #\return)
                 (char= current #\newline))
            t)
@@ -407,9 +407,9 @@ indivisible. START and END are character indexes and must delimit STRING."
            while (< index end)
            while (unicode--grapheme-no-break-p
                   string
-                  :cluster-start start
+                  :cluster-start  start
                   :previous-index (1- index)
-                  :current-index index)
+                  :current-index  index)
            do (incf index)
            finally (return index)))))
 
@@ -463,11 +463,11 @@ modifiers and joined pictographs do not add cells to the base glyph."
     (return-from grapheme-cell-width 1))
   (unicode--call-with-cell-locale
    (lambda ()
-     (let ((total 0)
-           (widest 0)
-           (joiner-p nil)
+     (let ((total                0)
+           (widest               0)
+           (joiner-p             nil)
            (emoji-presentation-p nil)
-           (keycap-p nil))
+           (keycap-p             nil))
        (loop for index from start below end
              for character = (char string index)
              for code = (char-code character)
@@ -524,15 +524,15 @@ when necessary, so the returned string never contains a partial grapheme."
   (unicode--call-with-cell-locale
    (lambda ()
      (let* ((safe-start (grapheme-boundary-at-or-after text start))
-            (after-end (grapheme-boundary-at-or-after text end))
-            (safe-end (if (= after-end end)
-                          end
-                          (grapheme-previous-boundary text end))))
+            (after-end  (grapheme-boundary-at-or-after text end))
+            (safe-end   (if (= after-end end)
+                            end
+                            (grapheme-previous-boundary text end))))
        (if (> safe-start safe-end)
            ""
-           (let ((index safe-start)
+           (let ((index      safe-start)
                  (prefix-end safe-start)
-                 (used 0))
+                 (used       0))
              (loop while (< index safe-end)
                    for next = (grapheme-next-boundary text index safe-end)
                    for width = (grapheme-cell-width text index next)
@@ -557,7 +557,7 @@ the returned window."
   (let* ((available (max 1 maximum-cells))
          (safe-cursor
            (grapheme-boundary-at-or-after text (min cursor (length text))))
-         (start 0))
+         (start     0))
     (loop while (< start safe-cursor)
           for clipped-p = (plusp start)
           for marker = (and clipped-p
@@ -567,13 +567,13 @@ the returned window."
                        (text-cell-width text :start start :end safe-cursor))
                     available)
           do (setf start (grapheme-next-boundary text start)))
-    (let* ((clipped-p (plusp start))
-           (marker (if clipped-p
-                       (text-cell-prefix left-marker available)
-                       ""))
-           (marker-width (text-cell-width marker))
+    (let* ((clipped-p     (plusp start))
+           (marker        (if clipped-p
+                              (text-cell-prefix left-marker available)
+                              ""))
+           (marker-width  (text-cell-width marker))
            (content-width (max 0 (- available marker-width)))
-           (content (text-cell-prefix text content-width :start start))
+           (content       (text-cell-prefix text content-width :start start))
            (cursor-column
              (+ marker-width
                 (text-cell-width text :start start :end safe-cursor))))
@@ -634,12 +634,12 @@ C0, DEL and C1 controls become REPLACEMENT-CHARACTER; NIL removes them."
 (defun unicode--wrap-line-ranges
     (line maximum-cells &key (start 0) (end (length line)))
   "Wrap newline-free LINE slice into grapheme-safe, word-aware index ranges."
-  (let ((width (max 1 maximum-cells))
-        (ranges nil)
+  (let ((width      (max 1 maximum-cells))
+        (ranges     nil)
         (line-start start))
     (loop while (< line-start end)
-          do (let ((used 0)
-                   (row-end line-start)
+          do (let ((used           0)
+                   (row-end        line-start)
                    (break-position nil))
                (loop while (< row-end end)
                      for next = (grapheme-next-boundary line row-end end)
@@ -690,7 +690,7 @@ C0, DEL and C1 controls become REPLACEMENT-CHARACTER; NIL removes them."
 
 (defun unicode--wrap-text-ranges (text maximum-cells)
   "Wrap TEXT into grapheme-safe, word-aware index ranges without newlines."
-  (let ((ranges nil)
+  (let ((ranges     nil)
         (line-start 0))
     (loop
       for newline = (position #\newline text :start line-start)
@@ -700,7 +700,7 @@ C0, DEL and C1 controls become REPLACEMENT-CHARACTER; NIL removes them."
                       (unicode--wrap-line-ranges
                        text maximum-cells
                        :start line-start
-                       :end line-end)))
+                       :end   line-end)))
       if newline
         do (setf line-start (1+ newline))
       else
@@ -716,8 +716,8 @@ positive effective width. Nonpositive widths use an effective width of one."
   (check-type text string)
   (check-type maximum-cells integer)
   (let ((normalized (unicode--normalize-newlines text))
-        (rows nil)
-        (start 0))
+        (rows       nil)
+        (start      0))
     (loop
       for newline = (position #\newline normalized :start start)
       for end = (or newline (length normalized))

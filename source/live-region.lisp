@@ -4,70 +4,70 @@
 
 (defclass live-region ()
   ((write-function
-    :initarg :write-function
-    :reader live-region--write-function
-    :type function
+    :initarg       :write-function
+    :reader        live-region--write-function
+    :type          function
     :documentation "Function accepting one trusted terminal output string.")
    (flush-function
-    :initarg :flush-function
-    :reader live-region--flush-function
-    :type function
+    :initarg       :flush-function
+    :reader        live-region--flush-function
+    :type          function
     :documentation "Function making pending terminal output visible.")
    (columns
-    :initarg :columns
-    :accessor live-region-columns
-    :type integer
+    :initarg       :columns
+    :accessor      live-region-columns
+    :type          integer
     :documentation "Positive terminal width used for live-region geometry.")
    (maximum-rows
-    :initarg :maximum-rows
-    :initform nil
-    :accessor live-region-maximum-rows
-    :type (or null integer)
+    :initarg       :maximum-rows
+    :initform      nil
+    :accessor      live-region-maximum-rows
+    :type          (or null integer)
     :documentation "Optional positive cap on painted physical terminal rows.")
    (text
-    :initform ""
-    :accessor live-region--text
-    :type string
+    :initform      ""
+    :accessor      live-region--text
+    :type          string
     :documentation "Plain visible content of the most recent presentation.")
    (display
-    :initform ""
-    :accessor live-region--display
-    :type string
+    :initform      ""
+    :accessor      live-region--display
+    :type          string
     :documentation "Trusted styled content of the most recent presentation.")
    (cursor
-    :initform 0
-    :accessor live-region--cursor
-    :type integer
+    :initform      0
+    :accessor      live-region--cursor
+    :type          integer
     :documentation "Character index of the desired cursor within TEXT.")
    (presented-p
-    :initform nil
-    :accessor live-region--presented-p
-    :type boolean
+    :initform      nil
+    :accessor      live-region--presented-p
+    :type          boolean
     :documentation "Whether the region retains content that can be repainted.")
    (visible-p
-    :initform nil
-    :accessor live-region-visible-p
-    :type boolean
+    :initform      nil
+    :accessor      live-region-visible-p
+    :type          boolean
     :documentation "Whether the retained presentation is currently painted.")
    (row-count
-    :initform 0
-    :accessor live-region-row-count
-    :type integer
+    :initform      0
+    :accessor      live-region-row-count
+    :type          integer
     :documentation "Number of currently painted physical terminal rows.")
    (cursor-row
-    :initform 0
-    :accessor live-region-cursor-row
-    :type integer
+    :initform      0
+    :accessor      live-region-cursor-row
+    :type          integer
     :documentation "Zero-based live row holding the painted cursor.")
    (cursor-column
-    :initform 0
-    :accessor live-region-cursor-column
-    :type integer
+    :initform      0
+    :accessor      live-region-cursor-column
+    :type          integer
     :documentation "Zero-based terminal column holding the painted cursor.")
    (cursor-visible-p
-    :initform t
-    :accessor live-region-cursor-visible-p
-    :type boolean
+    :initform      t
+    :accessor      live-region-cursor-visible-p
+    :type          boolean
     :documentation "Whether terminal updates leave the physical cursor visible."))
   (:documentation
    "Transient terminal content that remains beneath ordinary scrollback output."))
@@ -94,8 +94,8 @@
   (check-type write-function function)
   (check-type flush-function function)
   (make-instance 'live-region
-                 :columns columns
-                 :maximum-rows maximum-rows
+                 :columns        columns
+                 :maximum-rows   maximum-rows
                  :write-function write-function
                  :flush-function flush-function))
 
@@ -166,16 +166,16 @@
 
 (defun live-region--windowed-presentation (region)
   "Return REGION's retained presentation cropped around its cursor when needed."
-  (let ((text (live-region--text region))
-        (display (live-region--display region))
-        (cursor (live-region--cursor region))
+  (let ((text         (live-region--text region))
+        (display      (live-region--display region))
+        (cursor       (live-region--cursor region))
         (maximum-rows (live-region-maximum-rows region)))
     (if maximum-rows
         (multiple-value-bind (start end window-cursor before-p after-p)
             (screen-window text
-                           :cursor cursor
+                           :cursor  cursor
                            :columns (live-region-columns region)
-                           :rows maximum-rows)
+                           :rows    maximum-rows)
           (declare (ignore before-p after-p))
           (values (subseq text start end)
                   (ansi--visible-slice display start end)
@@ -333,7 +333,7 @@ When REGION normally shows the cursor, compound output keeps it hidden from the
 initial retraction through the final repaint and reveals it once at the end."
   (check-type region live-region)
   (check-type function function)
-  (let ((visible-p (live-region-visible-p region))
+  (let ((visible-p        (live-region-visible-p region))
         (cursor-visible-p (live-region-cursor-visible-p region)))
     (when cursor-visible-p
       (setf (live-region-cursor-visible-p region) nil)
@@ -445,9 +445,9 @@ atomic frame."
                (or (not maximum-rows-p)
                    (eql maximum-rows (live-region-maximum-rows region))))
     (let ((visible-p (live-region-visible-p region))
-          (text (live-region--text region))
-          (display (live-region--display region))
-          (cursor (live-region--cursor region)))
+          (text      (live-region--text region))
+          (display   (live-region--display region))
+          (cursor    (live-region--cursor region)))
       (when visible-p
         (live-region--record-reflowed-presentation region columns))
       (setf (live-region-columns region) columns)

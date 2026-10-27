@@ -4,29 +4,29 @@
 
 (defclass selector ()
   ((items
-    :initarg :items
-    :reader selector-items
-    :type list
+    :initarg       :items
+    :reader        selector-items
+    :type          list
     :documentation "Candidate values in presentation order.")
    (selection
-    :initform 0
-    :reader selector-selection
-    :type integer
+    :initform      0
+    :reader        selector-selection
+    :type          integer
     :documentation "Zero-based selected candidate index.")
    (visible-count
-    :initarg :visible-count
-    :reader selector-visible-count
-    :type integer
+    :initarg       :visible-count
+    :reader        selector-visible-count
+    :type          integer
     :documentation "Maximum number of candidates in the visible window.")
    (arrangement
-    :initarg :arrangement
-    :reader selector-arrangement
-    :type keyword
+    :initarg       :arrangement
+    :reader        selector-arrangement
+    :type          keyword
     :documentation "Candidate arrangement, either :VERTICAL or :GRID.")
    (column-count
-    :initform 1
-    :reader selector-column-count
-    :type integer
+    :initform      1
+    :reader        selector-column-count
+    :type          integer
     :documentation "Column count established by the latest arrangement."))
   (:documentation
    "Application-neutral candidate selection and viewport state.
@@ -51,9 +51,9 @@ An empty selector has no selected item."
   (check-type visible-count (integer 1 *))
   (check-type arrangement (member :vertical :grid))
   (make-instance 'selector
-                 :items (selector--copy-items items)
+                 :items         (selector--copy-items items)
                  :visible-count visible-count
-                 :arrangement arrangement))
+                 :arrangement   arrangement))
 
 (defun selector-set-items (selector items &key (test #'equal))
   "Replace SELECTOR candidates with ITEMS and return SELECTOR.
@@ -99,9 +99,9 @@ end and never exceeds SELECTOR-VISIBLE-COUNT."
          (count (length items)))
     (if (zerop count)
         (values nil 0 nil)
-        (let* ((selection (min (selector-selection selector) (1- count)))
+        (let* ((selection     (min (selector-selection selector) (1- count)))
                (visible-count (min (selector-visible-count selector) count))
-               (column-count (selector-column-count selector))
+               (column-count  (selector-column-count selector))
                (raw-start
                  (min (max 0 (- (1+ selection) visible-count))
                       (- count visible-count)))
@@ -182,17 +182,17 @@ to SELECTOR-ITEMS, and the second value contains each column's measured width."
 
 (defun selector--move-row (selector offset)
   "Move SELECTOR by signed row OFFSET using its arranged column count."
-  (let* ((items (selector-items selector))
-         (count (length items))
+  (let* ((items   (selector-items selector))
+         (count   (length items))
          (columns (selector-column-count selector)))
     (when (plusp count)
-      (let* ((selection (selector-selection selector))
-             (row-count (ceiling count columns))
-             (row (floor selection columns))
-             (column (mod selection columns))
+      (let* ((selection  (selector-selection selector))
+             (row-count  (ceiling count columns))
+             (row        (floor selection columns))
+             (column     (mod selection columns))
              (target-row (mod (+ row offset) row-count))
-             (target (min (+ (* target-row columns) column)
-                          (1- count))))
+             (target     (min (+ (* target-row columns) column)
+                              (1- count))))
         (setf (slot-value selector 'selection) target))))
   selector)
 

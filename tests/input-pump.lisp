@@ -40,7 +40,7 @@
                  (let ((event (pop (source-pending source))))
                    (push event (source-handled source))
                    (and (eq event :quit) :stop)))))
-         :poll-seconds 0.01
+         :poll-seconds   0.01
          (loop for (key value) on arguments by (lambda (tail) (nthcdr 2 tail))
                unless (eq key :step-function)
                  append (list key value))))
@@ -48,7 +48,7 @@
 (defun run-input-pump-tests ()
   "Test reading, nested pauses, exclusive input, stopping and reader failures."
   (let* ((source (make-instance 'input-pump-tests--source))
-         (pump (input-pump-tests--make source)))
+         (pump   (input-pump-tests--make source)))
     (unwind-protect
          (progn
            (clinedi:input-pump-start pump)
@@ -94,9 +94,9 @@
                         (list (clinedi:input-pump-live-p pump)
                               (clinedi:input-pump-paused-p pump))))
       (clinedi:input-pump-stop pump)))
-  (let* ((source (make-instance 'input-pump-tests--source))
+  (let* ((source   (make-instance 'input-pump-tests--source))
          (outcomes nil)
-         (pump nil))
+         (pump     nil))
     (setf pump
           (input-pump-tests--make
            source
@@ -121,15 +121,15 @@
            (check-equal "exclusive input runs in place on the reader, which cannot pause itself"
                         '((t :refused)) outcomes))
       (clinedi:input-pump-stop pump)))
-  (let* ((source (make-instance 'input-pump-tests--source))
+  (let* ((source  (make-instance 'input-pump-tests--source))
          (failure nil)
-         (pump (input-pump-tests--make
-                source
-                :step-function (lambda () (error "reader broke"))
-                :backtrace-function (lambda () "frames")
-                :failure-function (lambda (condition backtrace)
-                                    (setf failure (list (princ-to-string condition)
-                                                        backtrace))))))
+         (pump    (input-pump-tests--make
+                   source
+                   :step-function      (lambda () (error "reader broke"))
+                   :backtrace-function (lambda () "frames")
+                   :failure-function   (lambda (condition backtrace)
+                                         (setf failure (list (princ-to-string condition)
+                                                             backtrace))))))
     (unwind-protect
          (progn
            (clinedi:input-pump-start pump)
@@ -139,6 +139,6 @@
                         (lambda () (equal failure '("reader broke" "frames"))))))
       (clinedi:input-pump-stop pump)))
   (let* ((source (make-instance 'input-pump-tests--source))
-         (pump (input-pump-tests--make source :startable-p-function (constantly nil))))
+         (pump   (input-pump-tests--make source :startable-p-function (constantly nil))))
     (clinedi:input-pump-start pump)
     (check-equal "an unstartable pump does not start" nil (clinedi:input-pump-live-p pump))))

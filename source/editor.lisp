@@ -16,56 +16,56 @@
 
 (defclass line-editor ()
   ((text
-    :initarg :text
-    :reader line-editor-text
-    :type string
+    :initarg       :text
+    :reader        line-editor-text
+    :type          string
     :documentation "Editable text owned by this editor.")
    (cursor
-    :initarg :cursor
-    :reader line-editor-cursor
-    :type integer
+    :initarg       :cursor
+    :reader        line-editor-cursor
+    :type          integer
     :documentation "Grapheme boundary in TEXT at which editing occurs.")
    (keymap
-    :initarg :keymap
-    :initform (default-line-editor-keymap)
-    :reader line-editor-keymap
-    :type keymap
+    :initarg       :keymap
+    :initform      (default-line-editor-keymap)
+    :reader        line-editor-keymap
+    :type          keymap
     :documentation "Programmable event-to-command mappings for this editor.")
    (auto-pair-p
-    :initarg :auto-pair-p
-    :initform nil
-    :reader line-editor-auto-pair-p
-    :type boolean
+    :initarg       :auto-pair-p
+    :initform      nil
+    :reader        line-editor-auto-pair-p
+    :type          boolean
     :documentation "Whether typed braces insert their matching closing braces.")
    (word-delimiter-mode-p
-    :initarg :word-delimiter-mode-p
+    :initarg  :word-delimiter-mode-p
     :initform nil
-    :reader line-editor-word-delimiter-mode-p
-    :type boolean
+    :reader   line-editor-word-delimiter-mode-p
+    :type     boolean
     :documentation
     "Whether configured delimiters separate words for movement and deletion.")
    (word-delimiters
-    :initarg :word-delimiters
+    :initarg  :word-delimiters
     :initform (copy-list *default-word-delimiters*)
-    :reader line-editor-word-delimiters
-    :type (satisfies line-editor--word-delimiters-p)
+    :reader   line-editor-word-delimiters
+    :type     (satisfies line-editor--word-delimiters-p)
     :documentation
     "Characters treated as word separators in word-delimiter mode.")
    (history
     :initarg :history
-    :type vector
+    :type    vector
     :documentation
     "Adjustable vector of entries ordered from oldest to newest.")
    (history-limit
-    :initarg :history-limit
-    :reader line-editor-history-limit
-    :type integer
+    :initarg       :history-limit
+    :reader        line-editor-history-limit
+    :type          integer
     :documentation "Maximum number of retained history entries.")
    (history-match-function
-    :initarg :history-match-function
+    :initarg  :history-match-function
     :initform nil
-    :reader line-editor-history-match-function
-    :type (or null function)
+    :reader   line-editor-history-match-function
+    :type     (or null function)
     :documentation
     "Optional function of draft and entry used to filter history traversal.")
    (history-index
@@ -104,7 +104,7 @@
   (let* ((length (length history))
          (start  (max 0 (- length history-limit)))
          (copy   (make-array (max 1 (- length start))
-                             :adjustable t
+                             :adjustable   t
                              :fill-pointer 0)))
     (loop for index from start below length
           for entry = (elt history index)
@@ -142,15 +142,15 @@
 (defun line-editor--insert (editor inserted-text)
   "Insert INSERTED-TEXT at EDITOR's cursor."
   (check-type inserted-text string)
-  (let* ((text        (line-editor-text editor))
-         (cursor      (line-editor-cursor editor))
-         (new-text    (concatenate 'string
-                                   (subseq text 0 cursor)
-                                   inserted-text
-                                   (subseq text cursor)))
-         (new-cursor  (grapheme-boundary-at-or-after
-                       new-text
-                       (+ cursor (length inserted-text)))))
+  (let* ((text       (line-editor-text editor))
+         (cursor     (line-editor-cursor editor))
+         (new-text   (concatenate 'string
+                                  (subseq text 0 cursor)
+                                  inserted-text
+                                  (subseq text cursor)))
+         (new-cursor (grapheme-boundary-at-or-after
+                      new-text
+                      (+ cursor (length inserted-text)))))
     (line-editor--set-state editor new-text new-cursor
                             :leave-history-p t))
   nil)
@@ -158,9 +158,12 @@
 (defun line-editor--closing-brace (character)
   "Return the closing brace matching CHARACTER, or NIL."
   (case character
-    (#\( #\))
-    (#\[ #\])
-    (#\{ #\})))
+    (#\(
+     #\))
+    (#\[
+     #\])
+    (#\{
+     #\})))
 
 (defun line-editor--escaped-p (text index)
   "Return true when an odd run of backslashes precedes INDEX in TEXT."
@@ -170,8 +173,8 @@
 
 (defun line-editor--insert-brace (editor character)
   "Insert CHARACTER with pairing, or move over a matching closing brace."
-  (let* ((text (line-editor-text editor))
-         (cursor (line-editor-cursor editor))
+  (let* ((text    (line-editor-text editor))
+         (cursor  (line-editor-cursor editor))
          (closing (line-editor--closing-brace character)))
     (cond
       ((line-editor--escaped-p text cursor)
@@ -202,8 +205,8 @@
 
 (defun line-editor--delete-backward-pair (editor)
   "Delete an empty brace pair around the cursor, or the preceding grapheme."
-  (let* ((text (line-editor-text editor))
-         (cursor (line-editor-cursor editor))
+  (let* ((text    (line-editor-text editor))
+         (cursor  (line-editor-cursor editor))
          (closing (and (plusp cursor)
                        (line-editor--closing-brace (char text (1- cursor))))))
     (when (and (line-editor-auto-pair-p editor)
@@ -250,8 +253,10 @@
 (defun line-editor--whitespace-character-p (character)
   "Return true when CHARACTER is standard line-editor whitespace."
   (case character
-    ((#\Space #\Tab #\Newline #\Return #\Page) t)
-    (otherwise nil)))
+    ((#\Space #\Tab #\Newline #\Return #\Page)
+     t)
+    (otherwise
+     nil)))
 
 (defun line-editor--word-delimiter-character-p (editor character)
   "Return true when CHARACTER is one of EDITOR's word delimiters."
@@ -265,7 +270,7 @@
 
 (defun line-editor--word-start (editor)
   "Return the grapheme boundary at the start of the word before EDITOR's cursor."
-  (let ((text (line-editor-text editor))
+  (let ((text   (line-editor-text editor))
         (cursor (line-editor-cursor editor)))
     (labels ((previous-boundary ()
                (grapheme-previous-boundary text cursor)))
@@ -282,7 +287,7 @@
 
 (defun line-editor--word-end (editor)
   "Return the grapheme boundary at the end of the word after EDITOR's cursor."
-  (let ((text (line-editor-text editor))
+  (let ((text   (line-editor-text editor))
         (cursor (line-editor-cursor editor)))
     (labels ((next-boundary ()
                (grapheme-next-boundary text cursor)))
@@ -431,17 +436,17 @@ underscore, slash, dot, and colon, and is copied into the editor."
   (check-type auto-pair-p boolean)
   (check-type word-delimiter-mode-p boolean)
   (check-type word-delimiters (satisfies line-editor--word-delimiters-p))
-  (let* ((owned-text (copy-seq text))
+  (let* ((owned-text  (copy-seq text))
          (safe-cursor (line-editor--normalize-cursor owned-text cursor)))
     (make-instance 'line-editor
-                   :text owned-text
-                   :cursor safe-cursor
-                   :keymap keymap
-                   :auto-pair-p auto-pair-p
-                   :word-delimiter-mode-p word-delimiter-mode-p
-                   :word-delimiters (copy-list word-delimiters)
-                   :history (line-editor--make-history history history-limit)
-                   :history-limit history-limit
+                   :text                   owned-text
+                   :cursor                 safe-cursor
+                   :keymap                 keymap
+                   :auto-pair-p            auto-pair-p
+                   :word-delimiter-mode-p  word-delimiter-mode-p
+                   :word-delimiters        (copy-list word-delimiters)
+                   :history                (line-editor--make-history history history-limit)
+                   :history-limit          history-limit
                    :history-match-function history-match-function)))
 
 (defun line-editor-create (&key
@@ -455,15 +460,15 @@ underscore, slash, dot, and colon, and is copied into the editor."
                              (word-delimiter-mode-p nil)
                              (word-delimiters *default-word-delimiters*))
   "Create a line editor through the application-oriented named constructor."
-  (make-line-editor :text text
-                    :cursor cursor
-                    :history history
-                    :history-limit history-limit
+  (make-line-editor :text                   text
+                    :cursor                 cursor
+                    :history                history
+                    :history-limit          history-limit
                     :history-match-function history-match-function
-                    :keymap keymap
-                    :auto-pair-p auto-pair-p
-                    :word-delimiter-mode-p word-delimiter-mode-p
-                    :word-delimiters word-delimiters))
+                    :keymap                 keymap
+                    :auto-pair-p            auto-pair-p
+                    :word-delimiter-mode-p  word-delimiter-mode-p
+                    :word-delimiters        word-delimiters))
 
 (defun line-editor-history (editor)
   "Return a detached oldest-to-newest snapshot of EDITOR's history."
@@ -672,11 +677,11 @@ the returned cursor offset."
   (check-type editor line-editor)
   (when suggestion
     (check-type suggestion string))
-  (let* ((text       (line-editor-text editor))
-         (cursor     (line-editor-cursor editor))
-         (display    (if (and suggestion (= cursor (length text)))
-                         (concatenate 'string text suggestion)
-                         (copy-seq text))))
+  (let* ((text    (line-editor-text editor))
+         (cursor  (line-editor-cursor editor))
+         (display (if (and suggestion (= cursor (length text)))
+                      (concatenate 'string text suggestion)
+                      (copy-seq text))))
     (values display (text-cell-width text :end cursor))))
 
 

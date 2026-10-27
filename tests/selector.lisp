@@ -4,7 +4,7 @@
 
 (defun run-selector-tests ()
   "Run candidate selection, navigation and viewport regression tests."
-  (let ((selector (make-selector :items '(alpha beta gamma delta)
+  (let ((selector (make-selector :items         '(alpha beta gamma delta)
                                  :visible-count 2)))
     (check-equal "selector owns its candidate container"
                  '(alpha beta gamma delta)
@@ -81,9 +81,9 @@
         (selector-handle-event selector :submit)
       (check-equal "nil is a valid opaque candidate" :accept action)
       (check-equal "nil candidate remains nil" nil value)))
-  (let ((selector (make-selector :items '("a" "bbbb" "cc" "d")
+  (let ((selector (make-selector :items         '("a" "bbbb" "cc" "d")
                                  :visible-count 4
-                                 :arrangement :grid)))
+                                 :arrangement   :grid)))
     (multiple-value-bind (rows widths)
         (selector-arrange selector 8 :width-function #'length)
       (check-equal "grid fills the widest measured column count"
@@ -107,9 +107,9 @@
                    '((0) (1) (2) (3))
                    rows)
       (check-equal "vertical fallback measures one column" '(4) widths)))
-  (let ((selector (make-selector :items '(one two three)
+  (let ((selector (make-selector :items         '(one two three)
                                  :visible-count 3
-                                 :arrangement :vertical)))
+                                 :arrangement   :vertical)))
     (multiple-value-bind (rows widths)
         (selector-arrange selector 80 :width-function (lambda (item)
                                                         (length

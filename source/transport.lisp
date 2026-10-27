@@ -21,18 +21,22 @@
 
 (defparameter *terminal-escape-character* (code-char 27)
   "The ASCII escape character used by trusted terminal controls.")
+
 (defun terminal-bracketed-paste-enable-sequence ()
   "Return Clinedi's trusted bracketed-paste enable control."
   (with-output-to-string (stream)
     (enable-bracketed-paste :stream stream)))
+
 (defun terminal-bracketed-paste-disable-sequence ()
   "Return Clinedi's trusted bracketed-paste disable control."
   (with-output-to-string (stream)
     (disable-bracketed-paste :stream stream)))
+
 (defun terminal-keyboard-enhancement-enable-sequence ()
   "Return Clinedi's trusted keyboard-enhancement enable controls."
   (with-output-to-string (stream)
     (enable-keyboard-enhancement :stream stream)))
+
 (defun terminal-keyboard-enhancement-disable-sequence ()
   "Return Clinedi's trusted keyboard-enhancement disable controls."
   (with-output-to-string (stream)
@@ -40,78 +44,79 @@
 
 (defclass terminal ()
   ((rows
-    :initarg :rows
-    :initform *terminal-default-rows*
-    :accessor terminal-rows
-    :type (integer 1)
+    :initarg       :rows
+    :initform      *terminal-default-rows*
+    :accessor      terminal-rows
+    :type          (integer 1)
     :documentation "The current terminal height in character cells.")
    (columns
-    :initarg :columns
-    :initform *terminal-default-columns*
-    :accessor terminal-columns
-    :type (integer 1)
+    :initarg       :columns
+    :initform      *terminal-default-columns*
+    :accessor      terminal-columns
+    :type          (integer 1)
     :documentation "The current terminal width in character cells.")
    (interactive-p
-    :initarg :interactive-p
-    :initform nil
-    :accessor terminal-interactive-p
-    :type boolean
+    :initarg       :interactive-p
+    :initform      nil
+    :accessor      terminal-interactive-p
+    :type          boolean
     :documentation "Whether this terminal currently accepts noncanonical input.")
    (styled-p
-    :initarg :styled-p
-    :initform nil
-    :accessor terminal-styled-p
-    :type boolean
+    :initarg       :styled-p
+    :initform      nil
+    :accessor      terminal-styled-p
+    :type          boolean
     :documentation "Whether trusted output may include color and emphasis controls.")
    (started-p
-    :initform nil
-    :accessor terminal-started-p
-    :type boolean
+    :initform      nil
+    :accessor      terminal-started-p
+    :type          boolean
     :documentation "Whether this terminal has entered its active lifecycle."))
   (:documentation "A replaceable primary-screen terminal transport."))
 
 (defclass stream-terminal (terminal)
   ((event-prefix-p-function
-    :initarg :event-prefix-p-function
-    :initform (lambda (character) (char= character #\Escape))
-    :reader stream-terminal-event-prefix-p-function
+    :initarg       :event-prefix-p-function
+    :initform      (lambda (character) (char= character #\Escape))
+    :reader        stream-terminal-event-prefix-p-function
     :documentation "Predicate recognizing a caller's event prefix before multiline paste classification.")
    (event-decoder
-    :initarg :event-decoder
-    :initform #'terminal--default-event-decoder
-    :reader stream-terminal-event-decoder
+    :initarg       :event-decoder
+    :initform      #'terminal--default-event-decoder
+    :reader        stream-terminal-event-decoder
     :documentation "Application event-decoding callback taking STREAM and :ESCAPE-DELAY.")
    (styling-p-function
-    :initarg :styling-p-function
-    :initform #'terminal--default-styling-p
-    :reader stream-terminal-styling-p-function
+    :initarg       :styling-p-function
+    :initform      #'terminal--default-styling-p
+    :reader        stream-terminal-styling-p-function
     :documentation "Policy callback deciding whether interactive output may be styled.")
    (input-stream
-    :initarg :input-stream
-    :reader stream-terminal-input-stream
-    :type stream
+    :initarg       :input-stream
+    :reader        stream-terminal-input-stream
+    :type          stream
     :documentation "The character stream carrying terminal input.")
    (pending-input-stream
-    :initform nil
-    :accessor stream-terminal-pending-input-stream
-    :type (or null stream)
+    :initform      nil
+    :accessor      stream-terminal-pending-input-stream
+    :type          (or null stream)
     :documentation "Buffered terminal bytes awaiting semantic event decoding.")
    (output-stream
-    :initarg :output-stream
-    :reader stream-terminal-output-stream
-    :type stream
+    :initarg       :output-stream
+    :reader        stream-terminal-output-stream
+    :type          stream
     :documentation "The character stream receiving terminal output.")
    (input-file-descriptor
-    :initarg :input-file-descriptor
-    :reader stream-terminal-input-file-descriptor
-    :type integer
+    :initarg       :input-file-descriptor
+    :reader        stream-terminal-input-file-descriptor
+    :type          integer
     :documentation "The POSIX descriptor whose termios state is controlled.")
    (saved-terminal-mode
-    :initform nil
-    :accessor stream-terminal-saved-terminal-mode
-    :type t
+    :initform      nil
+    :accessor      stream-terminal-saved-terminal-mode
+    :type          t
     :documentation "The exact termios value restored when the terminal stops."))
   (:documentation "A buffered character-stream terminal with optional native mode operations."))
+
 (defun terminal-set-dimensions (terminal columns &key rows)
   "Set TERMINAL's positive cell dimensions through the canonical writer."
   (setf (terminal-columns terminal) (max 1 columns))
@@ -127,6 +132,7 @@
 
 (defgeneric terminal-read-event (terminal)
   (:documentation "Read and return one semantic input event from TERMINAL."))
+
 (defgeneric terminal-input-ready-p (terminal)
   (:documentation "Return true when TERMINAL can read an event without blocking."))
 
@@ -150,6 +156,7 @@
   "Flush TERMINAL's output stream."
   (finish-output (stream-terminal-output-stream terminal))
   nil)
+
 (defun terminal--disable-input-protocols (terminal)
   "Best-effort restore ordinary keyboard reporting and paste handling."
   (let ((failure nil))
@@ -172,6 +179,7 @@
     (when failure
       (error failure)))
   nil)
+
 (defun terminal--enable-input-protocols (terminal)
   "Enable modified keys and bracketed paste, rolling back partial output."
   (handler-case
@@ -206,6 +214,7 @@
         (if line
             (list :line line)
             :stream-end))))
+
 (defun stream-terminal-create
     (&key
        (input-stream *standard-input*)
@@ -215,21 +224,22 @@
        (event-decoder #'terminal--default-event-decoder)
      (styling-p-function #'terminal--default-styling-p)
      (rows *terminal-default-rows*)
-       (columns *terminal-default-columns*))
+     (columns *terminal-default-columns*))
   "Create a stream terminal using INPUT-STREAM, OUTPUT-STREAM, and a POSIX descriptor."
   (make-instance 'stream-terminal
                  :event-prefix-p-function event-prefix-p-function
-                 :event-decoder event-decoder
-                 :styling-p-function styling-p-function
-                 :input-stream input-stream
-                 :output-stream output-stream
-                 :input-file-descriptor input-file-descriptor
-                 :rows (if (plusp rows)
-                           rows
-                           *terminal-default-rows*)
-                 :columns (if (plusp columns)
-                              columns
-                              *terminal-default-columns*)))
+                 :event-decoder           event-decoder
+                 :styling-p-function      styling-p-function
+                 :input-stream            input-stream
+                 :output-stream           output-stream
+                 :input-file-descriptor   input-file-descriptor
+                 :rows                    (if (plusp rows)
+                                              rows
+                                              *terminal-default-rows*)
+                 :columns                 (if (plusp columns)
+                                              columns
+                                              *terminal-default-columns*)))
+
 
 ;;;; -- Enhanced Terminal Input --
 
@@ -241,6 +251,7 @@
 
 (defparameter *terminal-unbracketed-paste-maximum-characters* 1000000
   "The maximum characters retained from one unbracketed paste burst.")
+
 (defun terminal--read-input-burst (stream)
   "Return one bounded burst currently available from STREAM, or NIL at EOF."
   (let ((first (read-char stream nil nil)))
@@ -249,13 +260,14 @@
     (when (plusp *terminal-unbracketed-paste-coalesce-seconds*)
       (sleep *terminal-unbracketed-paste-coalesce-seconds*))
     (let ((characters (list first))
-          (count 1))
+          (count      1))
       (loop while (< count *terminal-unbracketed-paste-maximum-characters*)
             for character = (read-char-no-hang stream nil nil)
             while character
             do (push character characters)
                (incf count))
       (coerce (nreverse characters) 'string))))
+
 (defun terminal--multiline-paste-burst-p (text event-prefix-p-function)
   "Return true when TEXT is one unbracketed burst containing a line break.
 
@@ -266,6 +278,7 @@ text cannot invoke editing commands."
        (or (find #\Newline text)
            (find #\Return text))
        t))
+
 (defun terminal--plain-text-burst-p (text)
   "Return true when TEXT is one multi-character burst without terminal controls."
   (and (> (length text) 1)
@@ -275,6 +288,7 @@ text cannot invoke editing commands."
                            (<= 127 code 159)))))
               text)
        t))
+
 (defun terminal--decode-buffered-editing-event
     (terminal prefix-stream
      &key (escape-delay *terminal-escape-delay-seconds*))
@@ -288,6 +302,7 @@ text cannot invoke editing commands."
     (setf (stream-terminal-pending-input-stream terminal)
           (and (listen prefix-stream) prefix-stream))
     event))
+
 (defun terminal-read-editing-event
     (terminal &key (escape-delay *terminal-escape-delay-seconds*))
   "Read one event, batching plain input and preserving multiline paste bursts."
@@ -315,7 +330,6 @@ text cannot invoke editing commands."
               (make-string-input-stream burst)
               :escape-delay escape-delay)))))))
 
-
 (define-condition terminal-error (error)
   ((message :initarg :message :reader terminal-error-message
             :documentation "Description of the failed terminal operation.")
@@ -328,8 +342,10 @@ text cannot invoke editing commands."
 
 (defgeneric terminal-capture-input-mode (terminal)
   (:documentation "Capture the current native input mode, or NIL for a non-TTY."))
+
 (defgeneric terminal-activate-input-mode (terminal)
   (:documentation "Enter noncanonical no-echo input mode."))
+
 (defgeneric terminal-restore-input-mode (terminal mode)
   (:documentation "Restore an exact previously captured native input MODE."))
 
@@ -337,10 +353,12 @@ text cannot invoke editing commands."
   "Return NIL, since a plain stream terminal has no native input mode."
   (declare (ignore terminal))
   nil)
+
 (defmethod terminal-activate-input-mode ((terminal stream-terminal))
   "Do nothing, since a plain stream terminal has no native input mode."
   (declare (ignore terminal))
   nil)
+
 (defmethod terminal-restore-input-mode ((terminal stream-terminal) mode)
   "Do nothing, since a plain stream terminal has no native input mode."
   (declare (ignore terminal mode))
@@ -354,6 +372,7 @@ text cannot invoke editing commands."
 Return NIL when the input descriptor is not interactive, since nothing echoes
 there. Signal TERMINAL-ERROR when an interactive descriptor cannot be
 concealed, so callers fail closed instead of reading a visible secret."))
+
 (defgeneric terminal-restore-input-echo (terminal mode)
   (:documentation "Restore the exact input MODE returned by TERMINAL-DISABLE-INPUT-ECHO."))
 
@@ -361,6 +380,7 @@ concealed, so callers fail closed instead of reading a visible secret."))
   "A plain stream terminal has no native mode, so nothing is changed."
   (declare (ignore terminal))
   nil)
+
 (defmethod terminal-restore-input-echo ((terminal stream-terminal) mode)
   "Do nothing, since a plain stream terminal never turned echo off."
   (declare (ignore terminal mode))
@@ -368,10 +388,10 @@ concealed, so callers fail closed instead of reading a visible secret."))
 
 (defun terminal--strip-bracketed-paste (text)
   "Remove one terminal bracketed-paste wrapper around the whole of TEXT."
-  (let* ((start (format nil "~C[200~~" #\Escape))
-         (end (format nil "~C[201~~" #\Escape))
+  (let* ((start        (format nil "~C[200~~" #\Escape))
+         (end          (format nil "~C[201~~" #\Escape))
          (start-length (length start))
-         (end-length (length end)))
+         (end-length   (length end)))
     (if (and (>= (length text) (+ start-length end-length))
              (string= start text :end2 start-length)
              (string= end text :start2 (- (length text) end-length)))
@@ -424,7 +444,7 @@ arrives inside one."
 (defmethod terminal-stop ((terminal stream-terminal))
   "Stop all input protocols and restore native mode, attempting every cleanup."
   (when (terminal-started-p terminal)
-    (let ((failure nil)
+    (let ((failure    nil)
           (saved-mode (stream-terminal-saved-terminal-mode terminal)))
       (flet ((attempt (function)
                (handler-case (funcall function)

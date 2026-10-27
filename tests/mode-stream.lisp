@@ -18,9 +18,9 @@
 (defun run-mode-stream-tests ()
   "Run terminal mode tracking regression tests."
   (let* ((destination (make-string-output-stream))
-         (stream (make-mode-tracking-output-stream destination))
-         (enter (mode-stream-tests--controls
-                 "[?1049h[2J[H[?1000h[?1006h[?25l[?7l")))
+         (stream      (make-mode-tracking-output-stream destination))
+         (enter       (mode-stream-tests--controls
+                       "[?1049h[2J[H[?1000h[?1006h[?25l[?7l")))
     (check-equal "restoring an untouched stream writes nothing"
                  '(nil "")
                  (list (mode-tracking-output-stream-restore stream)
@@ -54,10 +54,10 @@
                  (list (mode-tracking-output-stream-restore stream)
                        (get-output-stream-string destination))))
   (let* ((destination (make-string-output-stream))
-         (stream (make-mode-tracking-output-stream destination))
-         (background (format nil "~a11;rgb:19/3C/B8~a"
-                             (mode-stream-tests--controls "]")
-                             (code-char 7))))
+         (stream      (make-mode-tracking-output-stream destination))
+         (background  (format nil "~a11;rgb:19/3C/B8~a"
+                              (mode-stream-tests--controls "]")
+                              (code-char 7))))
     (mode-stream-tests--feed stream (list (subseq background 0 3)
                                           (subseq background 3)))
     (check-equal "a split default color command is tracked"
@@ -94,8 +94,8 @@
     (check-equal "an overlong control is abandoned without hiding the next"
                  nil
                  (mode-tracking-output-stream-imposed-modes stream)))
-  (let* ((destination (make-string-output-stream))
-         (stream (make-mode-tracking-output-stream destination))
+  (let* ((destination   (make-string-output-stream))
+         (stream        (make-mode-tracking-output-stream destination))
          (partial-frame (mode-stream-tests--controls "[?2026h[?25l[?7lpartial")))
     (mode-stream-tests--feed stream
                              (loop for character across partial-frame

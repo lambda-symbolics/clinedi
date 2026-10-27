@@ -108,7 +108,7 @@
                      (multiple-value-list
                       (screen-position text
                                        :prompt-width 2
-                                       :columns 4))))))
+                                       :columns      4))))))
   (let ((text (format nil "a~%b")))
     (check-equal "cursor before newline"
                  '(0 1 nil)
@@ -136,8 +136,8 @@
                     (multiple-value-bind (row column pending-wrap)
                         (screen-position text
                                          :columns 5
-                                         :start start
-                                         :end end)
+                                         :start   start
+                                         :end     end)
                       (declare (ignore column pending-wrap))
                       (<= (1+ row) 3))))))
   (let ((text "abcdefghijklmnop"))
@@ -148,8 +148,8 @@
                   (multiple-value-bind (row column pending-wrap)
                       (screen-position text
                                        :columns 4
-                                       :start start
-                                       :end end)
+                                       :start   start
+                                       :end     end)
                     (declare (ignore column pending-wrap))
                     (<= (1+ row) 2)))))
   (check-equal "completion columns use cell widths"
@@ -157,7 +157,7 @@
                (with-output-to-string (stream)
                  (print-candidates '("猫" "a")
                                    :columns 8
-                                   :stream stream)))
+                                   :stream  stream)))
   (multiple-value-bind (preamble prompt)
       (split-prompt (format nil "first~%second> "))
     (check-equal "prompt preamble" (format nil "first~%") preamble)
@@ -182,8 +182,8 @@
       (clinedi:wrap-styled-editor-text
        "lin"
        (ansi-colorize "lin" :green)
-       :cursor 3
-       :columns 10
+       :cursor       3
+       :columns      10
        :prompt-width 7)
     (check-equal "a growing word may exactly fill its prompt row"
                  "lin"
@@ -198,8 +198,8 @@
       (clinedi:wrap-styled-editor-text
        "line"
        (ansi-colorize "line" :green)
-       :cursor 4
-       :columns 10
+       :cursor       4
+       :columns      10
        :prompt-width 7)
     (check-equal "a growing editor word moves intact past its prompt"
                  (format nil "~%line")
@@ -252,7 +252,7 @@
     (check-equal "every styled editor row stands alone with its own visible text"
                  '("say " "user")
                  (mapcar (lambda (pair) (ansi-strip (second pair))) rows)))
-  (let* ((text "abcdef")
+  (let* ((text   "abcdef")
          (layout (clinedi::screen--editor-layout text 2 4)))
     (check-equal "long input words still wrap by grapheme"
                  (format nil "~%abcdef")
@@ -262,7 +262,7 @@
                  (find 4
                        (clinedi::screen-editor-layout-positions layout)
                        :key #'first)))
-  (let* ((text "say user")
+  (let* ((text   "say user")
          (layout (clinedi::screen--editor-layout text 0 6))
          (presented
            (clinedi::render--insert-soft-breaks
@@ -272,7 +272,7 @@
     (check-equal "styled input preserves soft word breaks"
                  (clinedi::screen-editor-layout-display layout)
                  (ansi-strip presented)))
-  (let* ((text "pri")
+  (let* ((text     "pri")
          (combined "printf")
          (accepted (clinedi::screen--editor-layout text 7 10))
          (with-suggestion
@@ -289,11 +289,11 @@
   (let ((rendered
           (with-output-to-string (stream)
             (render-line "user"
-                         :cursor 4
+                         :cursor       4
                          :prompt-width 7
-                         :columns 10
+                         :columns      10
                          :previous-row 0
-                         :stream stream))))
+                         :stream       stream))))
     (check-true "live input renders its first word on the next row"
                 (search (format nil "~a~%~cuser"
                                 (ansi-clear-line-right)
@@ -303,9 +303,9 @@
          (rendered
            (with-output-to-string (stream)
              (render-line combined
-                          :cursor 1
+                          :cursor  1
                           :columns 4
-                          :stream stream))))
+                          :stream  stream))))
     (check-true "render cursor accepts an interior character index"
                 (search combined rendered)))
   (let ((rendered
@@ -316,12 +316,12 @@
   (let ((rendered
           (with-output-to-string (stream)
             (render-line "pri"
-                         :cursor 3
+                         :cursor       3
                          :prompt-width 7
-                         :columns 80
+                         :columns      80
                          :previous-row 0
-                         :suggestion "ntf example"
-                         :stream stream))))
+                         :suggestion   "ntf example"
+                         :stream       stream))))
     (check-true "redraw starts by hiding cursor"
                 (let ((hide (ansi-cursor-hide)))
                   (and (<= (length hide) (length rendered))
@@ -335,13 +335,13 @@
   (let ((rendered
           (with-output-to-string (stream)
             (render-line "pri"
-                         :cursor 3
-                         :prompt-width 2
-                         :columns 20
-                         :previous-row 0
-                         :footer-text "  print  printf"
+                         :cursor         3
+                         :prompt-width   2
+                         :columns        20
+                         :previous-row   0
+                         :footer-text    "  print  printf"
                          :footer-display "  print  printf"
-                         :stream stream))))
+                         :stream         stream))))
     (check-true "rendered footer follows editor text"
                 (search "print  printf" rendered))
     (check-true "footer redraw returns to editor cursor"

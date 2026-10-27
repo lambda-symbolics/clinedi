@@ -62,7 +62,7 @@ buffer."
   "Read a complete bracketed-paste payload from STREAM."
   (let ((payload (make-string-output-stream))
         (matched 0)
-        (marker *bracketed-paste-end*))
+        (marker  *bracketed-paste-end*))
     (loop for character = (read-char stream nil nil)
           do (cond ((null character)
                     (return))
@@ -89,8 +89,8 @@ Wheel presses become scroll steps and a left-button press becomes a click at
 its one-based column and row. Releases, motion, and other buttons are ignored
 once the modifier bits are masked away."
   (handler-case
-      (let* ((end (1- (length body)))
-             (first-separator (position #\; body))
+      (let* ((end              (1- (length body)))
+             (first-separator  (position #\; body))
              (second-separator (and first-separator
                                     (position #\; body :start (1+ first-separator)))))
         (if (and (< 5 (length body) 64)
@@ -100,14 +100,18 @@ once the modifier bits are masked away."
             (let ((button (logand (parse-integer body :start 1 :end first-separator)
                                   (lognot #x1c)))
                   (column (parse-integer body :start (1+ first-separator)
-                                              :end second-separator))
-                  (row (parse-integer body :start (1+ second-separator) :end end)))
+                                              :end   second-separator))
+                  (row    (parse-integer body :start (1+ second-separator) :end end)))
               (if (and (plusp column) (plusp row))
                   (case button
-                    (#x40 (list :scroll -1))
-                    (#x41 (list :scroll 1))
-                    (0 (list :click column row))
-                    (otherwise :ignore))
+                    (#x40
+                     (list :scroll -1))
+                    (#x41
+                     (list :scroll 1))
+                    (0
+                     (list :click column row))
+                    (otherwise
+                     :ignore))
                   :ignore))
             :ignore))
     (error () :ignore)))
@@ -134,17 +138,20 @@ Return NIL for malformed input or unrequested extra fields."
   (block nil
     (unless (<= 1 (length text) 64)
       (return nil))
-    (let* ((parts (input--split-field text #\;))
-           (keys (input--split-field (first parts) #\:))
-           (code (input--decimal-parameter (first keys)))
+    (let* ((parts   (input--split-field text #\;))
+           (keys    (input--split-field (first parts) #\:))
+           (code    (input--decimal-parameter (first keys)))
            (shifted (and (second keys)
                          (input--decimal-parameter (second keys)))))
       (unless (and code (<= (length parts) 3) (<= (length keys) 3)
                    (case (length keys)
-                     (1 t)
-                     (2 shifted)
-                     (3 (and (or shifted (zerop (length (second keys))))
-                             (input--decimal-parameter (third keys))))))
+                     (1
+                      t)
+                     (2
+                      shifted)
+                     (3
+                      (and (or shifted (zerop (length (second keys))))
+                           (input--decimal-parameter (third keys))))))
         (return nil))
       (let ((parameters
               (cons code
@@ -173,37 +180,60 @@ Return NIL for malformed input or unrequested extra fields."
      (if (zerop modifiers) :submit :insert-newline))
     ((= code 9)
      (case modifiers
-       (0 :complete)
-       (1 :complete-previous)
-       (otherwise :ignore)))
+       (0
+        :complete)
+       (1
+        :complete-previous)
+       (otherwise
+        :ignore)))
     ((= code 27)
      (if (zerop modifiers) :escape :ignore))
     ((member code '(8 127))
      (if (logtest 6 modifiers) :kill-word :backspace))
     ((logbitp 2 modifiers)
      (case (if (<= 65 code 90) (+ code 32) code)
-       (97 :home)
-       (98 :left)
-       (99 :interrupt)
-       (100 :end-of-input)
-       (101 :end)
-       (102 :right)
-       (104 :backspace)
-       (105 :complete)
-       ((106 109) :submit)
-       (107 :kill-to-end)
-       (108 :clear-screen)
-       (110 :history-next)
-       (112 :history-previous)
-       (117 :kill-line)
-       (119 :kill-word)
-       (otherwise :ignore)))
+       (97
+        :home)
+       (98
+        :left)
+       (99
+        :interrupt)
+       (100
+        :end-of-input)
+       (101
+        :end)
+       (102
+        :right)
+       (104
+        :backspace)
+       (105
+        :complete)
+       ((106 109)
+        :submit)
+       (107
+        :kill-to-end)
+       (108
+        :clear-screen)
+       (110
+        :history-next)
+       (112
+        :history-previous)
+       (117
+        :kill-line)
+       (119
+        :kill-word)
+       (otherwise
+        :ignore)))
     ((logbitp 1 modifiers)
      (case code
-       ((66 98) :word-left)
-       ((68 100) :kill-word-right)
-       ((70 102) :word-right)
-       (otherwise :ignore)))
+       ((66 98)
+        :word-left)
+       ((68 100)
+        :kill-word-right)
+       ((70 102)
+        :word-right)
+       (otherwise
+        :ignore)))
     (t
      (let ((text-code (if (and (logbitp 0 modifiers) shifted) shifted code)))
        (if (input--printable-code-p text-code)
@@ -215,27 +245,47 @@ Return NIL for malformed input or unrequested extra fields."
   (if (logtest #x38 modifiers)
       :ignore
       (case key
-        (:up :up)
-        (:down :down)
-        (:left (if (logtest 6 modifiers) :word-left :left))
-        (:right (if (logtest 6 modifiers) :word-right :right))
-        (:home (if (logbitp 2 modifiers) :scroll-top :home))
-        (:end (if (logbitp 2 modifiers) :scroll-bottom :end))
-        (:delete :delete)
-        (:page-up (if (logbitp 2 modifiers) :previous-section :page-up))
-        (:page-down (if (logbitp 2 modifiers) :next-section :page-down))
-        (otherwise :ignore))))
+        (:up
+         :up)
+        (:down
+         :down)
+        (:left
+         (if (logtest 6 modifiers) :word-left :left))
+        (:right
+         (if (logtest 6 modifiers) :word-right :right))
+        (:home
+         (if (logbitp 2 modifiers) :scroll-top :home))
+        (:end
+         (if (logbitp 2 modifiers) :scroll-bottom :end))
+        (:delete
+         :delete)
+        (:page-up
+         (if (logbitp 2 modifiers) :previous-section :page-up))
+        (:page-down
+         (if (logbitp 2 modifiers) :next-section :page-down))
+        (otherwise
+         :ignore))))
 
 (defun input--csi-key-event (body)
   "Decode numeric navigation, CSI-u, and modifyOtherKeys reports in BODY."
   (block nil
     (unless (plusp (length body))
       (return :ignore))
-    (let* ((final (char body (1- (length body))))
-           (prefix (subseq body 0 (1- (length body))))
+    (let* ((final      (char body (1- (length body))))
+           (prefix     (subseq body 0 (1- (length body))))
            (navigation (case final
-                         (#\A :up) (#\B :down) (#\C :right)
-                         (#\D :left) (#\H :home) (#\F :end))))
+                         (#\A
+                          :up)
+                         (#\B
+                          :down)
+                         (#\C
+                          :right)
+                         (#\D
+                          :left)
+                         (#\H
+                          :home)
+                         (#\F
+                          :end))))
       (multiple-value-bind (parameters shifted)
           (if (and navigation (zerop (length prefix)))
               (values '(1) nil)
@@ -243,9 +293,9 @@ Return NIL for malformed input or unrequested extra fields."
         (unless (and parameters
                      (or (char= final #\u) (not (find #\: prefix))))
           (return :ignore))
-        (let ((code (first parameters))
+        (let ((code     (first parameters))
               (modifier (or (second parameters) 1))
-              (count (length parameters)))
+              (count    (length parameters)))
           ;; Preserve the older CSI 5D shorthand for CSI 1;5D.
           (when (and navigation (= count 1))
             (setf modifier code code 1))
@@ -264,8 +314,16 @@ Return NIL for malformed input or unrequested extra fields."
                    (input--character-key-event code modifiers)
                    (input--navigation-key-event
                     (case code
-                      ((1 7) :home) (3 :delete) ((4 8) :end)
-                      (5 :page-up) (6 :page-down))
+                      ((1 7)
+                       :home)
+                      (3
+                       :delete)
+                      ((4 8)
+                       :end)
+                      (5
+                       :page-up)
+                      (6
+                       :page-down))
                     modifiers)))
               (t
                :ignore))))))))
@@ -281,6 +339,7 @@ Return NIL for malformed input or unrequested extra fields."
      (list :paste (input--read-bracketed-paste stream)))
     (t
      (input--csi-key-event body))))
+
 (defun input--read-csi (stream)
   "Read and decode the body of one CSI sequence from STREAM."
   (let ((body (make-string-output-stream)))
@@ -303,23 +362,38 @@ Return NIL for malformed input or unrequested extra fields."
                        (sleep escape-delay))
                      (read-char-no-hang stream nil nil)))))
     (case first
-      ((nil) :escape)
-      (#\[ (input--read-csi stream))
+      ((nil)
+       :escape)
+      (#\[
+       (input--read-csi stream))
       (#\O
        (case (read-char stream nil nil)
-         (#\A :up)
-         (#\B :down)
-         (#\C :right)
-         (#\D :left)
-         (#\H :home)
-         (#\F :end)
-         (t :ignore)))
-      ((#\b #\B) :word-left)
-      ((#\d #\D) :kill-word-right)
-      ((#\f #\F) :word-right)
-      ((#\backspace #\rubout) :kill-word)
-      ((#\newline #\return) :insert-newline)
-      (t :escape))))
+         (#\A
+          :up)
+         (#\B
+          :down)
+         (#\C
+          :right)
+         (#\D
+          :left)
+         (#\H
+          :home)
+         (#\F
+          :end)
+         (t
+          :ignore)))
+      ((#\b #\B)
+       :word-left)
+      ((#\d #\D)
+       :kill-word-right)
+      ((#\f #\F)
+       :word-right)
+      ((#\backspace #\rubout)
+       :kill-word)
+      ((#\newline #\return)
+       :insert-newline)
+      (t
+       :escape))))
 
 (defun read-event (&key (stream *standard-input*) (escape-delay 0.002))
   "Read one semantic editing event from STREAM.
@@ -344,22 +418,38 @@ traversal. Shift-Tab becomes :COMPLETE-PREVIOUS. Ctrl-D becomes
            (input--read-escape stream escape-delay))
           (t
            (case (char-code character)
-             (1 :home)                 ; C-a
-             (2 :left)                 ; C-b
-             (3 :interrupt)            ; C-c
-             (4 :end-of-input)         ; C-d
-             (5 :end)                  ; C-e
-             (6 :right)                ; C-f
-             (8 :kill-word)            ; C-Backspace or C-h
-             (9 :complete)             ; Tab
-             ((10 13) :submit)
-             (11 :kill-to-end)         ; C-k
-             (12 :clear-screen)        ; C-l
-             (14 :history-next)        ; C-n
-             (16 :history-previous)    ; C-p
-             (21 :kill-line)           ; C-u
-             (23 :kill-word)           ; C-w
-             (127 :backspace)
+             (1
+              :home)                 ; C-a
+             (2
+              :left)                 ; C-b
+             (3
+              :interrupt)            ; C-c
+             (4
+              :end-of-input)         ; C-d
+             (5
+              :end)                  ; C-e
+             (6
+              :right)                ; C-f
+             (8
+              :kill-word)            ; C-Backspace or C-h
+             (9
+              :complete)             ; Tab
+             ((10 13)
+              :submit)
+             (11
+              :kill-to-end)         ; C-k
+             (12
+              :clear-screen)        ; C-l
+             (14
+              :history-next)        ; C-n
+             (16
+              :history-previous)    ; C-p
+             (21
+              :kill-line)           ; C-u
+             (23
+              :kill-word)           ; C-w
+             (127
+              :backspace)
              (t
               (if (input--terminal-control-p character)
                   :ignore

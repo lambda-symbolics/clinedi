@@ -18,11 +18,11 @@ still needs to be materialized."
   ;; locale per grapheme dominates redraw time on locale-backed backends.
   (unicode--call-with-cell-locale
    (lambda ()
-     (let ((row (floor prompt-width columns))
-           (column (mod prompt-width columns))
+     (let ((row          (floor prompt-width columns))
+           (column       (mod prompt-width columns))
            (pending-wrap (and (plusp prompt-width)
                               (zerop (mod prompt-width columns))))
-           (index start))
+           (index        start))
        (loop while (< index end)
              do (let ((character (char text index)))
                   (cond ((char= character #\newline)
@@ -36,7 +36,7 @@ still needs to be materialized."
                                pending-wrap nil)
                          (incf index))
                         (t
-                         (let* ((next (grapheme-next-boundary text index end))
+                         (let* ((next  (grapheme-next-boundary text index end))
                                 (width (min columns
                                             (grapheme-cell-width
                                              text index next))))
@@ -61,10 +61,10 @@ still needs to be materialized."
   "Return character indexes beginning TEXT's modeled physical screen rows."
   (unicode--call-with-cell-locale
    (lambda ()
-     (let ((starts (list 0))
-           (column 0)
+     (let ((starts       (list 0))
+           (column       0)
            (pending-wrap nil)
-           (index 0))
+           (index        0))
        (loop while (< index (length text))
              do (let ((character (char text index)))
                   (cond
@@ -80,7 +80,7 @@ still needs to be materialized."
                            pending-wrap nil)
                      (incf index))
                     (t
-                     (let* ((next (grapheme-next-boundary text index))
+                     (let* ((next  (grapheme-next-boundary text index))
                             (width (min columns
                                         (grapheme-cell-width
                                          text index next))))
@@ -120,12 +120,12 @@ still needs to be materialized."
         prompt-width (max 0 prompt-width))
   (unicode--call-with-cell-locale
    (lambda ()
-     (let ((positions nil)
-           (row (floor prompt-width columns))
-           (column (mod prompt-width columns))
+     (let ((positions    nil)
+           (row          (floor prompt-width columns))
+           (column       (mod prompt-width columns))
            (pending-wrap (and (plusp prompt-width)
                               (zerop (mod prompt-width columns))))
-           (index 0))
+           (index        0))
        (push (list 0 row column) positions)
        (loop while (< index (length text))
              do (let ((character (char text index)))
@@ -141,7 +141,7 @@ still needs to be materialized."
                      (setf column 0
                            pending-wrap nil))
                     (t
-                     (let* ((next (grapheme-next-boundary text index))
+                     (let* ((next  (grapheme-next-boundary text index))
                             (width (min columns
                                         (grapheme-cell-width
                                          text index next))))
@@ -158,7 +158,7 @@ still needs to be materialized."
                            (setf column 0
                                  pending-wrap t)))
                        (setf index next))))
-                (push (list index row column) positions)))
+                 (push (list index row column) positions)))
        (nreverse positions)))))
 
 (defstruct (screen-editor-layout
@@ -218,19 +218,19 @@ cursor inside the run sits at the start of the next row."
     (error 'text-range-error :text text :start 0 :end stable-end))
   (unicode--call-with-cell-locale
    (lambda ()
-     (let ((display (make-string-output-stream))
+     (let ((display         (make-string-output-stream))
            (display-indexes (make-array (1+ (length text))
                                         :initial-element nil))
-           (positions nil)
-           (soft-breaks nil)
-           (hidden nil)
-           (hanging-p nil)
-           (display-index 0)
-           (row (floor prompt-width columns))
-           (column (mod prompt-width columns))
-           (pending-wrap-p (and (plusp prompt-width)
-                                (zerop (mod prompt-width columns))))
-           (index 0))
+           (positions       nil)
+           (soft-breaks     nil)
+           (hidden          nil)
+           (hanging-p       nil)
+           (display-index   0)
+           (row             (floor prompt-width columns))
+           (column          (mod prompt-width columns))
+           (pending-wrap-p  (and (plusp prompt-width)
+                                 (zerop (mod prompt-width columns))))
+           (index           0))
        (labels ((record-boundary (source-index)
                   (setf (aref display-indexes source-index) display-index)
                   (push (list source-index row column) positions))
@@ -251,7 +251,7 @@ cursor inside the run sits at the start of the next row."
                   (let* ((limit (if (< start stable-end)
                                     stable-end
                                     (length text)))
-                         (end (screen--word-end text start limit)))
+                         (end   (screen--word-end text start limit)))
                     (text-cell-width text :start start :end end)))
 
                 (advance-grapheme (start end)
@@ -306,18 +306,18 @@ cursor inside the run sits at the start of the next row."
                              (incf display-index (- next index))
                              (advance-grapheme index next)
                              (setf index next))))
-                  (setf (aref display-indexes index) display-index)
-                  (push (list index row column) positions)))
+                   (setf (aref display-indexes index) display-index)
+                   (push (list index row column) positions)))
          (screen--make-editor-layout
-          :display (get-output-stream-string display)
+          :display         (get-output-stream-string display)
           :display-indexes display-indexes
-          :positions (nreverse
-                      (remove-duplicates positions :key #'first :from-end t))
-          :soft-breaks (nreverse soft-breaks)
-          :hidden (nreverse hidden)
-          :end-row row
-          :end-column column
-          :pending-wrap-p pending-wrap-p))))))
+          :positions       (nreverse
+                            (remove-duplicates positions :key #'first :from-end t))
+          :soft-breaks     (nreverse soft-breaks)
+          :hidden          (nreverse hidden)
+          :end-row         row
+          :end-column      column
+          :pending-wrap-p  pending-wrap-p))))))
 
 (defun screen--editor-position (layout source-index)
   "Return LAYOUT's row and column for SOURCE-INDEX."
@@ -336,8 +336,8 @@ the controls around them."
   (unless (string= text (ansi-strip display))
     (error 'styled-text-error :text text :display display))
   (with-output-to-string (wrapped)
-    (let ((breaks soft-breaks)
-          (index 0)
+    (let ((breaks        soft-breaks)
+          (index         0)
           (visible-index 0))
       (labels ((write-breaks ()
                  (loop while (and breaks
@@ -380,7 +380,7 @@ string. Words wider than COLUMNS still wrap by grapheme."
            (grapheme-boundary-at-or-after
             text
             (min (length text) (max 0 cursor))))
-         (layout (screen--editor-layout text prompt-width columns))
+         (layout       (screen--editor-layout text prompt-width columns))
          (wrapped-text (screen-editor-layout-display layout))
          (wrapped-display
            (render--insert-soft-breaks
@@ -409,9 +409,9 @@ row. The second and third values are the cursor's zero-based row and column."
                                                 (char= (char wrapped (1- end)) #\newline))
                                            (1- end)
                                            end))))
-           (rows (loop for (start end) in ranges
-                       for slice in (ansi--visible-slices styled ranges)
-                       collect (list (subseq wrapped start end) slice))))
+           (rows   (loop for (start end) in ranges
+                         for slice in (ansi--visible-slices styled ranges)
+                         collect (list (subseq wrapped start end) slice))))
       (multiple-value-bind (row column) (screen-position wrapped :columns columns :end position)
         (values rows row column)))))
 
@@ -429,14 +429,14 @@ retains the original preferred cell column across shorter rows."
   (let* ((layout
            (screen--editor-layout
             (line-editor-text editor) prompt-width columns))
-         (positions (screen-editor-layout-positions layout))
+         (positions     (screen-editor-layout-positions layout))
          (cursor-position
            (find (line-editor-cursor editor) positions :key #'first))
-         (target-row (+ (second cursor-position) direction))
+         (target-row    (+ (second cursor-position) direction))
          (preferred-column
            (or (slot-value editor 'vertical-column)
                (third cursor-position)))
-         (best nil)
+         (best          nil)
          (best-distance nil))
     (dolist (position positions)
       (when (= (second position) target-row)
@@ -467,21 +467,21 @@ are extended-grapheme boundaries."
            (grapheme-boundary-at-or-after
             text
             (min (length text) (max 0 cursor))))
-         (starts (screen--row-starts text columns))
+         (starts     (screen--row-starts text columns))
          (total-rows (length starts)))
     (when (<= total-rows rows)
       (return-from screen-window
         (values 0 (length text) safe-cursor nil nil)))
     (let* ((content-rows (max 1 (1- rows)))
-           (cursor-row (screen--cursor-row-index starts safe-cursor))
+           (cursor-row   (screen--cursor-row-index starts safe-cursor))
            (start-row
              (min (max 0 (- cursor-row (floor content-rows 2)))
                   (max 0 (- total-rows content-rows))))
-           (end-row (min total-rows (+ start-row content-rows)))
-           (start (nth start-row starts))
-           (end (if (< end-row total-rows)
-                    (nth end-row starts)
-                    (length text))))
+           (end-row      (min total-rows (+ start-row content-rows)))
+           (start        (nth start-row starts))
+           (end          (if (< end-row total-rows)
+                             (nth end-row starts)
+                             (length text))))
       (setf start (min start safe-cursor)
             end (max end safe-cursor))
       (loop while (> (screen--row-count text :columns columns :start start :end end) rows)
@@ -551,26 +551,26 @@ SUGGESTION is unaccepted suffix text rendered after TEXT. HIGHLIGHT-FUNCTION
 may add ANSI styling, but must preserve the visible content of TEXT.
 FOOTER-TEXT and FOOTER-DISPLAY describe optional plain geometry and trusted
 ANSI presentation below the editor. Their visible contents must match."
-  (let* ((columns (max 1 columns))
+  (let* ((columns          (max 1 columns))
          (safe-cursor
            (grapheme-boundary-at-or-after
             text
             (min (length text) (max 0 cursor))))
-         (suffix (or suggestion ""))
-         (footer (or footer-text ""))
-         (footer-p (plusp (length footer)))
+         (suffix           (or suggestion ""))
+         (footer           (or footer-text ""))
+         (footer-p         (plusp (length footer)))
          (accepted-layout
            (screen--editor-layout text prompt-width columns))
-         (combined-text (concatenate 'string text suffix))
+         (combined-text    (concatenate 'string text suffix))
          (combined-layout
            (screen--editor-layout combined-text prompt-width columns
                                   :stable-end (length text)))
          (combined-display (screen-editor-layout-display combined-layout))
-         (display (concatenate 'string
-                               combined-display
-                               (if footer-p (string #\newline) "")
-                               footer))
-         (highlighted (funcall highlight-function text))
+         (display          (concatenate 'string
+                                        combined-display
+                                        (if footer-p (string #\newline) "")
+                                        footer))
+         (highlighted      (funcall highlight-function text))
          (presented
            (render--insert-soft-breaks
             combined-text
@@ -586,7 +586,7 @@ ANSI presentation below the editor. Their visible contents must match."
           (screen--editor-position accepted-layout safe-cursor)
         (multiple-value-bind (end-row end-column exact-wrap)
             (screen-position display :prompt-width prompt-width
-                                     :columns columns)
+                                     :columns      columns)
           (declare (ignore end-column))
           (write-string (ansi-cursor-hide) stream)
           (unwind-protect
@@ -614,12 +614,12 @@ ANSI presentation below the editor. Their visible contents must match."
                (highlight-function #'identity) (stream *standard-output*))
   "Park after TEXT, optionally print MARKER, and advance to a fresh line."
   (render-line text
-               :cursor (length text)
-               :prompt-width prompt-width
-               :columns columns
-               :previous-row previous-row
+               :cursor             (length text)
+               :prompt-width       prompt-width
+               :columns            columns
+               :previous-row       previous-row
                :highlight-function highlight-function
-               :stream stream)
+               :stream             stream)
   (when marker
     (write-string (ansi-colorize marker :bright-black) stream))
   (render--write-newline stream)
@@ -636,8 +636,8 @@ ANSI presentation below the editor. Their visible contents must match."
            (format stream "(~d possibilities)" count)
            (render--write-newline stream))
           (t
-           (let* ((width (+ 2 (loop for display in displays
-                                    maximize (text-cell-width display))))
+           (let* ((width   (+ 2 (loop for display in displays
+                                      maximize (text-cell-width display))))
                   (per-row (max 1 (floor (max 1 columns) (max 1 width)))))
              (loop for index from 1
                    for display in displays

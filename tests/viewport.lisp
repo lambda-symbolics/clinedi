@@ -104,7 +104,7 @@
                    "# b"
                    (transcript-viewport-row-text viewport (transcript-viewport-top viewport)))))
   (let ((viewport (make-transcript-viewport :width 10))
-        (text (format nil "猫 copy x~%")))
+        (text     (format nil "猫 copy x~%")))
     (viewport-tests--append viewport text (list 2 6 '(:copy "source")))
     (transcript-viewport-layout viewport 3)
     (check-equal "a wide character occupies both of its cells"

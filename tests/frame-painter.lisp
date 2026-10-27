@@ -15,15 +15,15 @@
   (loop with marker = (format nil "~c[2K" (code-char 27))
         for start = (search marker controls) then (search marker controls :start2 (1+ start))
         while start
-        collect (let* ((position-end (position #\H controls :end start :from-end t))
+        collect (let* ((position-end   (position #\H controls :end start :from-end t))
                        (position-start (position #\[ controls :end position-end :from-end t)))
                   (parse-integer controls :start (1+ position-start)
-                                          :end (position #\; controls :start position-start)))))
+                                          :end   (position #\; controls :start position-start)))))
 
 (defun run-frame-painter-tests ()
   "Run fullscreen frame painting regression tests."
   (let ((painter (make-frame-painter))
-        (escape (code-char 27)))
+        (escape  (code-char 27)))
     (let ((controls (frame-painter-tests--paint painter '("one" "two" "three" "four")
                                                 :height 3 :width 10
                                                 :cursor-row 7 :cursor-column 40)))
@@ -78,9 +78,9 @@
                  (frame-painter-tests--painted-rows
                   (frame-painter-tests--paint painter '("one" "TWO")
                                               :height 3 :width 11))))
-  (let* ((painter (make-frame-painter))
-         (begin (format nil "~c[?2026h" (code-char 27)))
-         (end (format nil "~c[?2026l" (code-char 27)))
+  (let* ((painter   (make-frame-painter))
+         (begin     (format nil "~c[?2026h" (code-char 27)))
+         (end       (format nil "~c[?2026l" (code-char 27)))
          (large-row (make-string 20000 :initial-element #\x)))
     (dolist (rows (list (list large-row "second")
                        (list large-row "changed")

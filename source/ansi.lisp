@@ -21,8 +21,8 @@ Return TEXT unchanged when presentation is disabled."
   (if *presentation-enabled*
       (cl-colorist:paint text
                          :foreground (ansi--color-designator color)
-                         :bold bold
-                         :level :indexed)
+                         :bold       bold
+                         :level      :indexed)
       text))
 
 (defun ansi-reverse-video (text)
@@ -90,10 +90,14 @@ its own prompt after a resize; other markers accept only the default."
     (error 'semantic-prompt-redraw-error :marker marker))
   (let ((payload
           (ecase marker
-            (:prompt-start (if redraw-p "A" "A;redraw=0"))
-            (:input-start "B")
-            (:execution-start "C")
-            (:command-finished (format nil "D;~D" status)))))
+            (:prompt-start
+             (if redraw-p "A" "A;redraw=0"))
+            (:input-start
+             "B")
+            (:execution-start
+             "C")
+            (:command-finished
+             (format nil "D;~D" status)))))
     (ansi--operating-system-command (format nil "133;~a" payload))))
 
 (defun window-title-sequence (title)
@@ -142,8 +146,10 @@ presses as (:CLICK COLUMN ROW)."
 (defun ansi--default-color-code (layer)
   "Return the OSC number of the terminal default color LAYER."
   (ecase layer
-    (:foreground 10)
-    (:background 11)))
+    (:foreground
+     10)
+    (:background
+     11)))
 
 (defun ansi--operating-system-command (payload)
   "Return PAYLOAD as an operating system command terminated by ST."
@@ -174,7 +180,7 @@ presses as (:CLICK COLUMN ROW)."
 (defun ansi--sgr-reset-p (string start end)
   "Return true when the SGR control between START and END resets every attribute."
   (let ((parameters-start (ansi--control-payload-start string start))
-        (parameters-end (1- end)))
+        (parameters-end   (1- end)))
     (or (>= parameters-start parameters-end)
         (and (= (- parameters-end parameters-start) 1)
              (char= (char string parameters-start) #\0)))))
@@ -195,13 +201,13 @@ presses as (:CLICK COLUMN ROW)."
 
 A hyperlink ends when its URI is empty. The URI follows the second semicolon
 and runs to the string terminator, which is ESC backslash, BEL or C1 ST."
-  (let* ((payload-start (ansi--control-payload-start string start))
+  (let* ((payload-start    (ansi--control-payload-start string start))
          (terminator-start (if (and (>= (- end start) 2)
                                     (char= (char string (1- end)) #\\)
                                     (char= (char string (- end 2)) *escape-character*))
                                (- end 2)
                                (1- end)))
-         (separator (position #\; string :start (+ payload-start 2) :end end)))
+         (separator        (position #\; string :start (+ payload-start 2) :end end)))
     (or (null separator)
         (>= (1+ separator) terminator-start))))
 
@@ -214,12 +220,12 @@ first visible character, keeps the controls that occur inside it, and closes
 whatever it leaves open. Rows therefore paint correctly alone or in sequence
 without one row's controls being copied into every other row, and STRING is
 scanned once however many ranges there are."
-  (let ((slices nil)
-        (active-sgr nil)
+  (let ((slices           nil)
+        (active-sgr       nil)
         (active-hyperlink nil)
-        (index 0)
-        (visible-index 0)
-        (length (length string)))
+        (index            0)
+        (visible-index    0)
+        (length           (length string)))
     (labels ((note-control (start end)
                "Track the presentation state a control between START and END leaves."
                (cond

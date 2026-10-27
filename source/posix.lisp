@@ -7,6 +7,7 @@
       #x40087468
       #x5413)
   "The platform TIOCGWINSZ ioctl request for reading terminal dimensions.")
+
 (defun terminal-file-descriptor-size (file-descriptor)
   "Return positive terminal rows and columns for FILE-DESCRIPTOR, or NIL values."
   (handler-case
@@ -14,17 +15,19 @@
         (sb-posix:ioctl file-descriptor
                         *terminal-window-size-request*
                         (sb-alien:addr (sb-alien:deref size 0)))
-        (let ((rows (sb-alien:deref size 0))
+        (let ((rows    (sb-alien:deref size 0))
               (columns (sb-alien:deref size 1)))
           (values (and (plusp rows) rows)
                   (and (plusp columns) columns))))
     (sb-posix:syscall-error ()
       (values nil nil))))
+
 (defun terminal--interactive-file-descriptor-p (file-descriptor)
   "Return true when FILE-DESCRIPTOR names an interactive terminal."
   (and (not (minusp file-descriptor))
        (let ((result (sb-unix:unix-isatty file-descriptor)))
          (and result (plusp result)))))
+
 (defun terminal--configure-input-mode (mode)
   "Configure MODE for noncanonical, no-echo, application-managed input."
   (setf (sb-posix:termios-lflag mode)
@@ -39,7 +42,6 @@
     (setf (aref control-characters sb-posix:vmin) 1
           (aref control-characters sb-posix:vtime) 0))
   mode)
-
 
 (defun terminal-standard-input-file-descriptor ()
   "Return the descriptor of this process's standard input for terminal use."
@@ -71,7 +73,7 @@
   (let ((descriptor (stream-terminal-input-file-descriptor terminal)))
     (when (terminal--interactive-file-descriptor-p descriptor)
       (handler-case
-          (let ((saved (sb-posix:tcgetattr descriptor))
+          (let ((saved  (sb-posix:tcgetattr descriptor))
                 (hidden (sb-posix:tcgetattr descriptor)))
             (setf (sb-posix:termios-lflag hidden)
                   (logandc2 (sb-posix:termios-lflag hidden) sb-posix:echo))

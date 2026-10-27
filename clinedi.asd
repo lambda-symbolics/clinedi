@@ -1,76 +1,76 @@
 (asdf:defsystem "clinedi"
-  :version "0.1.0"
-  :author "Lukáš Hozda"
-  :license "ISC"
+  :version     "0.1.0"
+  :author      "Lukáš Hozda"
+  :license     "ISC"
   :description "A portable, Unicode-aware terminal line editor"
-  :encoding :utf-8
-  :depends-on ("bordeaux-threads" "cl-colorist" "trivial-gray-streams")
-  :components ((:module "source"
-                :serial t
-                :components
-                ((:file "package")
-                 (:file "unicode")
-                 (:file "ansi")
-                 (:file "hyperlinks")
-                 (:file "program-status")
-                 (:file "keymap")
-                 (:file "editor")
-                 (:file "editor-state")
-                 (:file "selector")
-                 (:file "session")
-                 (:file "input")
-                 (:file "input-pump")
-                 (:file "paste")
-                 (:file "transport")
-                 (:file "terminal-size")
-                 (:file "render")
-                 (:file "live-region")
-                 (:file "mode-stream")
-                 (:file "viewport")
-                 (:file "frame-painter")
-                 (:file "terminal-editor"))))
+  :encoding    :utf-8
+  :depends-on  ("bordeaux-threads" "cl-colorist" "trivial-gray-streams")
+  :components  ((:module "source"
+                 :serial t
+                 :components
+                 ((:file "package")
+                  (:file "unicode")
+                  (:file "ansi")
+                  (:file "hyperlinks")
+                  (:file "program-status")
+                  (:file "keymap")
+                  (:file "editor")
+                  (:file "editor-state")
+                  (:file "selector")
+                  (:file "session")
+                  (:file "input")
+                  (:file "input-pump")
+                  (:file "paste")
+                  (:file "transport")
+                  (:file "terminal-size")
+                  (:file "render")
+                  (:file "live-region")
+                  (:file "mode-stream")
+                  (:file "viewport")
+                  (:file "frame-painter")
+                  (:file "terminal-editor"))))
   :in-order-to ((asdf:test-op (asdf:test-op "clinedi/tests"))))
 
 (asdf:defsystem "clinedi/tests"
   :description "Regression tests for Clinedi"
-  :encoding :utf-8
-  :depends-on ("clinedi"
-               (:feature (:and :sbcl (:not :win32)) "clinedi/posix")
-               (:feature (:and :sbcl :win32) "clinedi/win32"))
-  :components ((:module "tests"
-                :serial t
-                :components
-                ((:file "package")
-                 (:file "assertions")
-                 (:file "unicode")
-                 (:file "hyperlinks")
-                 (:file "program-status")
-                 (:file "editor")
-                 (:file "editor-state")
-                 (:file "selector")
-                 (:file "session")
-                 (:file "input")
-                 (:file "input-pump")
-                 (:file "paste")
-                 (:file "transport")
-                 (:file "render")
-                 (:file "live-region")
-                 (:file "mode-stream")
-                 (:file "viewport")
-                 (:file "frame-painter")
-                 (:file "terminal-editor")
-                 (:file "check"))))
-  :perform (asdf:test-op
-            (operation system)
-            (declare (ignore operation system))
-            (uiop:symbol-call '#:clinedi/tests '#:run-tests)))
+  :encoding    :utf-8
+  :depends-on  ("clinedi"
+                (:feature (:and :sbcl (:not :win32)) "clinedi/posix")
+                (:feature (:and :sbcl :win32) "clinedi/win32"))
+  :components  ((:module "tests"
+                 :serial t
+                 :components
+                 ((:file "package")
+                  (:file "assertions")
+                  (:file "unicode")
+                  (:file "hyperlinks")
+                  (:file "program-status")
+                  (:file "editor")
+                  (:file "editor-state")
+                  (:file "selector")
+                  (:file "session")
+                  (:file "input")
+                  (:file "input-pump")
+                  (:file "paste")
+                  (:file "transport")
+                  (:file "render")
+                  (:file "live-region")
+                  (:file "mode-stream")
+                  (:file "viewport")
+                  (:file "frame-painter")
+                  (:file "terminal-editor")
+                  (:file "check"))))
+  :perform     (asdf:test-op
+                (operation system)
+                (declare (ignore operation system))
+                (uiop:symbol-call '#:clinedi/tests '#:run-tests)))
 
 (asdf:defsystem "clinedi/posix"
   :description "Optional SBCL POSIX terminal input-mode and geometry adapter"
-  :depends-on ("clinedi" "sb-posix")
-  :components ((:file "source/posix" :if-feature (:not :win32))))
+  :depends-on  ("clinedi" "sb-posix")
+  :components  ((:file "source/posix" :if-feature (:not :win32))))
 
 (asdf:defsystem "clinedi/win32"
   :description "Optional SBCL Windows console input-mode and geometry adapter"
-  :depends-on ("clinedi")
-  :components ((:file "source/win32" :if-feature :win32)))
+  :depends-on  ("clinedi")
+  :components  ((:file "source/win32" :if-feature :win32)))

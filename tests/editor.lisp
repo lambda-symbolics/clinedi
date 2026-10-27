@@ -28,7 +28,7 @@
            (make-keymap :bindings '((:left . :right)
                                     (:insert . :paste))))
          (child
-           (make-keymap :parent parent
+           (make-keymap :parent   parent
                         :bindings '(((:insert "exact") . :kill-line)
                                     (:home . :end)))))
     (multiple-value-bind (command present-p)
@@ -64,12 +64,12 @@
                             "A copied parent binding must be detached.")
       (editor-tests--assert (not (eq (keymap-parent copy) parent))
                             "COPY-KEYMAP must copy its parent chain.")))
-  (let ((first-map (default-line-editor-keymap))
+  (let ((first-map  (default-line-editor-keymap))
         (second-map (default-line-editor-keymap)))
     (keymap-bind first-map :left :right)
     (editor-tests--assert (eq (keymap-lookup second-map :left) :left)
                           "Default keymaps must be independent."))
-  (let ((first-editor (make-line-editor))
+  (let ((first-editor  (make-line-editor))
         (second-editor (make-line-editor)))
     (keymap-bind (line-editor-keymap first-editor) :left :right)
     (editor-tests--assert
@@ -136,34 +136,34 @@
     (editor-tests--event editor :word-left :continue)
     (editor-tests--assert (zerop (line-editor-cursor editor))
                           "Word-left must cross separating whitespace."))
-    (let ((editor (make-line-editor :text "alpha:beta" :cursor 0)))
-      (editor-tests--event editor :word-right :continue)
-      (editor-tests--assert (= (line-editor-cursor editor) 10)
-                            "Word movement must retain whole-word behavior by default.")
-      (editor-tests--event editor :home :continue)
-      (editor-tests--event editor :toggle-word-delimiter-mode :continue)
-      (editor-tests--assert (line-editor-word-delimiter-mode-p editor)
-                            "The delimiter-mode command must enable the mode.")
-      (editor-tests--event editor :word-right :continue)
-      (editor-tests--assert (= (line-editor-cursor editor) 5)
-                            "Delimiter mode must stop at a colon.")
-      (editor-tests--event editor :word-right :continue)
-      (editor-tests--assert (= (line-editor-cursor editor) 10)
-                            "Delimiter mode must cross the delimiter before the next word.")
-      (editor-tests--event editor :kill-word :continue)
-      (editor-tests--assert (string= (line-editor-text editor) "alpha:")
-                            "Delimiter mode must make Ctrl-Backspace delete one segment.")
-      (editor-tests--assert (not (line-editor-toggle-word-delimiter-mode editor))
-                            "The public toggle must return the disabled mode state."))
-    (let ((editor (make-line-editor :text "alpha+beta"
-                                    :cursor 0
-                                    :word-delimiter-mode-p t
-                                    :word-delimiters '(#\+))))
-      (editor-tests--assert (equal (line-editor-word-delimiters editor) '(#\+))
-                            "An editor must retain its configured word delimiters.")
-      (editor-tests--event editor :word-right :continue)
-      (editor-tests--assert (= (line-editor-cursor editor) 5)
-                            "Configured delimiters must control word movement."))
+  (let ((editor (make-line-editor :text "alpha:beta" :cursor 0)))
+    (editor-tests--event editor :word-right :continue)
+    (editor-tests--assert (= (line-editor-cursor editor) 10)
+                          "Word movement must retain whole-word behavior by default.")
+    (editor-tests--event editor :home :continue)
+    (editor-tests--event editor :toggle-word-delimiter-mode :continue)
+    (editor-tests--assert (line-editor-word-delimiter-mode-p editor)
+                          "The delimiter-mode command must enable the mode.")
+    (editor-tests--event editor :word-right :continue)
+    (editor-tests--assert (= (line-editor-cursor editor) 5)
+                          "Delimiter mode must stop at a colon.")
+    (editor-tests--event editor :word-right :continue)
+    (editor-tests--assert (= (line-editor-cursor editor) 10)
+                          "Delimiter mode must cross the delimiter before the next word.")
+    (editor-tests--event editor :kill-word :continue)
+    (editor-tests--assert (string= (line-editor-text editor) "alpha:")
+                          "Delimiter mode must make Ctrl-Backspace delete one segment.")
+    (editor-tests--assert (not (line-editor-toggle-word-delimiter-mode editor))
+                          "The public toggle must return the disabled mode state."))
+  (let ((editor (make-line-editor :text                  "alpha+beta"
+                                  :cursor                0
+                                  :word-delimiter-mode-p t
+                                  :word-delimiters       '(#\+))))
+    (editor-tests--assert (equal (line-editor-word-delimiters editor) '(#\+))
+                          "An editor must retain its configured word delimiters.")
+    (editor-tests--event editor :word-right :continue)
+    (editor-tests--assert (= (line-editor-cursor editor) 5)
+                          "Configured delimiters must control word movement."))
   (let ((editor (make-line-editor :text "alpha beta  ")))
     (editor-tests--event editor :kill-word :continue)
     (editor-tests--assert (string= (line-editor-text editor) "alpha ")
@@ -202,10 +202,10 @@
 
 (defun editor-tests--test-history ()
   "Test copied, bounded history and restoration of a traversed draft."
-  (let* ((source  (vector "one" "two"))
-         (editor  (make-line-editor :text "draft"
-                                    :history source
-                                    :history-limit 2)))
+  (let* ((source (vector "one" "two"))
+         (editor (make-line-editor :text          "draft"
+                                   :history       source
+                                   :history-limit 2)))
     (setf (aref source 1) "changed")
     (editor-tests--event editor :history-previous :continue)
     (editor-tests--assert (string= (line-editor-text editor) "two")
@@ -232,14 +232,14 @@
            (search query entry)))
     (let ((editor
             (make-line-editor
-             :text "needle"
-             :cursor 2
-             :history #("old needle"
-                        "duplicate needle"
-                        "unrelated"
-                        "duplicate needle"
-                        "new needle"
-                        "only ne")
+             :text                   "needle"
+             :cursor                 2
+             :history                #("old needle"
+                                       "duplicate needle"
+                                       "unrelated"
+                                       "duplicate needle"
+                                       "new needle"
+                                       "only ne")
              :history-match-function #'contains-p)))
       (dolist (expected '("new needle" "duplicate needle"
                           "duplicate needle" "old needle" "old needle"))
@@ -264,9 +264,9 @@
                             "History-next outside traversal must be a no-op."))
     (let ((editor
             (make-line-editor
-             :text "missing"
-             :cursor 3
-             :history #("alpha beta" "release")
+             :text                   "missing"
+             :cursor                 3
+             :history                #("alpha beta" "release")
              :history-match-function #'contains-p)))
       (editor-tests--event editor :history-previous :continue)
       (editor-tests--event editor :history-next :continue)
@@ -286,7 +286,7 @@
 
 (defun editor-tests--test-vertical-movement ()
   "Test visual-row movement across explicit, short, wrapped, and wide rows."
-  (let* ((text (format nil "abcd~%xy~%abcdef"))
+  (let* ((text   (format nil "abcd~%xy~%abcdef"))
          (editor (make-line-editor :text text)))
     (editor-tests--assert
      (line-editor-move-vertical editor -1 :columns 80 :prompt-width 2)
@@ -316,7 +316,7 @@
                           "Up must account for the prompt on the first row.")
     (editor-tests--assert
      (not (line-editor-move-vertical editor -1
-                                    :columns 5
+                                    :columns      5
                                     :prompt-width 2))
      "Movement must report the visual boundary for history fallback."))
   (let ((editor (make-line-editor :text "say user")))
@@ -326,7 +326,7 @@
     (line-editor-move-vertical editor 1 :columns 6 :prompt-width 0)
     (editor-tests--assert (= (line-editor-cursor editor) 8)
                           "Down must restore the soft-wrapped word column."))
-  (let* ((text (format nil "猫a~%犬b"))
+  (let* ((text   (format nil "猫a~%犬b"))
          (editor (make-line-editor :text text)))
     (line-editor-move-vertical editor -1 :columns 20 :prompt-width 0)
     (editor-tests--assert (= (line-editor-cursor editor) 2)
@@ -338,16 +338,16 @@
   (let ((editor (make-line-editor :text "abc" :cursor 1)))
     (editor-tests--event editor :insert-newline :continue)
     (editor-tests--assert (string= (line-editor-text editor)
-                                    (format nil "a~%bc"))
+                                   (format nil "a~%bc"))
                           "Insert-newline must add a logical input line.")
     (editor-tests--event editor :end-of-input :continue)
     (editor-tests--assert (string= (line-editor-text editor)
-                                    (format nil "a~%c"))
+                                   (format nil "a~%c"))
                           "End-of-input must delete at an interior cursor.")
     (editor-tests--event editor :end :continue)
     (editor-tests--event editor :end-of-input :continue)
     (editor-tests--assert (string= (line-editor-text editor)
-                                    (format nil "a~%c"))
+                                   (format nil "a~%c"))
                           "End-of-input at non-empty end must preserve text.")
     (editor-tests--assert
      (string= (editor-tests--event editor :submit :submit)
@@ -398,8 +398,8 @@
   "Test public construction paths and their history matcher defaults."
   (let ((editor
           (line-editor-create
-           :text "ready"
-           :history #("older")
+           :text                   "ready"
+           :history                #("older")
            :history-match-function (lambda (query entry)
                                      (declare (ignore query entry))
                                      nil))))
@@ -413,12 +413,12 @@
                           "The named constructor must apply its matcher."))
   (let ((editor
           (make-instance 'clinedi:line-editor
-                         :text "draft"
-                         :cursor 5
-                         :history (make-array 1
-                                              :adjustable t
-                                              :fill-pointer 1
-                                              :initial-element "older")
+                         :text          "draft"
+                         :cursor        5
+                         :history       (make-array 1
+                                                    :adjustable      t
+                                                    :fill-pointer    1
+                                                    :initial-element "older")
                          :history-limit 10)))
     (editor-tests--event editor :history-previous :continue)
     (editor-tests--assert (string= (line-editor-text editor) "older")

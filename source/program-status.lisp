@@ -91,8 +91,8 @@ Truncation keeps whole characters, so the decoded text is always valid UTF-8."
 Only the newest *PROGRAM-STATUS-RECORD-LIMIT* records are kept. Return the
 controls that clear removed records and send changed ones, which is empty when
 nothing changed."
-  (let ((previous (program-status-records-current records))
-        (current  (last new *program-status-record-limit*))
+  (let ((previous    (program-status-records-current records))
+        (current     (last new *program-status-record-limit*))
         (application (program-status-records-application records)))
     (setf (program-status-records-current records) current)
     (with-output-to-string (stream)

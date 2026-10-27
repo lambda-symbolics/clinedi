@@ -7,11 +7,13 @@
 (defun test-input-decoder (stream &key (escape-delay 0.002))
   "Exercise a caller's literal-paste binding through the decoder callback."
   (let ((character (read-char stream nil nil)))
-    (cond ((null character) ':stream-end)
+    (cond ((null character)
+           ':stream-end)
           ((char= character (code-char 22))
            (clinedi:read-paste-burst stream :idle-seconds 0 :maximum-characters 1000000))
-          (t (unread-char character stream)
-             (clinedi:read-event :stream stream :escape-delay escape-delay)))))
+          (t
+           (unread-char character stream)
+           (clinedi:read-event :stream stream :escape-delay escape-delay)))))
 
 (defclass test-buffered-terminal (clinedi:stream-terminal) ()
   (:default-initargs :event-decoder #'test-input-decoder
@@ -21,25 +23,25 @@
 
 (defclass protocol-recording-stream-terminal (stream-terminal)
   ((chunks
-    :initform nil
-    :accessor protocol-recording-stream-terminal-chunks
-    :type list
+    :initform      nil
+    :accessor      protocol-recording-stream-terminal-chunks
+    :type          list
     :documentation "Protocol writes captured in reverse order.")
    (write-count
-    :initform 0
-    :accessor protocol-recording-stream-terminal-write-count
-    :type (integer 0)
+    :initform      0
+    :accessor      protocol-recording-stream-terminal-write-count
+    :type          (integer 0)
     :documentation "The number of attempted protocol writes.")
    (fail-write-index
-    :initarg :fail-write-index
-    :initform nil
-    :reader protocol-recording-stream-terminal-fail-write-index
-    :type (or null integer)
+    :initarg       :fail-write-index
+    :initform      nil
+    :reader        protocol-recording-stream-terminal-fail-write-index
+    :type          (or null integer)
     :documentation "The optional one-based write attempt that signals failure.")
    (flush-count
-    :initform 0
-    :accessor protocol-recording-stream-terminal-flush-count
-    :type (integer 0)
+    :initform      0
+    :accessor      protocol-recording-stream-terminal-flush-count
+    :type          (integer 0)
     :documentation "The number of attempted protocol flushes."))
   (:documentation "A stream terminal recording and optionally failing protocol writes."))
 
@@ -50,9 +52,9 @@
     (when (eql index
                (protocol-recording-stream-terminal-fail-write-index terminal))
       (error 'terminal-error
-             :message "Injected protocol write failure."
+             :message   "Injected protocol write failure."
              :operation ':write
-             :cause nil))
+             :cause     nil))
     (push text (protocol-recording-stream-terminal-chunks terminal)))
   nil)
 
@@ -60,17 +62,19 @@
   "Record one protocol flush without external output."
   (incf (protocol-recording-stream-terminal-flush-count terminal))
   nil)
+
 (defun terminal-tests--contains-control-character-p (text)
   "Return true when TEXT contains an untrusted ESC or C1 control character."
   (loop for character across text
         for code = (char-code character)
         thereis (or (= code 27)
                     (<= 128 code 159))))
+
 (defun test-terminal-input-decoding ()
   "Test production key decoding and bracketed or raw paste collection."
-  (let* ((escape *terminal-escape-character*)
+  (let* ((escape      *terminal-escape-character*)
          (paste-start (format nil "~C[200~~" escape))
-         (paste-end (format nil "~C[201~~" escape))
+         (paste-end   (format nil "~C[201~~" escape))
          (input
            (concatenate 'string
                         (format nil "~C[A" escape)
@@ -85,11 +89,11 @@
                         (format nil "~C[100;5u" escape)))
          (terminal
            (make-instance 'test-buffered-terminal
-                          :input-stream (make-string-input-stream input)
-                          :output-stream (make-string-output-stream)
+                          :input-stream          (make-string-input-stream input)
+                          :output-stream         (make-string-output-stream)
                           :input-file-descriptor 0
-                          :interactive-p t
-                          :columns 40)))
+                          :interactive-p         t
+                          :columns               40)))
     (test-assert (eq (terminal-read-event terminal) :up)
                  "the production decoder recognizes an up arrow")
     (let ((paste-event (terminal-read-event terminal)))
@@ -113,11 +117,11 @@
                  "physical interactive stream EOF remains distinct from Ctrl-D"))
   (let ((terminal
           (make-instance 'test-buffered-terminal
-                         :input-stream (make-string-input-stream "")
-                         :output-stream (make-string-output-stream)
+                         :input-stream          (make-string-input-stream "")
+                         :output-stream         (make-string-output-stream)
                          :input-file-descriptor 0
-                         :interactive-p nil
-                         :columns 40)))
+                         :interactive-p         nil
+                         :columns               40)))
     (test-assert (eq (terminal-read-event terminal) :stream-end)
                  "physical fallback stream EOF remains distinct from Ctrl-D"))
   (let* ((payload (format nil "first line~%second line"))
@@ -127,11 +131,11 @@
             :input-stream
             (make-string-input-stream
              (concatenate 'string (string (code-char 22)) payload))
-            :output-stream (make-string-output-stream)
+            :output-stream         (make-string-output-stream)
             :input-file-descriptor 0
-            :interactive-p t
-            :columns 40))
-         (event (terminal-read-event terminal)))
+            :interactive-p         t
+            :columns               40))
+         (event   (terminal-read-event terminal)))
     (test-assert
      (and (eq (first event) :paste)
           (string= (second event) payload))
@@ -140,13 +144,13 @@
          (terminal
            (make-instance
             'test-buffered-terminal
-            :input-stream (make-string-input-stream payload)
-            :output-stream (make-string-output-stream)
+            :input-stream          (make-string-input-stream payload)
+            :output-stream         (make-string-output-stream)
             :input-file-descriptor 0
-            :interactive-p t
-            :columns 40))
-         (event (terminal-read-event terminal))
-         (editor (line-editor-create)))
+            :interactive-p         t
+            :columns               40))
+         (event   (terminal-read-event terminal))
+         (editor  (line-editor-create)))
     (test-assert
      (and (eq (first event) :paste)
           (string= (second event) payload))
@@ -165,13 +169,13 @@
          (terminal
            (make-instance
             'test-buffered-terminal
-            :input-stream (make-string-input-stream payload)
-            :output-stream (make-string-output-stream)
+            :input-stream          (make-string-input-stream payload)
+            :output-stream         (make-string-output-stream)
             :input-file-descriptor 0
-            :interactive-p t
-            :columns 40))
-         (event (terminal-read-event terminal))
-         (editor (line-editor-create)))
+            :interactive-p         t
+            :columns               40))
+         (event     (terminal-read-event terminal))
+         (editor    (line-editor-create)))
     (test-assert
      (and (eq (first event) :paste)
           (string= (second event) sanitized))
@@ -188,36 +192,36 @@
   #+sbcl
   (multiple-value-bind (read-descriptor write-descriptor)
       (sb-posix:pipe)
-    (let ((input nil)
+    (let ((input  nil)
           (output nil))
       (unwind-protect
            (let ((payload (format nil "pipe first~%pipe second")))
              (setf input
                    (sb-sys:make-fd-stream
                     read-descriptor
-                    :input t
-                    :element-type 'character
+                    :input           t
+                    :element-type    'character
                     :external-format ':utf-8
-                    :buffering ':none
-                    :auto-close nil)
+                    :buffering       ':none
+                    :auto-close      nil)
                    output
                    (sb-sys:make-fd-stream
                     write-descriptor
-                    :output t
-                    :element-type 'character
+                    :output          t
+                    :element-type    'character
                     :external-format ':utf-8
-                    :buffering ':none
-                    :auto-close nil))
+                    :buffering       ':none
+                    :auto-close      nil))
              (write-string payload output)
              (finish-output output)
              (let* ((terminal
                       (make-instance
                        'test-buffered-terminal
-                       :input-stream input
-                       :output-stream (make-string-output-stream)
+                       :input-stream          input
+                       :output-stream         (make-string-output-stream)
                        :input-file-descriptor read-descriptor
-                       :interactive-p t
-                       :columns 40))
+                       :interactive-p         t
+                       :columns               40))
                     (event (terminal-read-event terminal)))
                (test-assert
                 (and (eq (first event) :paste)
@@ -240,13 +244,13 @@
          (terminal
            (make-instance
             'test-buffered-terminal
-            :input-stream (make-string-input-stream payload)
-            :output-stream (make-string-output-stream)
+            :input-stream          (make-string-input-stream payload)
+            :output-stream         (make-string-output-stream)
             :input-file-descriptor 0
-            :interactive-p t
-            :columns 40))
-         (event (terminal-read-event terminal))
-         (editor (line-editor-create)))
+            :interactive-p         t
+            :columns               40))
+         (event   (terminal-read-event terminal))
+         (editor  (line-editor-create)))
     (test-assert
      (equal event (list ':insert payload))
      "a buffered plain-text burst becomes one insert event")
@@ -264,10 +268,10 @@
            'test-buffered-terminal
            :input-stream
            (make-string-input-stream (format nil "a~C" #\Tab))
-           :output-stream (make-string-output-stream)
+           :output-stream         (make-string-output-stream)
            :input-file-descriptor 0
-           :interactive-p t
-           :columns 40)))
+           :interactive-p         t
+           :columns               40)))
     (test-assert
      (equal (terminal-read-event terminal) '(:insert "a"))
      "a mixed buffered burst retains text before a control event")
@@ -285,18 +289,18 @@
     (destructuring-bind (input expected) case
       (let ((terminal
               (make-instance 'test-buffered-terminal
-                             :input-stream (make-string-input-stream input)
-                             :output-stream (make-string-output-stream)
+                             :input-stream          (make-string-input-stream input)
+                             :output-stream         (make-string-output-stream)
                              :input-file-descriptor 0
-                             :interactive-p t
-                             :columns 40)))
+                             :interactive-p         t
+                             :columns               40)))
         (test-assert (eq (terminal-read-event terminal) expected)
                      "ordinary raw and CSI keys retain semantic input events"))))
   (let* ((output (make-string-output-stream))
          (terminal
            (make-instance 'test-buffered-terminal
-                          :input-stream (make-string-input-stream "")
-                          :output-stream output
+                          :input-stream          (make-string-input-stream "")
+                          :output-stream         output
                           :input-file-descriptor 0))
          (expected
            (concatenate
@@ -311,10 +315,10 @@
                  "terminal input protocols enable and disable once in order"))
   (let* ((terminal
            (make-instance 'protocol-recording-stream-terminal
-                          :input-stream (make-string-input-stream "")
-                          :output-stream (make-string-output-stream)
+                          :input-stream          (make-string-input-stream "")
+                          :output-stream         (make-string-output-stream)
                           :input-file-descriptor 0
-                          :fail-write-index 2))
+                          :fail-write-index      2))
          (failure nil))
     (handler-case
         (clinedi::terminal--enable-input-protocols terminal)
@@ -333,10 +337,10 @@
        "partial protocol activation attempts every cleanup control")))
   (let* ((terminal
            (make-instance 'protocol-recording-stream-terminal
-                          :input-stream (make-string-input-stream "")
-                          :output-stream (make-string-output-stream)
+                          :input-stream          (make-string-input-stream "")
+                          :output-stream         (make-string-output-stream)
                           :input-file-descriptor 0
-                          :fail-write-index 1))
+                          :fail-write-index      1))
          (failure nil))
     (handler-case
         (clinedi::terminal--disable-input-protocols terminal)
@@ -354,20 +358,20 @@
 #+sbcl
 (defun test-terminal-descriptor-tty-detection ()
   "Test TTY detection from the file descriptor rather than stream class."
-  (let ((process nil)
+  (let ((process  nil)
         (terminal nil))
     (unwind-protect
          (progn
            (setf process
                  (sb-ext:run-program "/bin/sh"
                                      '("-c" "sleep 10")
-                                     :pty t
+                                     :pty  t
                                      :wait nil))
            (let ((pty (sb-ext:process-pty process)))
              (setf terminal
                    (make-instance 'clinedi:posix-terminal
-                    :input-stream (make-string-input-stream "")
-                    :output-stream pty
+                    :input-stream          (make-string-input-stream "")
+                    :output-stream         pty
                     :input-file-descriptor (sb-sys:fd-stream-fd pty)))
              (test-assert
               (not (interactive-stream-p
@@ -390,15 +394,15 @@
 
 (defun test-terminal-size-resolution ()
   "Test per-dimension source precedence, invalid environment values and defaults."
-  (let* ((symbols '(clinedi:terminal-file-descriptor-size
-                    clinedi::terminal--query-dimension uiop:getenv))
-         (saved (mapcar (lambda (symbol)
-                         (and (fboundp symbol) (symbol-function symbol)))
-                       symbols))
-         (native nil)
-         (queried nil)
-         (environment nil)
-         (queries nil)
+  (let* ((symbols           '(clinedi:terminal-file-descriptor-size
+                              clinedi::terminal--query-dimension uiop:getenv))
+         (saved             (mapcar (lambda (symbol)
+                                     (and (fboundp symbol) (symbol-function symbol)))
+                                   symbols))
+         (native            nil)
+         (queried           nil)
+         (environment       nil)
+         (queries           nil)
          (environment-reads nil))
     (unwind-protect
          (progn
@@ -476,10 +480,10 @@
 #+(and sbcl (not win32))
 (defun test-terminal-size-tput-output ()
   "Test command output parsing and failed-command fallback with interactive I/O."
-  (let ((process (sb-ext:run-program "/bin/sh" '("-c" "sleep 10") :pty t :wait nil))
-        (saved-run (symbol-function 'uiop:run-program))
+  (let ((process           (sb-ext:run-program "/bin/sh" '("-c" "sleep 10") :pty t :wait nil))
+        (saved-run         (symbol-function 'uiop:run-program))
         (saved-environment (symbol-function 'uiop:getenv))
-        (command-output nil))
+        (command-output    nil))
     (unwind-protect
          (progn
            (setf (symbol-function 'uiop:getenv) (lambda (name) (declare (ignore name)) nil)
@@ -536,18 +540,18 @@
   "Return a recording concealment terminal reading INPUT."
   (apply #'make-instance 'concealed-test-terminal
          :input-stream input :output-stream (make-broadcast-stream)
-         :input-file-descriptor -1
+         :input-file-descriptor   -1
          :event-prefix-p-function (lambda (character) (declare (ignore character)) nil)
-         :event-decoder (lambda (&rest arguments) (declare (ignore arguments)) nil)
-         :styling-p-function (constantly nil)
+         :event-decoder           (lambda (&rest arguments) (declare (ignore arguments)) nil)
+         :styling-p-function      (constantly nil)
          arguments))
 
 (defun test-terminal-concealed-line ()
   "Test concealed reads strip pasted wrappers, restore once, and fail closed."
   (let ((plain (clinedi:stream-terminal-create
-                :input-stream (make-string-input-stream
-                               (format nil "~C[200~~secret~C[201~~~%" #\Escape #\Escape))
-                :output-stream (make-broadcast-stream)
+                :input-stream          (make-string-input-stream
+                                        (format nil "~C[200~~secret~C[201~~~%" #\Escape #\Escape))
+                :output-stream         (make-broadcast-stream)
                 :input-file-descriptor -1)))
     (check-equal "a pasted line loses its bracketed-paste wrapper" "secret"
                  (clinedi:terminal-read-concealed-line plain))
@@ -564,7 +568,7 @@
     (check-equal "a failed read still restores echo exactly once"
                  '(:disable (:restore :saved-mode))
                  (reverse (concealed-test-terminal-events terminal))))
-  (let* ((input (make-string-input-stream (format nil "unread~%")))
+  (let* ((input    (make-string-input-stream (format nil "unread~%")))
          (terminal (concealed-test--terminal input :refuse-p t)))
     (check-true "failed concealment signals a terminal error"
                 (handler-case (progn (clinedi:terminal-read-concealed-line terminal) nil)
@@ -582,12 +586,11 @@
   (run-transport-lifecycle-tests)
   t)
 
-
 (defclass lifecycle-terminal (clinedi:stream-terminal)
   ((events :initform nil :accessor lifecycle-events :documentation "Lifecycle operations in reverse order.")
    (failure :initarg :failure :initform nil :accessor lifecycle-failure :documentation "Injected failing operation.")
    (writes :initform 0 :accessor lifecycle-writes :documentation "Attempted protocol writes."))
-  (:default-initargs :input-stream (make-string-input-stream "")
+  (:default-initargs               :input-stream (make-string-input-stream "")
                     :output-stream (make-string-output-stream)
                     :input-file-descriptor -1 :styling-p-function (lambda () t))
   (:documentation "A portable native-mode and output fault injector."))
@@ -602,17 +605,21 @@
   "Record the capture and return a fixed mode."
   (lifecycle-note terminal ':capture)
   ':saved)
+
 (defmethod clinedi:terminal-activate-input-mode ((terminal lifecycle-terminal))
   "Record the activation."
   (lifecycle-note terminal ':activate))
+
 (defmethod clinedi:terminal-restore-input-mode ((terminal lifecycle-terminal) mode)
   "Check that MODE is the captured mode and record the restore."
   (check-equal "restore exact mode snapshot" ':saved mode)
   (lifecycle-note terminal ':restore))
+
 (defmethod clinedi:terminal-write ((terminal lifecycle-terminal) text)
   "Record the write by its number."
   (declare (ignore text))
   (lifecycle-note terminal (incf (lifecycle-writes terminal))))
+
 (defmethod clinedi:terminal-flush ((terminal lifecycle-terminal))
   "Record the flush."
   (lifecycle-note terminal ':flush))
@@ -621,7 +628,7 @@
   "Test successful, repeated and failing mode/protocol lifecycles."
   (dolist (failure '(nil :activate 1 2 :flush))
     (let ((terminal (make-instance 'lifecycle-terminal :failure failure))
-          (caught nil))
+          (caught   nil))
       (handler-case (terminal-start terminal)
         (clinedi:terminal-error () (setf caught t)))
       (check-equal "activation failure propagates" (not (null failure)) caught)

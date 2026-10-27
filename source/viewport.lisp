@@ -23,28 +23,28 @@ OFFSET and LENGTH locate the row's plain characters inside chunk CHUNK."
 
 (defclass transcript-viewport ()
   ((chunks
-    :initform (make-array 0 :adjustable t :fill-pointer 0)
-    :reader transcript-viewport--chunks
+    :initform      (make-array 0 :adjustable t :fill-pointer 0)
+    :reader        transcript-viewport--chunks
     :documentation "Unwrapped chunks in append order.")
    (rows
-    :initform (make-array 0 :adjustable t :fill-pointer 0)
-    :accessor transcript-viewport--rows
+    :initform      (make-array 0 :adjustable t :fill-pointer 0)
+    :accessor      transcript-viewport--rows
     :documentation "Wrapped rows at the current width, extended only for new chunks.")
    (width
-    :initarg :width
-    :reader transcript-viewport-width
+    :initarg       :width
+    :reader        transcript-viewport-width
     :documentation "The column count the rows are wrapped to.")
    (top
-    :initform nil
-    :accessor transcript-viewport-top
+    :initform      nil
+    :accessor      transcript-viewport-top
     :documentation "The first visible row, or NIL to follow the newest output.")
    (height
-    :initform 1
-    :reader transcript-viewport-height
+    :initform      1
+    :reader        transcript-viewport-height
     :documentation "The row count of the last layout.")
    (maximum-top
-    :initform 0
-    :reader transcript-viewport-maximum-top
+    :initform      0
+    :reader        transcript-viewport-maximum-top
     :documentation "The largest first row the last layout allowed."))
   (:documentation
    "A scrollable transcript of appended plain and styled text.
@@ -69,7 +69,7 @@ region."))
 
 (defun transcript-viewport-row-text (viewport index)
   "Return the plain characters VIEWPORT's wrapped row INDEX shows."
-  (let* ((row (aref (transcript-viewport--rows viewport) index))
+  (let* ((row   (aref (transcript-viewport--rows viewport) index))
          (start (viewport-row-offset row)))
     (subseq (transcript-viewport-chunk-text viewport (viewport-row-chunk row))
             start
@@ -95,8 +95,8 @@ DISPLAY must present exactly TEXT's visible characters. REGIONS is a list of
 are. A final newline ends the chunk rather than adding an empty row."
   (when (plusp (length text))
     (let* ((chunks (transcript-viewport--chunks viewport))
-           (index (length chunks))
-           (chunk (%make-viewport-chunk text display regions)))
+           (index  (length chunks))
+           (chunk  (%make-viewport-chunk text display regions)))
       (vector-push-extend chunk chunks)
       (dolist (row (viewport--wrap-chunk chunk index (transcript-viewport-width viewport)))
         (vector-push-extend row (transcript-viewport--rows viewport)))))
@@ -108,10 +108,10 @@ are. A final newline ends the chunk rather than adding an empty row."
 Return true when the width changed."
   (check-type width (integer 1))
   (unless (= width (transcript-viewport-width viewport))
-    (let* ((old (transcript-viewport--rows viewport))
-           (top (transcript-viewport-top viewport))
-           (anchor (and top (< top (length old)) (aref old top)))
-           (rows (make-array 0 :adjustable t :fill-pointer 0))
+    (let* ((old     (transcript-viewport--rows viewport))
+           (top     (transcript-viewport-top viewport))
+           (anchor  (and top (< top (length old)) (aref old top)))
+           (rows    (make-array 0 :adjustable t :fill-pointer 0))
            (new-top nil))
       (loop for chunk across (transcript-viewport--chunks viewport)
             for index from 0
@@ -133,9 +133,9 @@ EXTRA-ROWS counts rows the caller shows after the wrapped rows, such as
 unfinished output, so following the newest output keeps them in view."
   (check-type height (integer 0))
   (check-type extra-rows (integer 0))
-  (let* ((total (+ (transcript-viewport-row-count viewport) extra-rows))
+  (let* ((total       (+ (transcript-viewport-row-count viewport) extra-rows))
          (maximum-top (max 0 (- total height)))
-         (top (min (or (transcript-viewport-top viewport) maximum-top) maximum-top)))
+         (top         (min (or (transcript-viewport-top viewport) maximum-top) maximum-top)))
     (setf (slot-value viewport 'height) height
           (slot-value viewport 'maximum-top) maximum-top)
     (when (transcript-viewport-top viewport)
@@ -147,8 +147,8 @@ unfinished output, so following the newest output keeps them in view."
 
 Reaching the last layout's maximum resumes following the newest output."
   (let* ((maximum (transcript-viewport-maximum-top viewport))
-         (top (max 0 (min maximum (+ (or (transcript-viewport-top viewport) maximum)
-                                     delta)))))
+         (top     (max 0 (min maximum (+ (or (transcript-viewport-top viewport) maximum)
+                                         delta)))))
     (setf (transcript-viewport-top viewport) (unless (= top maximum) top))
     viewport))
 
@@ -181,8 +181,8 @@ output again. A position inside the final page resumes following. Return true
 when a row was found."
   (check-type direction (member -1 1))
   (check-type align (member :top :end))
-  (let* ((rows (transcript-viewport--rows viewport))
-         (chunks (transcript-viewport--chunks viewport))
+  (let* ((rows    (transcript-viewport--rows viewport))
+         (chunks  (transcript-viewport--chunks viewport))
          (maximum (transcript-viewport-maximum-top viewport))
          (current (or (transcript-viewport-top viewport) maximum)))
     (labels ((accepted-p (index)
@@ -249,21 +249,21 @@ Return three values: the action of the click region covering that character,
 or NIL; the character's chunk text; and its index in that text. Positions past
 the wrapped rows, outside the layout, or beyond a row's last cell return NIL."
   (block nil
-    (let* ((rows (transcript-viewport--rows viewport))
-           (maximum (transcript-viewport-maximum-top viewport))
-           (top (min (or (transcript-viewport-top viewport) maximum) maximum))
+    (let* ((rows       (transcript-viewport--rows viewport))
+           (maximum    (transcript-viewport-maximum-top viewport))
+           (top        (min (or (transcript-viewport-top viewport) maximum) maximum))
            (screen-row (1- row))
-           (absolute (+ top screen-row)))
+           (absolute   (+ top screen-row)))
       (when (or (minusp screen-row)
                 (>= screen-row (transcript-viewport-height viewport))
                 (>= absolute (length rows)))
         (return nil))
       (let* ((anchor (aref rows absolute))
-             (chunk (aref (transcript-viewport--chunks viewport) (viewport-row-chunk anchor)))
-             (text (viewport-chunk-text chunk))
-             (start (viewport-row-offset anchor))
-             (end (min (length text) (+ start (viewport-row-length anchor))))
-             (index (viewport--column-character-index text column :start start :end end)))
+             (chunk  (aref (transcript-viewport--chunks viewport) (viewport-row-chunk anchor)))
+             (text   (viewport-chunk-text chunk))
+             (start  (viewport-row-offset anchor))
+             (end    (min (length text) (+ start (viewport-row-length anchor))))
+             (index  (viewport--column-character-index text column :start start :end end)))
         (when index
           (values (loop for (region-start region-end action) in (viewport-chunk-regions chunk)
                         when (and (<= region-start index) (< index region-end))
@@ -289,8 +289,8 @@ Only appends and scrolling are undone; take a new checkpoint after a resize."
 
 (defun viewport--wrap-chunk (chunk index width)
   "Wrap CHUNK, number INDEX, to WIDTH columns as rows anchored to its text."
-  (let* ((text (viewport-chunk-text chunk))
-         (pairs (wrap-styled-text text (viewport-chunk-display chunk) width))
+  (let* ((text   (viewport-chunk-text chunk))
+         (pairs  (wrap-styled-text text (viewport-chunk-display chunk) width))
          (offset 0))
     ;; A final newline begins the next append, rather than an extra empty row.
     (when (and (plusp (length text)) (char= (char text (1- (length text))) #\Newline))

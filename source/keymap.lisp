@@ -4,15 +4,15 @@
 
 (defclass keymap ()
   ((parent
-    :initarg :parent
-    :initform nil
-    :reader keymap-parent
-    :type (or null keymap)
+    :initarg       :parent
+    :initform      nil
+    :reader        keymap-parent
+    :type          (or null keymap)
     :documentation "Optional fallback keymap consulted after local bindings.")
    (binding-table
-    :initform (make-hash-table :test #'equal)
-    :reader keymap--binding-table
-    :type hash-table
+    :initform      (make-hash-table :test #'equal)
+    :reader        keymap--binding-table
+    :type          hash-table
     :documentation "Local event-to-command bindings compared with EQUAL."))
   (:documentation
    "A programmable mapping from semantic input events to command designators.

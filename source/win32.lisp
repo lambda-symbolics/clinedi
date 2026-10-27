@@ -126,8 +126,8 @@ output post-processing.")
     (let ((sap (sb-alien:alien-sap info)))
       (if (zerop (terminal--get-console-screen-buffer-info handle sap))
           (values nil nil)
-          (let ((rows (1+ (- (sb-sys:signed-sap-ref-16 sap 16)
-                             (sb-sys:signed-sap-ref-16 sap 12))))
+          (let ((rows    (1+ (- (sb-sys:signed-sap-ref-16 sap 16)
+                                (sb-sys:signed-sap-ref-16 sap 12))))
                 (columns (1+ (- (sb-sys:signed-sap-ref-16 sap 14)
                                 (sb-sys:signed-sap-ref-16 sap 10)))))
             (values (and (plusp rows) rows)
@@ -164,17 +164,17 @@ through the standard output or error handle of the same console."
   "Capture console modes and code pages only for an actual console descriptor."
   (let ((descriptor (stream-terminal-input-file-descriptor terminal)))
     (when (terminal--interactive-file-descriptor-p descriptor)
-      (list :input-mode (terminal--console-mode descriptor)
-            :output-mode (terminal--console-mode
-                          (terminal--get-std-handle *terminal-standard-output-handle*))
-            :input-code-page (terminal--get-console-cp)
+      (list :input-mode       (terminal--console-mode descriptor)
+            :output-mode      (terminal--console-mode
+                               (terminal--get-std-handle *terminal-standard-output-handle*))
+            :input-code-page  (terminal--get-console-cp)
             :output-code-page (terminal--get-console-output-cp)))))
 
 (defmethod terminal-activate-input-mode ((terminal win32-terminal))
   "Enter virtual-terminal input without line buffering, echo, or quick edit."
-  (let* ((descriptor (stream-terminal-input-file-descriptor terminal))
-         (output (terminal--get-std-handle *terminal-standard-output-handle*))
-         (input-mode (terminal--console-mode descriptor))
+  (let* ((descriptor  (stream-terminal-input-file-descriptor terminal))
+         (output      (terminal--get-std-handle *terminal-standard-output-handle*))
+         (input-mode  (terminal--console-mode descriptor))
          (output-mode (terminal--console-mode output)))
     (unless input-mode
       (error 'terminal-error :message "Could not inspect console input mode."
@@ -196,8 +196,8 @@ through the standard output or error handle of the same console."
 (defmethod terminal-disable-input-echo ((terminal win32-terminal))
   "Clear ENABLE_ECHO_INPUT on a console handle, keeping line input."
   (let* ((descriptor (stream-terminal-input-file-descriptor terminal))
-         (mode (and (terminal--interactive-file-descriptor-p descriptor)
-                    (terminal--console-mode descriptor))))
+         (mode       (and (terminal--interactive-file-descriptor-p descriptor)
+                          (terminal--console-mode descriptor))))
     (when mode
       (when (zerop (terminal--set-console-mode descriptor (logandc2 mode #x4)))
         (error 'terminal-error :message "Could not disable console echo; no input was read."
@@ -211,7 +211,7 @@ through the standard output or error handle of the same console."
 (defmethod terminal-restore-input-mode ((terminal win32-terminal) mode)
   "Restore the exact console modes and code pages captured in MODE."
   (let ((descriptor (stream-terminal-input-file-descriptor terminal))
-        (output (terminal--get-std-handle *terminal-standard-output-handle*)))
+        (output     (terminal--get-std-handle *terminal-standard-output-handle*)))
     (terminal--set-console-mode descriptor (getf mode :input-mode))
     (when (getf mode :output-mode)
       (terminal--set-console-mode output (getf mode :output-mode)))
@@ -233,28 +233,28 @@ through the standard output or error handle of the same console."
 
 (defclass console-input-stream (sb-gray:fundamental-character-input-stream)
   ((handle
-    :initarg :handle
-    :reader console-input-stream-handle
+    :initarg       :handle
+    :reader        console-input-stream-handle
     :documentation "The console input HANDLE the stream reads.")
    (buffer
-    :initform (make-array 0 :element-type 'character :adjustable t :fill-pointer 0)
-    :reader console-input-stream-buffer
+    :initform      (make-array 0 :element-type 'character :adjustable t :fill-pointer 0)
+    :reader        console-input-stream-buffer
     :documentation "Characters read from the console and not yet consumed.")
    (position
-    :initform 0
-    :accessor console-input-stream-position
+    :initform      0
+    :accessor      console-input-stream-position
     :documentation "The index of the next unconsumed character in BUFFER.")
    (unread
-    :initform nil
-    :accessor console-input-stream-unread
+    :initform      nil
+    :accessor      console-input-stream-unread
     :documentation "A character handed back with UNREAD-CHAR, returned first.")
    (high-surrogate
-    :initform nil
-    :accessor console-input-stream-high-surrogate
+    :initform      nil
+    :accessor      console-input-stream-high-surrogate
     :documentation "A UTF-16 high surrogate awaiting its low half across reads.")
    (end-p
-    :initform nil
-    :accessor console-input-stream-end-p
+    :initform      nil
+    :accessor      console-input-stream-end-p
     :documentation "Whether the console reported the end of its input."))
   (:documentation "A character stream reading a console handle with ReadConsoleW."))
 
@@ -277,7 +277,7 @@ through the standard output or error handle of the same console."
       (when (or (zerop status) (zerop count))
         (setf (console-input-stream-end-p stream) t)
         (return-from console-input-stream--fill nil))
-      (let ((buffer (console-input-stream-buffer stream))
+      (let ((buffer  (console-input-stream-buffer stream))
             (pending (console-input-stream-high-surrogate stream)))
         (setf (fill-pointer buffer) 0
               (console-input-stream-position stream) 0)

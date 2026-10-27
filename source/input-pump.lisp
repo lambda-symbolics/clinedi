@@ -19,20 +19,20 @@
                   :documentation "Read and handle one event; returning :STOP ends the reader.")
    (tick-function :initarg :tick-function :reader input-pump-tick-function
                   :documentation "Called at the start of every reader iteration, or NIL.")
-   (startable-p-function :initarg :startable-p-function
-                         :reader input-pump-startable-p-function
+   (startable-p-function :initarg       :startable-p-function
+                         :reader        input-pump-startable-p-function
                          :documentation "Return true when the reader may start or restart.")
    (failure-function :initarg :failure-function :reader input-pump-failure-function
                      :documentation "Receive a serious condition that ended the reader and its backtrace.")
-   (backtrace-function :initarg :backtrace-function
-                       :reader input-pump-backtrace-function
+   (backtrace-function :initarg       :backtrace-function
+                       :reader        input-pump-backtrace-function
                        :documentation "Return a backtrace string where a condition is signaled, or NIL.")
    (poll-seconds :initarg :poll-seconds :reader input-pump-poll-seconds
                  :documentation "The longest idle wait before polling input again.")
    (lock :initform (bt2:make-lock :name "clinedi input pump") :reader input-pump--lock
          :documentation "The lock guarding the reader state.")
-   (condition-variable :initform (bt2:make-condition-variable :name "clinedi input pump")
-                       :reader input-pump--condition-variable
+   (condition-variable :initform      (bt2:make-condition-variable :name "clinedi input pump")
+                       :reader        input-pump--condition-variable
                        :documentation "Wakes an idle or pausing reader.")
    (thread :initform nil :accessor input-pump--thread
            :documentation "The live reader thread, or NIL.")
@@ -69,14 +69,14 @@ reader thread."
   (check-type ready-function function)
   (check-type step-function function)
   (make-instance 'input-pump
-                 :name name
-                 :ready-function ready-function
-                 :step-function step-function
-                 :tick-function tick-function
+                 :name                 name
+                 :ready-function       ready-function
+                 :step-function        step-function
+                 :tick-function        tick-function
                  :startable-p-function startable-p-function
-                 :failure-function failure-function
-                 :backtrace-function backtrace-function
-                 :poll-seconds poll-seconds))
+                 :failure-function     failure-function
+                 :backtrace-function   backtrace-function
+                 :poll-seconds         poll-seconds))
 
 (defun input-pump-start (pump)
   "Start PUMP's reader unless it is paused, stopped, already live or not startable."

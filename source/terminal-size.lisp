@@ -38,7 +38,7 @@ Without a loaded native adapter, or with NIL FILE-DESCRIPTOR, skip native lookup
     (handler-case
         (terminal--positive-integer-or-nil
          (uiop:run-program (list "tput" capability)
-                           :output ':string
+                           :output       ':string
                            :error-output ':output))
       (error ()
         nil))))

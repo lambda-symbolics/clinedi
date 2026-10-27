@@ -4,12 +4,12 @@
 
 (defclass frame-painter ()
   ((frame
-    :initform nil
-    :accessor frame-painter--frame
+    :initform      nil
+    :accessor      frame-painter--frame
     :documentation "The rows of the last successfully written frame, or NIL to repaint fully.")
    (width
-    :initform 0
-    :accessor frame-painter--width
+    :initform      0
+    :accessor      frame-painter--width
     :documentation "The column count of the last successfully written frame."))
   (:documentation
    "Paint fullscreen frames by rewriting only the rows that changed.
@@ -45,8 +45,8 @@ repaints completely next time. The cursor is left at zero-based CURSOR-ROW
 and CURSOR-COLUMN, clamped to the screen, and shown when CURSOR-VISIBLE-P."
   (check-type height (integer 1))
   (check-type width (integer 1))
-  (let* ((frame (make-array height :initial-element ""))
-         (previous (frame-painter--frame painter))
+  (let* ((frame      (make-array height :initial-element ""))
+         (previous   (frame-painter--frame painter))
          (complete-p (or (null previous)
                          (/= height (length previous))
                          (/= width (frame-painter--width painter))))
@@ -59,10 +59,10 @@ and CURSOR-COLUMN, clamped to the screen, and shown when CURSOR-VISIBLE-P."
            (funcall write
                     (frame-painter--controls frame
                                              (and (not complete-p) previous)
-                                             :height height
-                                             :width width
-                                             :cursor-row cursor-row
-                                             :cursor-column cursor-column
+                                             :height           height
+                                             :width            width
+                                             :cursor-row       cursor-row
+                                             :cursor-column    cursor-column
                                              :cursor-visible-p cursor-visible-p))
            (setf (frame-painter--frame painter) frame
                  (frame-painter--width painter) width

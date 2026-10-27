@@ -8,14 +8,14 @@
 
 (defun run-unicode-tests ()
   "Exercise grapheme boundaries, terminal widths, wrapping and sanitizing."
-  (let* ((combined (unicode-tests--string #x65 #x301))
-         (modified (unicode-tests--string #x1f44d #x1f3fd))
-         (family (unicode-tests--string
-                  #x1f468 #x200d #x1f469 #x200d #x1f467 #x200d #x1f466))
-         (flag (unicode-tests--string #x1f1e8 #x1f1ff))
+  (let* ((combined    (unicode-tests--string #x65 #x301))
+         (modified    (unicode-tests--string #x1f44d #x1f3fd))
+         (family      (unicode-tests--string
+                       #x1f468 #x200d #x1f469 #x200d #x1f467 #x200d #x1f466))
+         (flag        (unicode-tests--string #x1f1e8 #x1f1ff))
          (three-flags (unicode-tests--string #x1f1e8 #x1f1ff #x1f1f8))
-         (heart (unicode-tests--string #x2764 #xfe0f))
-         (keycap (unicode-tests--string #x31 #xfe0f #x20e3)))
+         (heart       (unicode-tests--string #x2764 #xfe0f))
+         (keycap      (unicode-tests--string #x31 #xfe0f #x20e3)))
     (check-equal "combining mark stays with its base"
                  (length combined)
                  (grapheme-next-boundary combined 0))
@@ -106,12 +106,12 @@
                  (list family)
                  (wrap-text family 1))
     (let* ((text "alpha beta gamma")
-             (display
-               (concatenate 'string
-                            (ansi-colorize "alpha " :red)
-                            (ansi-colorize "beta " :blue)
-                            (ansi-colorize "gamma" :green)))
-             (rows (wrap-styled-text text display 10)))
+           (display
+             (concatenate 'string
+                          (ansi-colorize "alpha " :red)
+                          (ansi-colorize "beta " :blue)
+                          (ansi-colorize "gamma" :green)))
+           (rows (wrap-styled-text text display 10)))
         (check-equal "styled wrapping prefers word boundaries"
                      '("alpha beta" "gamma")
                      (mapcar #'first rows))
@@ -121,45 +121,45 @@
                            rows))
         (check-true "styled wrapping retains a continued ANSI style"
                     (search (ansi-colorize "gamma" :green) (second (second rows)))))
-      (let* ((escape (code-char 27))
-             (display (format nil "~c[1m~c[31maaa bbb~c[0m ccc" escape escape escape))
-             (rows (wrap-styled-text "aaa bbb ccc" display 3)))
-        (check-equal "a style spanning rows is reopened on each row"
-                     (list (format nil "~c[1m~c[31maaa~c[0m" escape escape escape)
-                           (format nil "~c[1m~c[31mbbb~c[0m" escape escape escape)
-                           "ccc")
-                     (mapcar #'second rows)))
-      (let* ((escape (code-char 27))
-             (display (format nil "~c]8;;https://x~c\\ab~c]8;;~c\\cd"
-                              escape escape escape escape))
-             (rows (wrap-styled-text "abcd" display 3)))
-        (check-equal "a hyperlink spanning rows is reopened and closed per row"
-                     (list (format nil "~c]8;;https://x~c\\ab~c]8;;~c\\c"
-                                   escape escape escape escape)
-                           "d")
-                     (mapcar #'second rows)))
-      (let* ((escape (code-char 27))
-             (lines 200)
-             (text (with-output-to-string (stream)
-                     (dotimes (line lines) (format stream "x~%"))))
-             (display (with-output-to-string (stream)
-                        (dotimes (line lines)
-                          (format stream "~c[31mx~c[0m~%" escape escape))))
-             (rows (wrap-styled-text text display 10)))
-        (check-true "each wrapped row carries only its own controls"
-                    (every (lambda (row)
-                             (= (length (second row))
-                                (length (format nil "~c[31mx~c[0m" escape escape))))
-                           (butlast rows))))
-      (check-equal "wrapping preserves explicit empty lines"
-                 '("a" "" "b" "")
-                 (wrap-text (format nil "a~%~%b~%") 10)))
+    (let* ((escape  (code-char 27))
+           (display (format nil "~c[1m~c[31maaa bbb~c[0m ccc" escape escape escape))
+           (rows    (wrap-styled-text "aaa bbb ccc" display 3)))
+      (check-equal "a style spanning rows is reopened on each row"
+                   (list (format nil "~c[1m~c[31maaa~c[0m" escape escape escape)
+                         (format nil "~c[1m~c[31mbbb~c[0m" escape escape escape)
+                         "ccc")
+                   (mapcar #'second rows)))
+    (let* ((escape  (code-char 27))
+           (display (format nil "~c]8;;https://x~c\\ab~c]8;;~c\\cd"
+                            escape escape escape escape))
+           (rows    (wrap-styled-text "abcd" display 3)))
+      (check-equal "a hyperlink spanning rows is reopened and closed per row"
+                   (list (format nil "~c]8;;https://x~c\\ab~c]8;;~c\\c"
+                                 escape escape escape escape)
+                         "d")
+                   (mapcar #'second rows)))
+    (let* ((escape  (code-char 27))
+           (lines   200)
+           (text    (with-output-to-string (stream)
+                      (dotimes (line lines) (format stream "x~%"))))
+           (display (with-output-to-string (stream)
+                      (dotimes (line lines)
+                        (format stream "~c[31mx~c[0m~%" escape escape))))
+           (rows    (wrap-styled-text text display 10)))
+      (check-true "each wrapped row carries only its own controls"
+                  (every (lambda (row)
+                           (= (length (second row))
+                              (length (format nil "~c[31mx~c[0m" escape escape))))
+                         (butlast rows))))
+    (check-equal "wrapping preserves explicit empty lines"
+               '("a" "" "b" "")
+               (wrap-text (format nil "a~%~%b~%") 10)))
 
   (let* ((replacement (string (code-char #xfffd)))
-         (hostile (format nil "a~cb~cc~cd"
-                          (code-char 27)
-                          (code-char 7)
-                          (code-char #x9b))))
+         (hostile     (format nil "a~cb~cc~cd"
+                              (code-char 27)
+                              (code-char 7)
+                              (code-char #x9b))))
     (check-equal "sanitizing replaces terminal controls"
                  (concatenate 'string
                               "a" replacement "b" replacement "c"

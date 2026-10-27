@@ -54,7 +54,7 @@ bracketing character, then sheds trailing sentence punctuation and closing
 brackets that have no opening partner inside it. A scheme alone is not a URL."
   (check-type text string)
   (let ((ranges nil)
-        (index 0)
+        (index  0)
         (length (length text)))
     (loop
       (when (>= index length)

@@ -3,7 +3,7 @@
 ;;;; -- Modal selection sessions --
 
 (defclass selection-session ()
-  ((selector :accessor selection-session-selector
+  ((selector :accessor      selection-session-selector
              :documentation "Current filtered navigation state.")
    (items :initarg :items :accessor selection-session-items
           :documentation "Unfiltered opaque candidates.")
@@ -32,7 +32,7 @@
   "Select IDENTITY when it occurs in SESSION's filtered candidates."
   (let* ((selector (selection-session-selector session))
          (position (position identity (selector-items selector)
-                             :key (selection-session-identity-key session)
+                             :key  (selection-session-identity-key session)
                              :test (selection-session-identity-test session))))
     (when position
       (selector-move selector (- position (selector-selection selector)))))
@@ -64,9 +64,9 @@
                 items)
                items)))
     (setf (selection-session-selector session)
-          (make-selector :items matches
+          (make-selector :items         matches
                          :visible-count (selection-session-visible-count session)
-                         :arrangement ':vertical))
+                         :arrangement   ':vertical))
     (when selected-id
       (selection-session-select-id session selected-id)))
   session)
@@ -97,7 +97,7 @@ SEARCH-KEY returns text; whitespace-separated query terms match case-insensitive
 
 (defun selection-session-handle-event (session event)
   "Apply EVENT and return selector action and opaque candidate as two values."
-  (let ((query (selection-session-query session))
+  (let ((query    (selection-session-query session))
         (identity (selection-session-selected-id session)))
     (cond
       ((and (selection-session-search-p session)
@@ -106,13 +106,14 @@ SEARCH-KEY returns text; whitespace-separated query terms match case-insensitive
                      (stringp (second event)))))
        (setf (selection-session-query session)
              (cond
-               ((eq event ':kill-line) "")
+               ((eq event ':kill-line)
+                "")
                ((eq event ':backspace)
                 (subseq query 0 (grapheme-previous-boundary query (length query))))
                (t
-                (let* ((text (sanitize-text (second event) :single-line-p t))
+                (let* ((text      (sanitize-text (second event) :single-line-p t))
                        (remaining (max 0 (- (selection-session-query-limit session)
-                                             (length query)))))
+                                            (length query)))))
                   (concatenate 'string query
                                (subseq text 0 (min remaining (length text))))))))
        (selection-session--refresh session identity)
@@ -162,9 +163,12 @@ except READ-EVENT, INPUT-READY-P and WAIT run through CALL-WITH-LOCK."
                        (multiple-value-bind (action item)
                            (selection-session-handle-event session event)
                          (case action
-                           ((:accept :dismiss) (return-from run-selection-session item))
-                           (:cancel (return-from run-selection-session nil)))))
-                      ((eq custom ':continue) nil)
+                           ((:accept :dismiss)
+                            (return-from run-selection-session item))
+                           (:cancel
+                            (return-from run-selection-session nil)))))
+                      ((eq custom ':continue)
+                       nil)
                       ((and (consp custom) (eq (first custom) ':accept))
                        (return-from run-selection-session (second custom)))
                       ((and (consp custom) (eq (first custom) ':cancel))

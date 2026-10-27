@@ -41,7 +41,7 @@
                nil (web-url-p "ftp://example.com/a"))
   (check-equal "non-strings are not web URLs" nil (web-url-p 42))
   (let* ((escape (code-char 27))
-         (text "go to https://example.com/x now")
+         (text   "go to https://example.com/x now")
          (linked (ansi-link-urls text)))
     (check-equal "a hyperlink wraps its text in OSC 8 controls"
                  (format nil "~c]8;;https://x~c\\here~c]8;;~c\\"

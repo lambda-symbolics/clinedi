@@ -11,8 +11,8 @@
 Single and double quotes group characters and a backslash escapes the next
 one, as a POSIX shell reads them. Text that is not exactly one word, or leaves a
 quote or escape open, gives NIL."
-  (let ((result (make-string-output-stream))
-        (quote nil)
+  (let ((result    (make-string-output-stream))
+        (quote     nil)
         (escaped-p nil))
     (loop for character across (string-trim '(#\Space #\Tab #\Newline #\Return) text)
           do (cond
@@ -34,7 +34,7 @@ quote or escape open, gives NIL."
 (defun paste--percent-decode (text)
   "Return TEXT with its %XX escapes decoded as UTF-8, or NIL when one is malformed."
   (let ((octets (make-array (length text) :element-type '(unsigned-byte 8) :fill-pointer 0))
-        (index 0))
+        (index  0))
     (loop while (< index (length text))
           do (let ((character (char text index)))
                (cond

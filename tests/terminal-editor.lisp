@@ -15,10 +15,10 @@
             (apply #'edit-line
                    "preamble
 > "
-                   :input-stream input-stream
-                   :output-stream output-stream
+                   :input-stream           input-stream
+                   :output-stream          output-stream
                    :terminal-size-function #'terminal-editor-test--size
-                   :restore-function (lambda () (incf restores))
+                   :restore-function       (lambda () (incf restores))
                    arguments)
           (values line kind
                   (get-output-stream-string output-stream)
@@ -51,7 +51,7 @@
                  output)
     (check-equal "plain fallback restores terminal" 1 restores))
   (let ((before-count 0)
-        (after-count 0))
+        (after-count  0))
     (multiple-value-bind (line kind output restores)
         (terminal-editor-test--read
          (format nil "plain~%")
@@ -80,13 +80,13 @@
     (check-true "raw editor renders entered text" (search "abc" output))
     (check-equal "raw editor restores terminal" 1 restores))
   (let ((before-count 0)
-        (after-count 0))
+        (after-count  0))
     (multiple-value-bind (line kind output restores)
         (terminal-editor-test--read
          (format nil "~c[12~%" (code-char 27))
-         :raw-mode-function (lambda () t)
+         :raw-mode-function      (lambda () t)
          :keyboard-enhancement-p nil
-         :bracketed-paste-p nil
+         :bracketed-paste-p      nil
          :before-prompt-function
          (lambda (stream)
            (incf before-count)
@@ -163,7 +163,7 @@
   (multiple-value-bind (line kind output restores)
       (terminal-editor-test--read
        (string #\newline)
-       :raw-mode-function (lambda () t)
+       :raw-mode-function      (lambda () t)
        :keyboard-enhancement-p nil)
     (declare (ignore line kind restores))
     (check-true "raw editor enables bracketed paste"
@@ -171,7 +171,7 @@
     (check-true "raw editor disables bracketed paste"
                 (search (format nil "~c[?2004l" (code-char 27)) output)))
   (let ((size-calls 0)
-        (restores 0))
+        (restores   0))
     (flet ((changing-size ()
              ;; The first three typed frames use eight columns. The width
              ;; changes while the fourth input event is being read.
@@ -182,18 +182,18 @@
           (multiple-value-bind (line kind)
               (edit-line
                (format nil "preamble~%> ")
-               :input-stream input-stream
-               :output-stream output-stream
+               :input-stream           input-stream
+               :output-stream          output-stream
                :terminal-size-function #'changing-size
-               :raw-mode-function (lambda () t)
-               :restore-function (lambda () (incf restores))
+               :raw-mode-function      (lambda () t)
+               :restore-function       (lambda () (incf restores))
                :suggestion-function
                (lambda (text history)
                  (declare (ignore history))
                  (and (plusp (length text))
                       (string= text "abcdefgh" :end2 (length text))
                       "abcdefgh"))
-               :bracketed-paste-p nil)
+               :bracketed-paste-p      nil)
             (let* ((frames
                      (terminal-editor-test--render-frames
                       (get-output-stream-string output-stream)))
@@ -257,12 +257,12 @@
     (let ((output-stream (make-string-output-stream)))
       (multiple-value-bind (line kind)
           (edit-line "> "
-                     :input-stream input-stream
-                     :output-stream output-stream
+                     :input-stream           input-stream
+                     :output-stream          output-stream
                      :terminal-size-function (lambda () (values 24 8))
-                     :raw-mode-function (lambda () t)
-                     :restore-function (lambda () nil)
-                     :bracketed-paste-p nil)
+                     :raw-mode-function      (lambda () t)
+                     :restore-function       (lambda () nil)
+                     :bracketed-paste-p      nil)
         (let ((output (get-output-stream-string output-stream)))
           (check-equal "Up edits a soft word-wrapped row"
                        "sa!y user"
@@ -276,7 +276,7 @@
   (multiple-value-bind (line kind output restores)
       (terminal-editor-test--read
        (format nil "~c[A~%" (code-char 27))
-       :history #("older")
+       :history           #("older")
        :raw-mode-function (lambda () t)
        :bracketed-paste-p nil)
     (declare (ignore output restores))
@@ -285,11 +285,11 @@
   (multiple-value-bind (line kind output restores)
       (terminal-editor-test--read
        (format nil "log~c[A~%" (code-char 27))
-       :history #("git log --oneline" "echo newer")
+       :history                #("git log --oneline" "echo newer")
        :history-match-function (lambda (query entry)
                                  (search query entry))
-       :raw-mode-function (lambda () t)
-       :bracketed-paste-p nil)
+       :raw-mode-function      (lambda () t)
+       :bracketed-paste-p      nil)
     (declare (ignore output restores))
     (check-equal "Up recalls the newest matching history entry"
                  "git log --oneline" line)
@@ -299,7 +299,7 @@
     (multiple-value-bind (line kind output restores)
         (terminal-editor-test--read
          (format nil "ab~c[A!~%" (code-char 27))
-         :keymap keymap
+         :keymap            keymap
          :raw-mode-function (lambda () t)
          :bracketed-paste-p nil)
       (declare (ignore output restores))
@@ -339,9 +339,9 @@
     (multiple-value-bind (line kind output restores)
         (terminal-editor-test--read
          (format nil "pri~c~c!~%" #\tab #\tab)
-         :raw-mode-function (lambda () t)
-         :bracketed-paste-p nil
-         :completion-function #'complete
+         :raw-mode-function          (lambda () t)
+         :bracketed-paste-p          nil
+         :completion-function        #'complete
          :completion-accept-function #'accept)
       (declare (ignore restores))
       (check-equal "Tab cycles live completion candidates"
@@ -353,9 +353,9 @@
     (multiple-value-bind (line kind output restores)
         (terminal-editor-test--read
          (format nil "pri~c~c[Z!~%" #\tab (code-char 27))
-         :raw-mode-function (lambda () t)
-         :bracketed-paste-p nil
-         :completion-function #'complete
+         :raw-mode-function          (lambda () t)
+         :bracketed-paste-p          nil
+         :completion-function        #'complete
          :completion-accept-function #'accept)
       (declare (ignore output restores))
       (check-equal "Shift-Tab cycles live completions backward"
@@ -365,9 +365,9 @@
     (multiple-value-bind (line kind output restores)
         (terminal-editor-test--read
          (format nil "pri~c~c[C~%" #\tab (code-char 27))
-         :raw-mode-function (lambda () t)
-         :bracketed-paste-p nil
-         :completion-function #'complete
+         :raw-mode-function          (lambda () t)
+         :bracketed-paste-p          nil
+         :completion-function        #'complete
          :completion-accept-function #'accept)
       (declare (ignore output restores))
       (check-equal "right arrow navigates completion grid" "printf " line)
@@ -375,11 +375,11 @@
     (multiple-value-bind (line kind output restores)
         (terminal-editor-test--read
          (format nil "pri~c~c[C~%" #\tab (code-char 27))
-         :raw-mode-function (lambda () t)
-         :bracketed-paste-p nil
-         :completion-function #'complete
+         :raw-mode-function          (lambda () t)
+         :bracketed-paste-p          nil
+         :completion-function        #'complete
          :completion-accept-function #'accept
-         :completion-arrangement :vertical)
+         :completion-arrangement     :vertical)
       (declare (ignore output restores))
       (check-equal "vertical completion ignores horizontal navigation"
                    "print "
@@ -390,9 +390,9 @@
     (multiple-value-bind (line kind output restores)
         (terminal-editor-test--read
          (format nil "pri~c~cX~%" #\tab (code-char 27))
-         :raw-mode-function (lambda () t)
-         :bracketed-paste-p nil
-         :completion-function #'complete
+         :raw-mode-function          (lambda () t)
+         :bracketed-paste-p          nil
+         :completion-function        #'complete
          :completion-accept-function #'accept)
       (declare (ignore output restores))
       (check-equal "Escape restores text preceding completion" "pri" line)
@@ -402,7 +402,7 @@
     (multiple-value-bind (line kind output restores)
         (terminal-editor-test--read
          (format nil "pri~c~c[C~%" #\tab (code-char 27))
-         :keymap keymap
+         :keymap            keymap
          :raw-mode-function (lambda () t)
          :bracketed-paste-p nil
          :completion-function
@@ -416,12 +416,12 @@
       (check-equal "completion selector honors a remapped Right command"
                    "private " line)
       (check-equal "remapped completion remains submittable" :line kind)))
-  (let ((source-history (vector "older"))
+  (let ((source-history     (vector "older"))
         (callback-histories nil))
     (multiple-value-bind (line kind output restores)
         (terminal-editor-test--read
          (format nil "a~c[C~%" (code-char 27))
-         :history source-history
+         :history           source-history
          :raw-mode-function (lambda () t)
          :bracketed-paste-p nil
          :suggestion-function
@@ -443,7 +443,7 @@
     (multiple-value-bind (line kind output restores)
         (terminal-editor-test--read
          (format nil "a~c[C!~%" (code-char 27))
-         :keymap keymap
+         :keymap            keymap
          :raw-mode-function (lambda () t)
          :bracketed-paste-p nil
          :suggestion-function
