@@ -464,12 +464,11 @@ arrives inside one."
 
 (defun read-paste-burst (stream &key (idle-seconds 0.05) (maximum-characters 1000000))
   "Read a bounded literal paste until an idle gap, returning :PASTE or :IGNORE."
-  (let ((characters nil))
-    (loop repeat maximum-characters
-          for character = (or (read-char-no-hang stream nil nil)
-                              (progn (sleep idle-seconds)
-                                     (read-char-no-hang stream nil nil)))
-          while character do (push character characters))
+  (let ((characters (loop repeat maximum-characters
+                          collect (or (read-char-no-hang stream nil nil)
+                                      (progn (sleep idle-seconds)
+                                             (read-char-no-hang stream nil nil))
+                                      (loop-finish)))))
     (if characters
-        (list ':paste (coerce (nreverse characters) 'string))
+        (list ':paste (coerce characters 'string))
         ':ignore)))
