@@ -227,7 +227,9 @@ when a row was found."
                        (below (max bottom 0)))
                       ((null section)
                        nil)
-                      ((< section current)
+                      ;; The newest section would only resume following, so
+                      ;; a jump from the tail moves past it.
+                      ((and (< section current) (below section))
                        section)
                       (t
                        (above section))))
