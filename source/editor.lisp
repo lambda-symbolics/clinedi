@@ -61,6 +61,24 @@
     :reader        line-editor-history-limit
     :type          integer
     :documentation "Maximum number of retained history entries.")
+   (history-character-limit
+    :initarg       :history-character-limit
+    :initform      nil
+    :reader        line-editor-history-character-limit
+    :type          (or null (integer 1))
+    :documentation "Maximum characters retained history entries hold together, or NIL.")
+   (history-older-function
+    :initarg  :history-older-function
+    :initform nil
+    :accessor line-editor-history-older-function
+    :type     (or null function)
+    :documentation
+    "Optional function of the resident entry count returning the entries just older
+than them, oldest first, or NIL when none remain.")
+   (history-extended-p
+    :initform      nil
+    :documentation
+    "Whether traversal loaded older entries past the limits, trimmed when it ends.")
    (history-match-function
     :initarg  :history-match-function
     :initform nil
@@ -98,11 +116,26 @@
    text
    (min (length text) (max 0 cursor))))
 
-(defun line-editor--make-history (history history-limit)
-  "Copy the newest HISTORY entries into an adjustable vector."
+(defun line-editor--history-start (history history-limit character-limit)
+  "Return the index of the oldest HISTORY entry kept within the count and character limits.
+
+The newest entry is always kept."
+  (let ((length (length history)))
+    (loop with characters = 0
+          for index from (1- length) downto 0
+          for count from 1
+          do (incf characters (length (elt history index)))
+             (when (and (> count 1)
+                        (or (> count history-limit)
+                            (and character-limit (> characters character-limit))))
+               (return (1+ index)))
+          finally (return 0))))
+
+(defun line-editor--make-history (history history-limit &optional character-limit)
+  "Copy the newest HISTORY entries within the limits into an adjustable vector."
   (check-type history sequence)
   (let* ((length (length history))
-         (start  (max 0 (- length history-limit)))
+         (start  (line-editor--history-start history history-limit character-limit))
          (copy   (make-array (max 1 (- length start))
                              :adjustable   t
                              :fill-pointer 0)))
@@ -112,11 +145,53 @@
              (vector-push-extend (copy-seq entry) copy))
     copy))
 
+(defun line-editor--trim-history (editor)
+  "Drop EDITOR's oldest history entries beyond its count and character limits."
+  (let* ((history (slot-value editor 'history))
+         (start   (line-editor--history-start history
+                                              (line-editor-history-limit editor)
+                                              (line-editor-history-character-limit editor))))
+    (when (plusp start)
+      (replace history history :start2 start)
+      (fill history nil :start (- (length history) start))
+      (setf (fill-pointer history) (- (length history) start))))
+  (setf (slot-value editor 'history-extended-p) nil)
+  nil)
+
+(defun line-editor--history-load-older (editor)
+  "Prepend the entries older than EDITOR's resident history and return how many arrived."
+  (let ((function (line-editor-history-older-function editor)))
+    (if (null function)
+        0
+        (let* ((history (slot-value editor 'history))
+               (page    (funcall function (length history))))
+          (check-type page list)
+          (if (null page)
+              0
+              (let ((combined (make-array (+ (length page) (length history))
+                                          :adjustable   t
+                                          :fill-pointer 0))
+                    (index    (slot-value editor 'history-index)))
+                (dolist (entry page)
+                  (check-type entry string)
+                  (vector-push-extend (copy-seq entry) combined))
+                (loop for entry across history
+                      do (vector-push-extend entry combined))
+                (setf (slot-value editor 'history)            combined
+                      (slot-value editor 'history-extended-p) t)
+                (when index
+                  (setf (slot-value editor 'history-index) (+ index (length page))))
+                (length page)))))))
+
 (defun line-editor--leave-history (editor)
-  "Leave EDITOR's history traversal and discard its saved draft."
+  "Leave EDITOR's history traversal and discard its saved draft.
+
+Older entries traversal loaded are released again."
   (setf (slot-value editor 'history-index) nil
         (slot-value editor 'history-stash) nil
         (slot-value editor 'history-stash-cursor) nil)
+  (when (slot-value editor 'history-extended-p)
+    (line-editor--trim-history editor))
   nil)
 
 (defun line-editor--set-state (editor text cursor &key leave-history-p)
@@ -363,24 +438,36 @@
             return index)))
 
 (defun line-editor--history-previous (editor)
-  "Recall the next older history entry matching EDITOR's saved draft."
-  (let* ((history (slot-value editor 'history))
-         (index   (slot-value editor 'history-index))
-         (query   (if index
-                      (slot-value editor 'history-stash)
-                      (line-editor-text editor)))
-         (match   (line-editor--history-matching-index
-                   editor query
-                   :start     (if index (1- index) (1- (length history)))
-                   :direction -1)))
-    (when match
-      (unless index
-        (setf (slot-value editor 'history-stash) (copy-seq query)
-              (slot-value editor 'history-stash-cursor)
-              (line-editor-cursor editor)))
-      (let ((entry (aref history match)))
-        (setf (slot-value editor 'history-index) match)
-        (line-editor--set-state editor entry (length entry)))))
+  "Recall the next older history entry matching EDITOR's saved draft.
+
+Past the oldest resident entry, older pages load until one matches or none
+remain."
+  (let* ((index (slot-value editor 'history-index))
+         (query (if index
+                    (slot-value editor 'history-stash)
+                    (line-editor-text editor)))
+         (match (line-editor--history-matching-index
+                 editor query
+                 :start     (if index (1- index) (1- (length (slot-value editor 'history))))
+                 :direction -1)))
+    (loop until match
+          do (let ((loaded (line-editor--history-load-older editor)))
+               (when (zerop loaded)
+                 (return))
+               ;; Only the prepended page is still unsearched.
+               (setf match (line-editor--history-matching-index
+                            editor query :start (1- loaded) :direction -1))))
+    (if match
+        (progn
+          (unless index
+            (setf (slot-value editor 'history-stash) (copy-seq query)
+                  (slot-value editor 'history-stash-cursor)
+                  (line-editor-cursor editor)))
+          (let ((entry (aref (slot-value editor 'history) match)))
+            (setf (slot-value editor 'history-index) match)
+            (line-editor--set-state editor entry (length entry))))
+        (unless index
+          (line-editor--trim-history editor))))
   nil)
 
 (defun line-editor--history-next (editor)
@@ -409,6 +496,8 @@
                            (cursor (length text))
                            (history #())
                            (history-limit *default-history-limit*)
+                           history-character-limit
+                           history-older-function
                            history-match-function
                            (keymap (default-line-editor-keymap))
                            (auto-pair-p nil)
@@ -418,7 +507,12 @@
 
 HISTORY is ordered from oldest to newest. HISTORY-MATCH-FUNCTION, when non-NIL,
 receives the fixed draft and each candidate entry during traversal. An empty
-draft always traverses every entry. CURSOR is clamped to TEXT and advanced when
+draft always traverses every entry. HISTORY-LIMIT and HISTORY-CHARACTER-LIMIT
+bound the resident entries; the newest entry always stays.
+HISTORY-OLDER-FUNCTION, when non-NIL, receives the resident entry count once
+traversal passes the oldest entry and returns the entries just older than
+them, oldest first, so an application can keep its complete history on disk.
+Entries it loads are released when traversal ends. CURSOR is clamped to TEXT and advanced when
 necessary so that it never divides a grapheme. KEYMAP controls semantic event
 dispatch and is retained so callers can update it deliberately.
 
@@ -431,6 +525,8 @@ Ctrl-Right and Ctrl-Backspace behavior. WORD-DELIMITERS defaults to hyphen,
 underscore, slash, dot, and colon, and is copied into the editor."
   (check-type text string)
   (check-type history-limit (integer 1 *))
+  (check-type history-character-limit (or null (integer 1 *)))
+  (check-type history-older-function (or null function))
   (check-type history-match-function (or null function))
   (check-type keymap keymap)
   (check-type auto-pair-p boolean)
@@ -439,42 +535,50 @@ underscore, slash, dot, and colon, and is copied into the editor."
   (let* ((owned-text  (copy-seq text))
          (safe-cursor (line-editor--normalize-cursor owned-text cursor)))
     (make-instance 'line-editor
-                   :text                   owned-text
-                   :cursor                 safe-cursor
-                   :keymap                 keymap
-                   :auto-pair-p            auto-pair-p
-                   :word-delimiter-mode-p  word-delimiter-mode-p
-                   :word-delimiters        (copy-list word-delimiters)
-                   :history                (line-editor--make-history history history-limit)
-                   :history-limit          history-limit
-                   :history-match-function history-match-function)))
+                   :text                    owned-text
+                   :cursor                  safe-cursor
+                   :keymap                  keymap
+                   :auto-pair-p             auto-pair-p
+                   :word-delimiter-mode-p   word-delimiter-mode-p
+                   :word-delimiters         (copy-list word-delimiters)
+                   :history                 (line-editor--make-history
+                                             history history-limit history-character-limit)
+                   :history-limit           history-limit
+                   :history-character-limit history-character-limit
+                   :history-older-function  history-older-function
+                   :history-match-function  history-match-function)))
 
 (defun line-editor-create (&key
                              (text "")
                              (cursor (length text))
                              (history #())
                              (history-limit *default-history-limit*)
+                             history-character-limit
+                             history-older-function
                              history-match-function
                              (keymap (default-line-editor-keymap))
                              (auto-pair-p nil)
                              (word-delimiter-mode-p nil)
                              (word-delimiters *default-word-delimiters*))
   "Create a line editor through the application-oriented named constructor."
-  (make-line-editor :text                   text
-                    :cursor                 cursor
-                    :history                history
-                    :history-limit          history-limit
-                    :history-match-function history-match-function
-                    :keymap                 keymap
-                    :auto-pair-p            auto-pair-p
-                    :word-delimiter-mode-p  word-delimiter-mode-p
-                    :word-delimiters        word-delimiters))
+  (make-line-editor :text                    text
+                    :cursor                  cursor
+                    :history                 history
+                    :history-limit           history-limit
+                    :history-character-limit history-character-limit
+                    :history-older-function  history-older-function
+                    :history-match-function  history-match-function
+                    :keymap                  keymap
+                    :auto-pair-p             auto-pair-p
+                    :word-delimiter-mode-p   word-delimiter-mode-p
+                    :word-delimiters         word-delimiters))
 
 (defun line-editor-history (editor)
   "Return a detached oldest-to-newest snapshot of EDITOR's history."
   (check-type editor line-editor)
   (line-editor--make-history (slot-value editor 'history)
-                             (line-editor-history-limit editor)))
+                             (line-editor-history-limit editor)
+                             (line-editor-history-character-limit editor)))
 
 (defun line-editor-set-text (editor text &key (cursor (length text)))
   "Replace EDITOR's text, place its cursor, and leave history traversal."
@@ -493,11 +597,9 @@ underscore, slash, dot, and colon, and is copied into the editor."
                (or (zerop (length history))
                    (not (string= text
                                  (aref history (1- (length history)))))))
-      (vector-push-extend (copy-seq text) history)
-      (when (> (length history) (line-editor-history-limit editor))
-        (replace history history :start2 1)
-        (decf (fill-pointer history)))))
+      (vector-push-extend (copy-seq text) history)))
   (line-editor--leave-history editor)
+  (line-editor--trim-history editor)
   editor)
 
 (defun line-editor-toggle-word-delimiter-mode (editor)

@@ -226,6 +226,53 @@
                           "History must enforce its limit and suppress duplicates."))
   nil)
 
+(defun editor-tests--test-paged-history ()
+  "Test bounded resident history that pages older entries in from the application."
+  (let* ((complete (loop for index below 10 collect (format nil "entry ~D" index)))
+         (requests nil)
+         (editor   (make-line-editor
+                    :history       (last complete 3)
+                    :history-limit 3
+                    :history-older-function
+                    (lambda (depth)
+                      (push depth requests)
+                      (let ((end (- (length complete) depth)))
+                        (subseq complete (max 0 (- end 2)) (max 0 end)))))))
+    (dotimes (index 10)
+      (editor-tests--event editor :history-previous :continue))
+    (editor-tests--assert (string= (line-editor-text editor) "entry 0")
+                          "Traversal must page through the complete history, got ~S."
+                          (line-editor-text editor))
+    (editor-tests--assert (equal (reverse requests) '(3 5 7 9))
+                          "Each page must be requested from the resident count, got ~S."
+                          (reverse requests))
+    (editor-tests--event editor :history-next :continue)
+    (editor-tests--assert (string= (line-editor-text editor) "entry 1")
+                          "Paged entries must stay navigable while traversal lasts.")
+    (line-editor-set-text editor "")
+    (editor-tests--assert (equalp (line-editor-history editor)
+                                  #("entry 7" "entry 8" "entry 9"))
+                          "Leaving traversal must release the paged entries."))
+  (flet ((contains-p (query entry)
+           (search query entry)))
+    (let ((editor (make-line-editor
+                   :text                   "old"
+                   :history                #("new one" "new two")
+                   :history-match-function #'contains-p
+                   :history-older-function (lambda (depth)
+                                             (and (= depth 2) (list "old one" "middle"))))))
+      (editor-tests--event editor :history-previous :continue)
+      (editor-tests--assert (string= (line-editor-text editor) "old one")
+                            "A filtered search must continue into older pages.")))
+  (let ((editor (make-line-editor :history                 #("aaaa" "bbbb" "cccc")
+                                  :history-character-limit 9)))
+    (editor-tests--assert (equalp (line-editor-history editor) #("bbbb" "cccc"))
+                          "The character limit must bound resident entries.")
+    (line-editor-add-history editor (make-string 20 :initial-element #\x))
+    (editor-tests--assert (= 1 (length (line-editor-history editor)))
+                          "The newest entry must stay even past the character limit."))
+  nil)
+
 (defun editor-tests--test-filtered-history ()
   "Test fixed-query filtered traversal and exact draft restoration."
   (flet ((contains-p (query entry)
@@ -475,6 +522,7 @@
   (editor-tests--test-vertical-movement)
   (editor-tests--test-history)
   (editor-tests--test-filtered-history)
+  (editor-tests--test-paged-history)
   (editor-tests--test-actions)
   (editor-tests--test-named-constructor)
   (editor-tests--test-auto-pairing)

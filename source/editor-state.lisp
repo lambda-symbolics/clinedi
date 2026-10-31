@@ -29,12 +29,15 @@ the traversal index when an older prefix is discarded. If the recalled entry
 falls outside that limit, restore the visible text without history traversal."
   (check-type state line-editor-state)
   (let* ((history   (line-editor-state-history state))
-         (discarded (max 0 (- (length history) (line-editor-history-limit editor))))
+         (discarded (line-editor--history-start history
+                                                (line-editor-history-limit editor)
+                                                (line-editor-history-character-limit editor)))
          (index     (line-editor-state-index state)))
     (line-editor-set-text editor (copy-seq (line-editor-state-text state))
                           :cursor (line-editor-state-cursor state))
     (setf (slot-value editor 'history)
-          (line-editor--make-history history (line-editor-history-limit editor)))
+          (line-editor--make-history history (line-editor-history-limit editor)
+                                     (line-editor-history-character-limit editor)))
     (when (and index (>= index discarded))
       (setf (slot-value editor 'history-index) (- index discarded)
             (slot-value editor 'history-stash)
@@ -45,7 +48,8 @@ falls outside that limit, restore the visible text without history traversal."
 
 (defun line-editor-replace-history (editor entries)
   "Replace bounded history, restoring the saved draft when traversal is active."
-  (let* ((history      (line-editor--make-history entries (line-editor-history-limit editor)))
+  (let* ((history      (line-editor--make-history entries (line-editor-history-limit editor)
+                                                 (line-editor-history-character-limit editor)))
          (navigating-p (line-editor-history-navigating-p editor))
          (text         (copy-seq (if navigating-p (slot-value editor 'history-stash)
                                     (line-editor-text editor))))

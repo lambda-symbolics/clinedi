@@ -147,6 +147,14 @@ events. The function receives the complete draft captured when traversal begins
 and each candidate entry. Down past the newest match restores that draft and
 its original cursor. An empty draft traverses every entry.
 
+`:history-limit` and `:history-character-limit` bound the resident history;
+the newest entry always stays. An application that keeps its complete history
+elsewhere passes `:history-older-function`, or sets
+`line-editor-history-older-function`. When traversal, filtered or not, passes
+the oldest resident entry, the function receives the resident entry count and
+returns the entries just older than them, oldest first, or `nil` when none
+remain. Entries it loads stay navigable until traversal ends.
+
 Pass `:word-delimiter-mode-p t` to make word movement and word deletion stop at
 delimiters as well as whitespace. The default delimiter list is `-`, `_`, `/`,
 `.`, and `:`; override it with `:word-delimiters`.

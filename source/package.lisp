@@ -216,6 +216,8 @@
    #:line-editor-toggle-word-delimiter-mode
    #:line-editor-history
    #:line-editor-history-limit
+   #:line-editor-history-character-limit
+   #:line-editor-history-older-function
    #:line-editor-history-match-function
    #:line-editor-keymap
    #:line-editor-set-text
