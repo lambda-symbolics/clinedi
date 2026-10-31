@@ -73,8 +73,22 @@
     :accessor line-editor-history-older-function
     :type     (or null function)
     :documentation
-    "Optional function of the resident entry count returning the entries just older
-than them, oldest first, or NIL when none remain.")
+    "Optional function of the absolute resident start returning the entries just older
+than it, oldest first, or NIL when none remain.")
+   (history-newer-function
+    :initarg  :history-newer-function
+    :initform nil
+    :accessor line-editor-history-newer-function
+    :type     (or null function)
+    :documentation
+    "Optional function of the absolute resident end returning the entries just newer
+than it, oldest first, or NIL when none remain.")
+   (history-offset
+    :initarg       :history-offset
+    :initform      0
+    :reader        line-editor-history-offset
+    :type          (integer 0 *)
+    :documentation "Absolute index of the oldest resident history entry.")
    (history-extended-p
     :initform      nil
     :documentation
@@ -145,6 +159,35 @@ The newest entry is always kept."
              (vector-push-extend (copy-seq entry) copy))
     copy))
 
+(defun line-editor--history-prefix-length (history history-limit character-limit)
+  "Return how many oldest entries fit in a bounded navigation window."
+  (loop with characters = 0
+        for index from 0 below (length history)
+        for count from 1
+        do (incf characters (length (aref history index)))
+           (when (and (> count 1)
+                      (or (> count history-limit)
+                          (and character-limit (> characters character-limit))))
+             (return (1- count)))
+        finally (return (length history))))
+
+(defun line-editor--history-truncate-prefix (history count)
+  "Keep the first COUNT entries in adjustable HISTORY."
+  (when (< count (length history))
+    (replace history history :end2 count)
+    (fill history nil :start count)
+    (setf (fill-pointer history) count))
+  history)
+
+(defun line-editor--history-truncate-suffix (history count)
+  "Keep the last COUNT entries in adjustable HISTORY."
+  (let ((discarded (- (length history) count)))
+    (when (plusp discarded)
+      (replace history history :start2 discarded)
+      (fill history nil :start count)
+      (setf (fill-pointer history) count)))
+  history)
+
 (defun line-editor--trim-history (editor)
   "Drop EDITOR's oldest history entries beyond its count and character limits."
   (let* ((history (slot-value editor 'history))
@@ -164,7 +207,7 @@ The newest entry is always kept."
     (if (null function)
         0
         (let* ((history (slot-value editor 'history))
-               (page    (funcall function (length history))))
+               (page    (funcall function (slot-value editor 'history-offset))))
           (check-type page list)
           (if (null page)
               0
@@ -177,10 +220,43 @@ The newest entry is always kept."
                   (vector-push-extend (copy-seq entry) combined))
                 (loop for entry across history
                       do (vector-push-extend entry combined))
+                (let ((keep (line-editor--history-prefix-length
+                              combined (line-editor-history-limit editor)
+                              (line-editor-history-character-limit editor))))
+                  (line-editor--history-truncate-prefix combined keep))
                 (setf (slot-value editor 'history)            combined
+                      (slot-value editor 'history-offset)
+                      (- (slot-value editor 'history-offset) (length page))
                       (slot-value editor 'history-extended-p) t)
                 (when index
                   (setf (slot-value editor 'history-index) (+ index (length page))))
+                (length page)))))))
+
+(defun line-editor--history-load-newer (editor)
+  "Append entries newer than EDITOR's resident history and return their count."
+  (let ((function (line-editor-history-newer-function editor)))
+    (if (null function)
+        0
+        (let* ((history (slot-value editor 'history))
+               (page    (funcall function (+ (slot-value editor 'history-offset)
+                                           (length history)))))
+          (check-type page list)
+          (if (null page)
+              0
+              (progn
+                (dolist (entry page)
+                  (check-type entry string)
+                  (vector-push-extend (copy-seq entry) history))
+                (let* ((keep (line-editor--history-prefix-length
+                               history (line-editor-history-limit editor)
+                                (line-editor-history-character-limit editor)))
+                       (discarded (- (length history) keep)))
+                  (when (plusp discarded)
+                    (line-editor--history-truncate-suffix history keep)
+                    (incf (slot-value editor 'history-offset) discarded)
+                    (when (slot-value editor 'history-index)
+                      (decf (slot-value editor 'history-index) discarded))))
+                (setf (slot-value editor 'history-extended-p) t)
                 (length page)))))))
 
 (defun line-editor--leave-history (editor)
@@ -191,6 +267,7 @@ Older entries traversal loaded are released again."
         (slot-value editor 'history-stash) nil
         (slot-value editor 'history-stash-cursor) nil)
   (when (slot-value editor 'history-extended-p)
+    (loop while (plusp (line-editor--history-load-newer editor)))
     (line-editor--trim-history editor))
   nil)
 
@@ -498,6 +575,8 @@ remain."
                            (history-limit *default-history-limit*)
                            history-character-limit
                            history-older-function
+                           history-newer-function
+                           history-offset
                            history-match-function
                            (keymap (default-line-editor-keymap))
                            (auto-pair-p nil)
@@ -527,6 +606,8 @@ underscore, slash, dot, and colon, and is copied into the editor."
   (check-type history-limit (integer 1 *))
   (check-type history-character-limit (or null (integer 1 *)))
   (check-type history-older-function (or null function))
+  (check-type history-newer-function (or null function))
+  (check-type history-offset (or null (integer 0 *)))
   (check-type history-match-function (or null function))
   (check-type keymap keymap)
   (check-type auto-pair-p boolean)
@@ -546,6 +627,10 @@ underscore, slash, dot, and colon, and is copied into the editor."
                    :history-limit           history-limit
                    :history-character-limit history-character-limit
                    :history-older-function  history-older-function
+                   :history-newer-function  history-newer-function
+                   :history-offset          (or history-offset
+                                                (line-editor--history-start
+                                                 history history-limit history-character-limit))
                    :history-match-function  history-match-function)))
 
 (defun line-editor-create (&key
@@ -555,6 +640,8 @@ underscore, slash, dot, and colon, and is copied into the editor."
                              (history-limit *default-history-limit*)
                              history-character-limit
                              history-older-function
+                             history-newer-function
+                             history-offset
                              history-match-function
                              (keymap (default-line-editor-keymap))
                              (auto-pair-p nil)
@@ -567,6 +654,8 @@ underscore, slash, dot, and colon, and is copied into the editor."
                     :history-limit           history-limit
                     :history-character-limit history-character-limit
                     :history-older-function  history-older-function
+                    :history-newer-function  history-newer-function
+                    :history-offset          history-offset
                     :history-match-function  history-match-function
                     :keymap                  keymap
                     :auto-pair-p             auto-pair-p

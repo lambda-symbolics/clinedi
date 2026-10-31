@@ -231,19 +231,22 @@
   (let* ((complete (loop for index below 10 collect (format nil "entry ~D" index)))
          (requests nil)
          (editor   (make-line-editor
-                    :history       (last complete 3)
-                    :history-limit 3
+                    :history        (last complete 3)
+                    :history-limit  3
+                    :history-offset 7
                     :history-older-function
-                    (lambda (depth)
-                      (push depth requests)
-                      (let ((end (- (length complete) depth)))
-                        (subseq complete (max 0 (- end 2)) (max 0 end)))))))
+                    (lambda (offset)
+                      (push offset requests)
+                      (subseq complete (max 0 (- offset 2)) offset))
+                    :history-newer-function
+                    (lambda (offset)
+                      (subseq complete offset (min (length complete) (+ offset 2)))))))
     (dotimes (index 10)
       (editor-tests--event editor :history-previous :continue))
     (editor-tests--assert (string= (line-editor-text editor) "entry 0")
                           "Traversal must page through the complete history, got ~S."
                           (line-editor-text editor))
-    (editor-tests--assert (equal (reverse requests) '(3 5 7 9))
+    (editor-tests--assert (equal (reverse requests) '(7 5 3 1))
                           "Each page must be requested from the resident count, got ~S."
                           (reverse requests))
     (editor-tests--event editor :history-next :continue)
@@ -257,7 +260,8 @@
            (search query entry)))
     (let ((editor (make-line-editor
                    :text                   "old"
-                   :history                #("new one" "new two")
+                   :history                  #("new one" "new two")
+                   :history-offset            2
                    :history-match-function #'contains-p
                    :history-older-function (lambda (depth)
                                              (and (= depth 2) (list "old one" "middle"))))))

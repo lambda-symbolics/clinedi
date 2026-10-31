@@ -218,6 +218,8 @@
    #:line-editor-history-limit
    #:line-editor-history-character-limit
    #:line-editor-history-older-function
+   #:line-editor-history-newer-function
+   #:line-editor-history-offset
    #:line-editor-history-match-function
    #:line-editor-keymap
    #:line-editor-set-text
