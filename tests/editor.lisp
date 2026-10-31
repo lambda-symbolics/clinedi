@@ -260,8 +260,8 @@
            (search query entry)))
     (let ((editor (make-line-editor
                    :text                   "old"
-                   :history                  #("new one" "new two")
-                   :history-offset            2
+                   :history                #("new one" "new two")
+                   :history-offset         2
                    :history-match-function #'contains-p
                    :history-older-function (lambda (depth)
                                              (and (= depth 2) (list "old one" "middle"))))))
@@ -519,6 +519,187 @@
                           "Pairing must be a boolean."))
   nil)
 
+(defun editor-tests--assert-history-bounded (editor)
+  "Check resident slots, including storage outside the history fill pointer."
+  (let* ((history (slot-value editor 'clinedi::history))
+         (entries (loop for index below (array-total-size history)
+                        for entry = (aref history index)
+                        when (stringp entry) collect entry))
+         (limit   (clinedi::line-editor-history-character-limit editor)))
+    (editor-tests--assert (<= (length entries) (clinedi::line-editor-history-limit editor))
+                          "Resident history exceeded its entry limit.")
+    (editor-tests--assert
+     (or (null limit)
+         (<= (reduce #'+ entries :key #'length :initial-value 0) limit)
+         (= (length entries) 1))
+     "Resident history exceeded its character limit with several entries.")))
+
+(defun editor-tests--make-paged-history (history &key (count-limit 2)
+                                                    character-limit
+                                                    (page-size 3)
+                                                    (initial-count 19)
+                                                    (query "draft")
+                                                    (cursor 2)
+                                                    matcher)
+  "Create an editor over a checked, mutable backing history sequence."
+  (let ((start (max 0 (- (length history) initial-count))))
+    (make-line-editor
+     :text                    query
+     :cursor                  cursor
+     :history                 (subseq history start)
+     :history-offset          start
+     :history-limit           count-limit
+     :history-character-limit character-limit
+     :history-match-function  matcher
+     :history-older-function
+     (lambda (offset)
+       (editor-tests--assert (<= 0 offset (length history)) "Invalid older offset ~D." offset)
+       (coerce (subseq history (max 0 (- offset page-size)) offset) 'list))
+     :history-newer-function
+     (lambda (offset)
+       (editor-tests--assert (<= 0 offset (length history)) "Invalid newer offset ~D." offset)
+       (coerce (subseq history offset (min (length history) (+ offset page-size))) 'list)))))
+
+(defun editor-tests--test-large-paged-history ()
+  "Traverse thousands of unequal entries in both directions under both budgets."
+  (let ((complete (coerce
+                   (loop for index below 2049
+                         collect (format nil "entry-~4,'0D~A" index
+                                         (make-string (cond ((zerop (mod index 127))
+                                                             137)
+                                                            ((zerop (mod index 11))
+                                                             19)
+                                                            (t
+                                                             0))
+                                                      :initial-element #\x)))
+                   'vector)))
+    (dolist (case '((1 1 13) (7 80 7) (500 1000000 503) (13 29 101) (9 nil 23)))
+      (destructuring-bind (count-limit character-limit page-size) case
+        (let ((editor (editor-tests--make-paged-history
+                       complete :count-limit     count-limit
+                                :character-limit character-limit
+                                :page-size       page-size)))
+          (editor-tests--assert-history-bounded editor)
+          (loop for index downfrom (1- (length complete)) to 0
+                do (editor-tests--event editor :history-previous :continue)
+                   (editor-tests--assert-history-bounded editor)
+                   (editor-tests--assert
+                    (string= (line-editor-text editor) (aref complete index))
+                    "Backward paging skipped entry ~D under ~S." index case))
+          (editor-tests--event editor :history-previous :continue)
+          (editor-tests--assert (string= (line-editor-text editor) (aref complete 0))
+                                "Traversal past the oldest entry changed the selection.")
+          (loop for index from 1 below (length complete)
+                do (editor-tests--event editor :history-next :continue)
+                   (editor-tests--assert-history-bounded editor)
+                   (editor-tests--assert
+                    (string= (line-editor-text editor) (aref complete index))
+                    "Forward paging skipped entry ~D under ~S." index case))
+          (editor-tests--event editor :history-next :continue)
+          (editor-tests--assert-history-bounded editor)
+          (editor-tests--assert (and (string= (line-editor-text editor) "draft")
+                                     (= (line-editor-cursor editor) 2))
+                                "Paging did not restore the exact draft and cursor.")))))
+  nil)
+
+(defun editor-tests--test-paged-history-recovery ()
+  "Test failed searches, resets, callback failures and appends during traversal."
+  (dolist (case '(("x" #("a" "b" "c") 1 "x")
+                  ("m" #("a" "b" "m1") 2 "m1")))
+    (destructuring-bind (query history limit selected) case
+      (let ((editor (editor-tests--make-paged-history
+                     history :count-limit limit :page-size 2
+                             :query query :cursor 1 :matcher #'search)))
+        (dotimes (attempt 2)
+          (editor-tests--event editor :history-previous :continue)
+          (editor-tests--assert-history-bounded editor)
+          (editor-tests--assert (string= (line-editor-text editor) selected)
+                                "An unsuccessful search changed the selection."))
+        (editor-tests--event editor :history-next :continue)
+        (editor-tests--assert (and (string= (line-editor-text editor) query)
+                                   (= (line-editor-cursor editor) 1))
+                              "A failed search damaged draft restoration.")
+        (line-editor-clear editor)
+        (editor-tests--event editor :history-previous :continue)
+        (editor-tests--assert (string= (line-editor-text editor)
+                                      (aref history (1- (length history))))
+                              "A failed search stranded a new session in old history."))))
+  (dolist (append-first-p '(nil t))
+    (let* ((history (make-array 4 :initial-contents '("a" "b" "c" "d")
+                                 :adjustable t :fill-pointer 4))
+           (editor  (editor-tests--make-paged-history history :initial-count 2)))
+      (dotimes (step 3)
+        (editor-tests--event editor :history-previous :continue))
+      (when append-first-p
+        (vector-push-extend "x" history))
+      (line-editor-add-history editor "x")
+      (unless append-first-p
+        (vector-push-extend "x" history))
+      (editor-tests--assert-history-bounded editor)
+      (editor-tests--assert (equalp (line-editor-history editor) #("d" "x"))
+                            "Appending in old history skipped or duplicated the newest entries.")
+      (loop for index downfrom 4 to 0
+            do (editor-tests--event editor :history-previous :continue)
+               (editor-tests--assert-history-bounded editor)
+               (editor-tests--assert (string= (line-editor-text editor) (aref history index))
+                                     "Appending corrupted absolute history offsets."))))
+  (let* ((failure (make-condition 'simple-error :format-control "History store unavailable."))
+         (editor  (editor-tests--make-paged-history
+                   #("a" "b" "m1") :query "m" :cursor 1 :matcher #'search)))
+    (editor-tests--event editor :history-previous :continue)
+    (setf (clinedi::line-editor-history-older-function editor)
+          (lambda (offset)
+            (if (plusp offset)
+                (list "a")
+                (error failure))))
+    (handler-case
+        (progn (editor-tests--event editor :history-previous :continue)
+               (error "The history callback failure was not signaled."))
+      (simple-error (condition)
+        (editor-tests--assert (eq condition failure) "Unexpected history callback failure.")))
+    (editor-tests--event editor :history-next :continue)
+    (editor-tests--assert (and (string= (line-editor-text editor) "m")
+                               (= (line-editor-cursor editor) 1))
+                          "A callback failure invalidated the saved selection."))
+  (dolist (operation '(:history-next :clear :append))
+    (let* ((failure (make-condition 'simple-error :format-control "Newer history unavailable."))
+           (editor  (editor-tests--make-paged-history
+                     #("m0" "m1" "a" "b" "m4")
+                     :count-limit 1 :page-size 1 :query "m" :cursor 1 :matcher #'search))
+           (newer   (clinedi::line-editor-history-newer-function editor)))
+      (dotimes (step 2)
+        (editor-tests--event editor :history-previous :continue))
+      (setf (clinedi::line-editor-history-newer-function editor)
+            (lambda (offset)
+              (if (= offset 2)
+                  (list "a")
+                  (error failure))))
+      (handler-case
+          (progn
+            (ecase operation
+              (:history-next
+               (editor-tests--event editor :history-next :continue))
+              (:clear
+               (line-editor-clear editor))
+              (:append
+               (line-editor-add-history editor "x")))
+            (error "The newer history callback failure was not signaled."))
+        (simple-error (condition)
+          (editor-tests--assert (eq condition failure) "Unexpected newer callback failure.")))
+      (editor-tests--assert-history-bounded editor)
+      (editor-tests--assert (string= (line-editor-text editor) "m1")
+                            "A newer callback failure changed the selected text.")
+      (setf (clinedi::line-editor-history-newer-function editor) newer)
+      (editor-tests--event editor :history-previous :continue)
+      (editor-tests--assert (string= (line-editor-text editor) "m0")
+                            "A newer callback failure corrupted the previous selection.")
+      (dotimes (step 3)
+        (editor-tests--event editor :history-next :continue))
+      (editor-tests--assert (and (string= (line-editor-text editor) "m")
+                                 (= (line-editor-cursor editor) 1))
+                            "A newer callback failure damaged draft restoration.")))
+  nil)
+
 (defun run-editor-tests ()
   "Run the complete incremental editor test group."
   (editor-tests--test-keymaps)
@@ -527,6 +708,8 @@
   (editor-tests--test-history)
   (editor-tests--test-filtered-history)
   (editor-tests--test-paged-history)
+  (editor-tests--test-large-paged-history)
+  (editor-tests--test-paged-history-recovery)
   (editor-tests--test-actions)
   (editor-tests--test-named-constructor)
   (editor-tests--test-auto-pairing)

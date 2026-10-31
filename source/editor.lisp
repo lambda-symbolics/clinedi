@@ -92,7 +92,7 @@ than it, oldest first, or NIL when none remain.")
    (history-extended-p
     :initform      nil
     :documentation
-    "Whether traversal loaded older entries past the limits, trimmed when it ends.")
+    "Whether traversal moved the resident window away from the newest entries.")
    (history-match-function
     :initarg  :history-match-function
     :initform nil
@@ -171,23 +171,6 @@ The newest entry is always kept."
              (return (1- count)))
         finally (return (length history))))
 
-(defun line-editor--history-truncate-prefix (history count)
-  "Keep the first COUNT entries in adjustable HISTORY."
-  (when (< count (length history))
-    (replace history history :end2 count)
-    (fill history nil :start count)
-    (setf (fill-pointer history) count))
-  history)
-
-(defun line-editor--history-truncate-suffix (history count)
-  "Keep the last COUNT entries in adjustable HISTORY."
-  (let ((discarded (- (length history) count)))
-    (when (plusp discarded)
-      (replace history history :start2 discarded)
-      (fill history nil :start count)
-      (setf (fill-pointer history) count)))
-  history)
-
 (defun line-editor--trim-history (editor)
   "Drop EDITOR's oldest history entries beyond its count and character limits."
   (let* ((history (slot-value editor 'history))
@@ -197,78 +180,82 @@ The newest entry is always kept."
     (when (plusp start)
       (replace history history :start2 start)
       (fill history nil :start (- (length history) start))
-      (setf (fill-pointer history) (- (length history) start))))
+      (setf (fill-pointer history) (- (length history) start))
+      (incf (slot-value editor 'history-offset) start)))
   (setf (slot-value editor 'history-extended-p) nil)
   nil)
 
 (defun line-editor--history-load-older (editor)
-  "Prepend the entries older than EDITOR's resident history and return how many arrived."
+  "Replace EDITOR's window with the nearest bounded entries before its start."
   (let ((function (line-editor-history-older-function editor)))
     (if (null function)
         0
-        (let* ((history (slot-value editor 'history))
-               (page    (funcall function (slot-value editor 'history-offset))))
+        (let* ((offset (line-editor-history-offset editor))
+               (page   (funcall function offset)))
           (check-type page list)
           (if (null page)
               0
-              (let ((combined (make-array (+ (length page) (length history))
-                                          :adjustable   t
-                                          :fill-pointer 0))
-                    (index    (slot-value editor 'history-index)))
-                (dolist (entry page)
-                  (check-type entry string)
-                  (vector-push-extend (copy-seq entry) combined))
-                (loop for entry across history
-                      do (vector-push-extend entry combined))
-                (let ((keep (line-editor--history-prefix-length
-                              combined (line-editor-history-limit editor)
-                              (line-editor-history-character-limit editor))))
-                  (line-editor--history-truncate-prefix combined keep))
-                (setf (slot-value editor 'history)            combined
-                      (slot-value editor 'history-offset)
-                      (- (slot-value editor 'history-offset) (length page))
+              (let* ((bounded (line-editor--make-history
+                               page
+                               (line-editor-history-limit editor)
+                               (line-editor-history-character-limit editor)))
+                     (start   (- offset (length bounded))))
+                (setf (slot-value editor 'history) bounded
+                      (slot-value editor 'history-offset) start
+                      (slot-value editor 'history-index) nil
                       (slot-value editor 'history-extended-p) t)
-                (when index
-                  (setf (slot-value editor 'history-index) (+ index (length page))))
-                (length page)))))))
+                (length bounded)))))))
 
-(defun line-editor--history-load-newer (editor)
-  "Append entries newer than EDITOR's resident history and return their count."
+(defun line-editor--history-load-newer (editor &key navigation-p)
+  "Advance EDITOR's bounded window without skipping entries during navigation."
   (let ((function (line-editor-history-newer-function editor)))
     (if (null function)
         0
         (let* ((history (slot-value editor 'history))
-               (page    (funcall function (+ (slot-value editor 'history-offset)
-                                           (length history)))))
+               (end     (+ (line-editor-history-offset editor) (length history)))
+               (page    (funcall function end)))
           (check-type page list)
           (if (null page)
               0
-              (progn
-                (dolist (entry page)
-                  (check-type entry string)
-                  (vector-push-extend (copy-seq entry) history))
-                (let* ((keep (line-editor--history-prefix-length
-                               history (line-editor-history-limit editor)
-                                (line-editor-history-character-limit editor)))
-                       (discarded (- (length history) keep)))
-                  (when (plusp discarded)
-                    (line-editor--history-truncate-suffix history keep)
-                    (incf (slot-value editor 'history-offset) discarded)
-                    (when (slot-value editor 'history-index)
-                      (decf (slot-value editor 'history-index) discarded))))
-                (setf (slot-value editor 'history-extended-p) t)
-                (length page)))))))
+              (let* ((entries (coerce page 'vector))
+                     (count   (if navigation-p
+                                  (line-editor--history-prefix-length
+                                   entries
+                                   (line-editor-history-limit editor)
+                                   (line-editor-history-character-limit editor))
+                                  (length entries)))
+                     (bounded (line-editor--make-history
+                               (concatenate 'vector history (subseq entries 0 count))
+                               (line-editor-history-limit editor)
+                               (line-editor-history-character-limit editor))))
+                (setf (slot-value editor 'history) bounded
+                      (slot-value editor 'history-offset) (- (+ end count) (length bounded))
+                      (slot-value editor 'history-index)
+                      (and navigation-p (- (length bounded) count 1))
+                      (slot-value editor 'history-extended-p) t)
+                count))))))
 
 (defun line-editor--leave-history (editor)
-  "Leave EDITOR's history traversal and discard its saved draft.
-
-Older entries traversal loaded are released again."
-  (setf (slot-value editor 'history-index) nil
-        (slot-value editor 'history-stash) nil
-        (slot-value editor 'history-stash-cursor) nil)
-  (when (slot-value editor 'history-extended-p)
-    (loop while (plusp (line-editor--history-load-newer editor)))
-    (line-editor--trim-history editor))
+  "Restore EDITOR's newest window, then leave traversal and discard its saved draft."
+  (let ((history     (slot-value editor 'history))
+        (offset      (line-editor-history-offset editor))
+        (index       (slot-value editor 'history-index))
+        (extended-p  (slot-value editor 'history-extended-p))
+        (completed-p nil))
+    (unwind-protect
+         (progn
+           (when extended-p
+             (loop while (plusp (line-editor--history-load-newer editor)))
+             (line-editor--trim-history editor))
+           (setf (slot-value editor 'history-index) nil
+                 (slot-value editor 'history-stash) nil
+                 (slot-value editor 'history-stash-cursor) nil
+                 completed-p t))
+      (unless completed-p
+        (setf (slot-value editor 'history) history
+              (slot-value editor 'history-offset) offset
+              (slot-value editor 'history-index) index
+              (slot-value editor 'history-extended-p) extended-p))))
   nil)
 
 (defun line-editor--set-state (editor text cursor &key leave-history-p)
@@ -515,54 +502,78 @@ Older entries traversal loaded are released again."
             return index)))
 
 (defun line-editor--history-previous (editor)
-  "Recall the next older history entry matching EDITOR's saved draft.
-
-Past the oldest resident entry, older pages load until one matches or none
-remain."
-  (let* ((index (slot-value editor 'history-index))
-         (query (if index
-                    (slot-value editor 'history-stash)
-                    (line-editor-text editor)))
-         (match (line-editor--history-matching-index
-                 editor query
-                 :start     (if index (1- index) (1- (length (slot-value editor 'history))))
-                 :direction -1)))
-    (loop until match
-          do (let ((loaded (line-editor--history-load-older editor)))
-               (when (zerop loaded)
-                 (return))
-               ;; Only the prepended page is still unsearched.
-               (setf match (line-editor--history-matching-index
-                            editor query :start (1- loaded) :direction -1))))
-    (if match
-        (progn
-          (unless index
-            (setf (slot-value editor 'history-stash) (copy-seq query)
-                  (slot-value editor 'history-stash-cursor)
-                  (line-editor-cursor editor)))
-          (let ((entry (aref (slot-value editor 'history) match)))
-            (setf (slot-value editor 'history-index) match)
-            (line-editor--set-state editor entry (length entry))))
-        (unless index
-          (line-editor--trim-history editor))))
+  "Recall the next older match without changing the selection on a failed search."
+  (let* ((history    (slot-value editor 'history))
+         (offset     (line-editor-history-offset editor))
+         (index      (slot-value editor 'history-index))
+         (extended-p (slot-value editor 'history-extended-p))
+         (query      (if index
+                         (slot-value editor 'history-stash)
+                         (line-editor-text editor)))
+         (matched-p  nil))
+    (unwind-protect
+         (let ((match (line-editor--history-matching-index
+                       editor query
+                       :start     (if index (1- index) (1- (length history)))
+                       :direction -1)))
+           (loop until match
+                 do (let ((loaded (line-editor--history-load-older editor)))
+                      (when (zerop loaded)
+                        (return))
+                      (setf match (line-editor--history-matching-index
+                                   editor query :start (1- loaded) :direction -1))))
+           (when match
+             (unless index
+               (setf (slot-value editor 'history-stash) (copy-seq query)
+                     (slot-value editor 'history-stash-cursor)
+                     (line-editor-cursor editor)))
+             (let ((entry (aref (slot-value editor 'history) match)))
+               (setf (slot-value editor 'history-index) match)
+               (line-editor--set-state editor entry (length entry)))
+             (setf matched-p t)))
+      (unless matched-p
+        (setf (slot-value editor 'history) history
+              (slot-value editor 'history-offset) offset
+              (slot-value editor 'history-index) index
+              (slot-value editor 'history-extended-p) extended-p))))
   nil)
 
 (defun line-editor--history-next (editor)
   "Recall the next newer match or restore EDITOR's saved draft and cursor."
-  (let* ((history (slot-value editor 'history))
-         (index   (slot-value editor 'history-index)))
+  (let ((index (slot-value editor 'history-index)))
     (when index
-      (let* ((draft (slot-value editor 'history-stash))
-             (next-index
-               (line-editor--history-matching-index
-                editor draft :start (1+ index) :direction 1)))
-        (if next-index
-            (let ((entry (aref history next-index)))
-              (setf (slot-value editor 'history-index) next-index)
-              (line-editor--set-state editor entry (length entry)))
-            (let ((cursor (slot-value editor 'history-stash-cursor)))
-              (line-editor--set-state editor draft cursor)
-              (line-editor--leave-history editor))))))
+      (let ((history     (slot-value editor 'history))
+            (offset      (line-editor-history-offset editor))
+            (extended-p  (slot-value editor 'history-extended-p))
+            (draft       (slot-value editor 'history-stash))
+            (completed-p nil))
+        (unwind-protect
+             (let ((next-index
+                     (line-editor--history-matching-index
+                      editor draft :start (1+ index) :direction 1)))
+               (loop until next-index
+                     do (let ((loaded (line-editor--history-load-newer
+                                       editor :navigation-p t)))
+                          (when (zerop loaded)
+                            (return))
+                          (setf next-index
+                                (line-editor--history-matching-index
+                                 editor draft
+                                 :start     (1+ (slot-value editor 'history-index))
+                                 :direction 1))))
+               (if next-index
+                   (let ((entry (aref (slot-value editor 'history) next-index)))
+                     (setf (slot-value editor 'history-index) next-index)
+                     (line-editor--set-state editor entry (length entry)))
+                   (let ((cursor (slot-value editor 'history-stash-cursor)))
+                     (line-editor--leave-history editor)
+                     (line-editor--set-state editor draft cursor)))
+               (setf completed-p t))
+          (unless completed-p
+            (setf (slot-value editor 'history) history
+                  (slot-value editor 'history-offset) offset
+                  (slot-value editor 'history-index) index
+                  (slot-value editor 'history-extended-p) extended-p))))))
   nil)
 
 
@@ -584,15 +595,17 @@ remain."
                            (word-delimiters *default-word-delimiters*))
   "Create an editor initialized with TEXT, CURSOR, and copied HISTORY.
 
-HISTORY is ordered from oldest to newest. HISTORY-MATCH-FUNCTION, when non-NIL,
-receives the fixed draft and each candidate entry during traversal. An empty
-draft always traverses every entry. HISTORY-LIMIT and HISTORY-CHARACTER-LIMIT
-bound the resident entries; the newest entry always stays.
-HISTORY-OLDER-FUNCTION, when non-NIL, receives the resident entry count once
-traversal passes the oldest entry and returns the entries just older than
-them, oldest first, so an application can keep its complete history on disk.
-Entries it loads are released when traversal ends. CURSOR is clamped to TEXT and advanced when
-necessary so that it never divides a grapheme. KEYMAP controls semantic event
+HISTORY is ordered from oldest to newest. HISTORY-OFFSET is its absolute start
+before trimming. HISTORY-MATCH-FUNCTION receives the fixed draft and each
+candidate entry; an empty draft traverses every entry. HISTORY-LIMIT and
+HISTORY-CHARACTER-LIMIT bound each resident window. An individually oversized
+entry is retained alone. HISTORY-OLDER-FUNCTION receives the absolute resident
+start and returns the immediately older entries, oldest first.
+HISTORY-NEWER-FUNCTION receives the absolute resident end and returns the
+immediately newer entries, oldest first. Each callback returns NIL at its end;
+provide both to traverse evicted entries in either direction. CURSOR is clamped
+to TEXT and advanced when necessary so that it never divides a grapheme.
+KEYMAP controls semantic event
 dispatch and is retained so callers can update it deliberately.
 
 AUTO-PAIR-P enables pairing for typed parentheses, square brackets, and braces.
@@ -628,9 +641,9 @@ underscore, slash, dot, and colon, and is copied into the editor."
                    :history-character-limit history-character-limit
                    :history-older-function  history-older-function
                    :history-newer-function  history-newer-function
-                   :history-offset          (or history-offset
-                                                (line-editor--history-start
-                                                 history history-limit history-character-limit))
+                   :history-offset          (+ (or history-offset 0)
+                                               (line-editor--history-start
+                                                history history-limit history-character-limit))
                    :history-match-function  history-match-function)))
 
 (defun line-editor-create (&key
@@ -681,13 +694,14 @@ underscore, slash, dot, and colon, and is copied into the editor."
   "Append non-empty TEXT to EDITOR's history unless it repeats the newest entry."
   (check-type editor line-editor)
   (check-type text string)
+  (line-editor--leave-history editor)
+  (line-editor--trim-history editor)
   (let ((history (slot-value editor 'history)))
     (when (and (plusp (length text))
                (or (zerop (length history))
                    (not (string= text
                                  (aref history (1- (length history)))))))
       (vector-push-extend (copy-seq text) history)))
-  (line-editor--leave-history editor)
   (line-editor--trim-history editor)
   editor)
 
