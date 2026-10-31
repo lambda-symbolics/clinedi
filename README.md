@@ -299,6 +299,17 @@ click region action, the chunk text, and the character index under it.
 `transcript-viewport-checkpoint` and `-rollback` undo appends and scrolling
 when painting fails.
 
+A long-running application bounds the transcript with
+`:character-limit`. Past it, the oldest chunks are evicted down to three
+quarters of the limit; the newest chunk always stays, and a scrolled view
+keeps its first visible row. The resident text, displays and wrapped rows
+count towards the limit, as does each click region. Give each chunk a `:tag`
+when appending, and an `:evict-function` that receives each evicted chunk's
+tag, so the application can offer the evicted output again from its own
+history. `transcript-viewport-last-tag` reads and replaces the newest chunk's
+tag; `transcript-viewport-evicted-count` and `-resident-characters` report
+what eviction removed and what remains.
+
 `clinedi:make-frame-painter` paints such a screen. `frame-painter-paint`
 takes trusted display rows, the screen height and width, the cursor position
 and visibility, and a write function. Write and flush the complete control string

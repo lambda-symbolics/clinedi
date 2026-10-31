@@ -151,6 +151,11 @@
    #:transcript-viewport-row-text
    #:transcript-viewport-chunk-count
    #:transcript-viewport-chunk-text
+   #:transcript-viewport-character-limit
+   #:transcript-viewport-evict-function
+   #:transcript-viewport-evicted-count
+   #:transcript-viewport-resident-characters
+   #:transcript-viewport-last-tag
    #:transcript-viewport-following-p
    #:transcript-viewport-append
    #:transcript-viewport-resize

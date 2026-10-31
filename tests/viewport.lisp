@@ -126,4 +126,68 @@
                    '(1 t)
                    (list (transcript-viewport-row-count viewport)
                          (transcript-viewport-following-p viewport)))))
+  (run-viewport-residency-tests)
+  (values))
+
+(defun run-viewport-residency-tests ()
+  "Run bounded transcript residency regression tests."
+  (let* ((evicted  nil)
+         (viewport (make-transcript-viewport :width           10
+                                             :character-limit 600
+                                             :evict-function  (lambda (tag) (push tag evicted))))
+         (peak     0))
+    (dotimes (index 200)
+      (transcript-viewport-append viewport
+                                  (format nil "chunk ~3,'0D twenty~%" index)
+                                  (format nil "chunk ~3,'0D twenty~%" index)
+                                  :tag index)
+      (setf peak (max peak (transcript-viewport-resident-characters viewport))))
+    (check-equal "resident characters never exceed the limit"
+                 t
+                 (<= peak 600))
+    (check-equal "evicted tags arrive oldest first and resident chunks complete the history"
+                 (list t 200)
+                 (list (equal (reverse evicted)
+                              (loop for index below (length evicted) collect index))
+                       (+ (transcript-viewport-evicted-count viewport)
+                          (transcript-viewport-chunk-count viewport))))
+    (check-equal "the oldest resident row belongs to the oldest resident chunk"
+                 (format nil "chunk ~3,'0D" (length evicted))
+                 (transcript-viewport-row-text viewport 0))
+    (transcript-viewport-layout viewport 3)
+    (transcript-viewport-scroll viewport -4)
+    (let ((anchored (transcript-viewport-row-text viewport (transcript-viewport-top viewport))))
+      (dotimes (index 3)
+        (transcript-viewport-append viewport (format nil "late ~D~%" index)
+                                    (format nil "late ~D~%" index) :tag (+ 200 index)))
+      (check-equal "eviction keeps a scrolled view on the same row"
+                   anchored
+                   (transcript-viewport-row-text viewport (transcript-viewport-top viewport)))
+      (transcript-viewport-resize viewport 30)
+      (check-equal "a reflow after eviction keeps the anchor and the bound"
+                   '(t t)
+                   (list (not (null (search anchored
+                                            (transcript-viewport-row-text
+                                             viewport (transcript-viewport-top viewport)))))
+                         (<= (transcript-viewport-resident-characters viewport) 600))))
+    (let ((checkpoint (transcript-viewport-checkpoint viewport))
+          (count      (transcript-viewport-chunk-count viewport))
+          (rows       (transcript-viewport-row-count viewport))
+          (weight     (transcript-viewport-resident-characters viewport)))
+      (transcript-viewport-append viewport "rolled back" "rolled back" :tag :rolled-back)
+      (transcript-viewport-rollback viewport checkpoint)
+      (check-equal "rollback releases the appended chunk and its rows"
+                   (list count rows weight)
+                   (list (transcript-viewport-chunk-count viewport)
+                         (transcript-viewport-row-count viewport)
+                         (transcript-viewport-resident-characters viewport))))
+    (setf (transcript-viewport-last-tag viewport) :retagged)
+    (check-equal "the newest chunk can be retagged"
+                 :retagged
+                 (transcript-viewport-last-tag viewport)))
+  (let ((viewport (make-transcript-viewport :width 10 :character-limit 10)))
+    (transcript-viewport-append viewport "a long single chunk" "a long single chunk")
+    (check-equal "the newest chunk stays even past the limit"
+                 1
+                 (transcript-viewport-chunk-count viewport)))
   (values))

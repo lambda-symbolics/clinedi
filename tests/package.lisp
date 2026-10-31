@@ -84,6 +84,9 @@
                 #:mode-tracking-output-stream-imposed-modes
                 #:mode-tracking-output-stream-restore
                 #:make-transcript-viewport
+                #:transcript-viewport-evicted-count
+                #:transcript-viewport-resident-characters
+                #:transcript-viewport-last-tag
                 #:transcript-viewport-width
                 #:transcript-viewport-top
                 #:transcript-viewport-height
