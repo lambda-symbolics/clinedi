@@ -181,7 +181,15 @@
                    (list count rows weight)
                    (list (transcript-viewport-chunk-count viewport)
                          (transcript-viewport-row-count viewport)
-                         (transcript-viewport-resident-characters viewport))))
+                         (transcript-viewport-resident-characters viewport)))
+      (transcript-viewport-append viewport "after rollback" "after rollback" :tag :after-rollback)
+      (check-equal "append after rollback keeps adjustable storage"
+                   :after-rollback
+                   (transcript-viewport-last-tag viewport))
+      (check-equal "append after rollback remains resident"
+                   "after rollback"
+                   (transcript-viewport-chunk-text
+                    viewport (1- (transcript-viewport-chunk-count viewport)))))
     (setf (transcript-viewport-last-tag viewport) :retagged)
     (check-equal "the newest chunk can be retagged"
                  :retagged
@@ -214,11 +222,18 @@
           (before     (transcript-viewport-chunk-text viewport 1))
           (weight     (transcript-viewport-resident-characters viewport)))
       (transcript-viewport-replace viewport (list :middle)
-                                            :text  "replacement replacement"
-                                          :display "replacement replacement")
+                                    :text    "replacement replacement"
+                                    :display "replacement replacement")
       (transcript-viewport-rollback viewport checkpoint)
       (check-equal "rollback restores a replaced chunk and its weight"
                    (list before weight)
                    (list (transcript-viewport-chunk-text viewport 1)
-                         (transcript-viewport-resident-characters viewport)))))
-  (values))
+                         (transcript-viewport-resident-characters viewport)))
+      (transcript-viewport-append viewport "tail" "tail" :tag :tail)
+      (check-equal "replacement after rollback can append and replace"
+                   '(t "tail replaced")
+                   (list (transcript-viewport-replace viewport :tail
+                                                      :text "tail replaced"
+                                                      :display "tail replaced")
+                         (transcript-viewport-chunk-text viewport 3))))
+   (values)))

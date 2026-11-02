@@ -391,25 +391,34 @@ the wrapped rows, outside the layout, or beyond a row's last cell return NIL."
   "Return an opaque state that TRANSCRIPT-VIEWPORT-ROLLBACK can restore.
 
 The snapshot includes resident chunks and rows, so a failed publication can
-undo replacements, evictions, appends, and scrolling."
+undo replacements, evictions, appends, scrolling, and the last layout."
   (list (copy-seq (transcript-viewport--chunks viewport))
         (copy-seq (transcript-viewport--rows viewport))
         (transcript-viewport--chunk-base viewport)
         (transcript-viewport--row-base viewport)
         (transcript-viewport--weight viewport)
-        (transcript-viewport-top viewport)))
+        (transcript-viewport-top viewport)
+        (transcript-viewport-height viewport)
+        (transcript-viewport-maximum-top viewport)))
 
 (defun transcript-viewport-rollback (viewport checkpoint)
   "Restore VIEWPORT to the complete state captured by CHECKPOINT.
 
 Discarded chunks and rows release their storage."
-  (destructuring-bind (chunks rows chunk-base row-base weight top) checkpoint
-    (setf (transcript-viewport--chunks viewport) (copy-seq chunks)
-          (transcript-viewport--rows viewport) (copy-seq rows)
+  (destructuring-bind (chunks rows chunk-base row-base weight top height maximum-top)
+      checkpoint
+    (setf (transcript-viewport--chunks viewport)
+          (make-array (length chunks) :adjustable t :fill-pointer t
+                      :initial-contents chunks)
+          (transcript-viewport--rows viewport)
+          (make-array (length rows) :adjustable t :fill-pointer t
+                      :initial-contents rows)
           (transcript-viewport--chunk-base viewport) chunk-base
           (transcript-viewport--row-base viewport) row-base
           (transcript-viewport--weight viewport) weight
-          (transcript-viewport-top viewport) top))
+          (transcript-viewport-top viewport) top
+          (slot-value viewport 'height) height
+          (slot-value viewport 'maximum-top) maximum-top))
   viewport)
 
 (defun viewport--row-chunk (viewport row)
