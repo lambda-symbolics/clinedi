@@ -407,6 +407,7 @@ undo replacements, evictions, appends, scrolling, and the last layout."
         (transcript-viewport--chunk-base viewport)
         (transcript-viewport--row-base viewport)
         (transcript-viewport--weight viewport)
+        (transcript-viewport-width viewport)
         (transcript-viewport-top viewport)
         (transcript-viewport-height viewport)
         (transcript-viewport-maximum-top viewport)))
@@ -415,7 +416,7 @@ undo replacements, evictions, appends, scrolling, and the last layout."
   "Restore VIEWPORT to the complete state captured by CHECKPOINT.
 
 Discarded chunks and rows release their storage."
-  (destructuring-bind (chunks rows chunk-base row-base weight top height maximum-top)
+  (destructuring-bind (chunks rows chunk-base row-base weight width top height maximum-top)
       checkpoint
     (setf (transcript-viewport--chunks viewport)
           (make-array (length chunks) :adjustable t :fill-pointer t
@@ -426,6 +427,7 @@ Discarded chunks and rows release their storage."
           (transcript-viewport--chunk-base viewport) chunk-base
           (transcript-viewport--row-base viewport) row-base
           (transcript-viewport--weight viewport) weight
+          (slot-value viewport 'width) width
           (transcript-viewport-top viewport) top
           (slot-value viewport 'height) height
           (slot-value viewport 'maximum-top) maximum-top))

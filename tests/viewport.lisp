@@ -126,6 +126,17 @@
                    '(1 t)
                    (list (transcript-viewport-row-count viewport)
                          (transcript-viewport-following-p viewport)))))
+  (let ((viewport (make-transcript-viewport :width 10)))
+    (viewport-tests--append viewport "checkpoint width~%")
+    (let ((checkpoint (transcript-viewport-checkpoint viewport)))
+      (check-true "resize changes the checkpoint width"
+                  (transcript-viewport-resize viewport 20))
+      (transcript-viewport-rollback viewport checkpoint)
+      (check-equal "rollback restores the checkpoint width"
+                   10
+                   (transcript-viewport-width viewport))
+      (check-true "resize after rollback reflows at the restored width"
+                  (transcript-viewport-resize viewport 20))))
   (run-viewport-replacement-tests)
   (run-viewport-residency-tests)
   (values))
