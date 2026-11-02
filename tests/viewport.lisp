@@ -194,6 +194,22 @@
     (check-equal "the newest chunk can be retagged"
                  :retagged
                  (transcript-viewport-last-tag viewport)))
+  (let ((viewport (make-transcript-viewport :width 10)))
+    (transcript-viewport-append viewport "before" "before" :tag :before)
+    (let ((checkpoint (transcript-viewport-checkpoint viewport)))
+      (setf (transcript-viewport-last-tag viewport) :changed)
+      (transcript-viewport-rollback viewport checkpoint)
+      (check-equal "rollback restores a chunk tag changed after checkpoint"
+                   :before
+                   (transcript-viewport-last-tag viewport))
+      (transcript-viewport-append viewport "after" "after" :tag :after)
+      (check-equal "a restored checkpoint remains usable after append"
+                   '(t "replaced")
+                   (list (transcript-viewport-replace viewport :after
+                                                      :text "replaced"
+                                                      :display "replaced")
+                         (transcript-viewport-chunk-text
+                          viewport (1- (transcript-viewport-chunk-count viewport)))))))
   (let ((viewport (make-transcript-viewport :width 10 :character-limit 10)))
     (transcript-viewport-append viewport "a long single chunk" "a long single chunk")
     (check-equal "the newest chunk stays even past the limit"

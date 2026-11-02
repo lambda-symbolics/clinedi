@@ -387,12 +387,22 @@ the wrapped rows, outside the layout, or beyond a row's last cell return NIL."
                   text
                   index))))))
 
+(defun viewport--copy-chunk (chunk)
+  "Copy mutable state of CHUNK while retaining its immutable contents."
+  (let ((copy (%make-viewport-chunk (viewport-chunk-text chunk)
+                                    (viewport-chunk-display chunk)
+                                    (viewport-chunk-regions chunk)
+                                    (viewport-chunk-tag chunk))))
+    (setf (viewport-chunk-weight copy) (viewport-chunk-weight chunk))
+    copy))
+
 (defun transcript-viewport-checkpoint (viewport)
   "Return an opaque state that TRANSCRIPT-VIEWPORT-ROLLBACK can restore.
 
 The snapshot includes resident chunks and rows, so a failed publication can
 undo replacements, evictions, appends, scrolling, and the last layout."
-  (list (copy-seq (transcript-viewport--chunks viewport))
+  (list (map 'vector #'viewport--copy-chunk
+             (transcript-viewport--chunks viewport))
         (copy-seq (transcript-viewport--rows viewport))
         (transcript-viewport--chunk-base viewport)
         (transcript-viewport--row-base viewport)
