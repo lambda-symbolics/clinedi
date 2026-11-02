@@ -126,6 +126,7 @@
                    '(1 t)
                    (list (transcript-viewport-row-count viewport)
                          (transcript-viewport-following-p viewport)))))
+  (run-viewport-replacement-tests)
   (run-viewport-residency-tests)
   (values))
 
@@ -190,4 +191,34 @@
     (check-equal "the newest chunk stays even past the limit"
                  1
                  (transcript-viewport-chunk-count viewport)))
+  (values))
+
+(defun run-viewport-replacement-tests ()
+  "Run transcript chunk replacement regression tests."
+  (let ((viewport (make-transcript-viewport :width 5)))
+    (transcript-viewport-append viewport "first\n" "first\n" :tag (list :first))
+    (transcript-viewport-append viewport "middle\n" "middle\n" :tag (list :middle))
+    (transcript-viewport-append viewport "last\n" "last\n" :tag (list :last))
+    (check-equal "replacement matches tags with EQUAL"
+                 t
+                   (transcript-viewport-replace viewport (list :middle)
+                                                   :text  "a much longer middle\n"
+                                                 :display "a much longer middle\n"))
+    (check-equal "replacement preserves text and tag"
+                 "a much longer middle\n"
+                 (transcript-viewport-chunk-text viewport 1))
+    (check-equal "missing tags return NIL"
+                 nil
+                 (transcript-viewport-replace viewport :missing :text "x" :display "x"))
+    (let ((checkpoint (transcript-viewport-checkpoint viewport))
+          (before     (transcript-viewport-chunk-text viewport 1))
+          (weight     (transcript-viewport-resident-characters viewport)))
+      (transcript-viewport-replace viewport (list :middle)
+                                            :text  "replacement replacement"
+                                          :display "replacement replacement")
+      (transcript-viewport-rollback viewport checkpoint)
+      (check-equal "rollback restores a replaced chunk and its weight"
+                   (list before weight)
+                   (list (transcript-viewport-chunk-text viewport 1)
+                         (transcript-viewport-resident-characters viewport)))))
   (values))

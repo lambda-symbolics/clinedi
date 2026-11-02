@@ -98,6 +98,7 @@
                 #:transcript-viewport-chunk-text
                 #:transcript-viewport-following-p
                 #:transcript-viewport-append
+                #:transcript-viewport-replace
                 #:transcript-viewport-resize
                 #:transcript-viewport-layout
                 #:transcript-viewport-scroll

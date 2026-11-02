@@ -27,7 +27,7 @@ LENGTH locate the row's plain characters inside it."
 (defclass transcript-viewport ()
   ((chunks
     :initform      (make-array 0 :adjustable t :fill-pointer 0)
-    :reader        transcript-viewport--chunks
+    :accessor      transcript-viewport--chunks
     :documentation "Resident unwrapped chunks in append order.")
    (rows
     :initform      (make-array 0 :adjustable t :fill-pointer 0)
@@ -164,6 +164,50 @@ character limit the oldest chunks are evicted."
       (incf (transcript-viewport--weight viewport) (viewport-chunk-weight chunk))
       (viewport--evict viewport)))
   viewport)
+
+(defgeneric transcript-viewport-replace (viewport tag &key text display regions)
+  (:documentation "Replace the resident chunk identified by TAG."))
+
+(defmethod transcript-viewport-replace ((viewport transcript-viewport) tag
+                                        &key text display regions)
+  "Replace the resident chunk whose tag is EQUAL to TAG.
+
+The replacement keeps TAG, is rewrapped at the current width, and preserves
+ the current scroll anchor and following state. REGIONS replaces the old
+ chunk's click regions. Return true when a resident chunk matched TAG, or NIL
+ when it was missing or had already been evicted."
+  (let* ((chunks (transcript-viewport--chunks viewport))
+         (index  (position tag chunks :key #'viewport-chunk-tag :test #'equal)))
+    (when index
+      (let* ((new-chunk (%make-viewport-chunk text display regions tag))
+             (old-rows  (transcript-viewport--rows viewport))
+             (top       (transcript-viewport-top viewport))
+             (anchor    (and top (< top (length old-rows)) (aref old-rows top)))
+             (rows      (make-array 0 :adjustable t :fill-pointer 0))
+             (new-top   nil)
+             (width     (transcript-viewport-width viewport))
+             (base      (transcript-viewport--chunk-base viewport)))
+        (setf (aref chunks index) new-chunk
+              (transcript-viewport--rows viewport) rows)
+        (loop for chunk across chunks
+              for chunk-index from base
+              do (let ((chunk-rows (viewport--wrap-chunk chunk chunk-index width)))
+                   (dolist (row chunk-rows)
+                     (when (and anchor
+                                (= chunk-index (viewport-row-chunk anchor))
+                                (<= (viewport-row-offset row)
+                                    (viewport-row-offset anchor)))
+                       (setf new-top (length rows)))
+                     (vector-push-extend row rows))
+                   (setf (viewport-chunk-weight chunk)
+                         (viewport--chunk-weight chunk chunk-rows))))
+        (setf (transcript-viewport--weight viewport)
+              (loop for chunk across chunks
+                    sum (viewport-chunk-weight chunk))
+              (transcript-viewport-top viewport)
+              (and top (or new-top (min top (max 0 (1- (length rows)))))))
+        (viewport--evict viewport)
+        t))))
 
 (defun transcript-viewport-resize (viewport width)
   "Reflow VIEWPORT to WIDTH columns, keeping its first visible line in view.
@@ -344,36 +388,28 @@ the wrapped rows, outside the layout, or beyond a row's last cell return NIL."
                   index))))))
 
 (defun transcript-viewport-checkpoint (viewport)
-  "Return an opaque state that TRANSCRIPT-VIEWPORT-ROLLBACK can return VIEWPORT to.
+  "Return an opaque state that TRANSCRIPT-VIEWPORT-ROLLBACK can restore.
 
-Only appends and scrolling are undone; take a new checkpoint after a resize.
-Chunks evicted since the checkpoint stay evicted."
-  (list (+ (transcript-viewport--chunk-base viewport)
-           (length (transcript-viewport--chunks viewport)))
-        (+ (transcript-viewport--row-base viewport)
-           (transcript-viewport-row-count viewport))
-        (transcript-viewport-top viewport)
-        (transcript-viewport--row-base viewport)))
+The snapshot includes resident chunks and rows, so a failed publication can
+undo replacements, evictions, appends, and scrolling."
+  (list (copy-seq (transcript-viewport--chunks viewport))
+        (copy-seq (transcript-viewport--rows viewport))
+        (transcript-viewport--chunk-base viewport)
+        (transcript-viewport--row-base viewport)
+        (transcript-viewport--weight viewport)
+        (transcript-viewport-top viewport)))
 
 (defun transcript-viewport-rollback (viewport checkpoint)
-  "Discard VIEWPORT's appends and scrolling since CHECKPOINT.
+  "Restore VIEWPORT to the complete state captured by CHECKPOINT.
 
 Discarded chunks and rows release their storage."
-  (destructuring-bind (chunk-end row-end top row-base) checkpoint
-    (let* ((chunks       (transcript-viewport--chunks viewport))
-           (rows         (transcript-viewport--rows viewport))
-           (chunk-count  (max 0 (- chunk-end (transcript-viewport--chunk-base viewport))))
-           (row-count    (max 0 (- row-end (transcript-viewport--row-base viewport))))
-           (evicted-rows (- (transcript-viewport--row-base viewport) row-base)))
-      (when (< chunk-count (length chunks))
-        (loop for index from chunk-count below (length chunks)
-              do (decf (transcript-viewport--weight viewport)
-                       (viewport-chunk-weight (aref chunks index))))
-        (viewport--clear-tail chunks chunk-count))
-      (when (< row-count (length rows))
-        (viewport--clear-tail rows row-count))
-      (setf (transcript-viewport-top viewport)
-            (and top (max 0 (- top evicted-rows))))))
+  (destructuring-bind (chunks rows chunk-base row-base weight top) checkpoint
+    (setf (transcript-viewport--chunks viewport) (copy-seq chunks)
+          (transcript-viewport--rows viewport) (copy-seq rows)
+          (transcript-viewport--chunk-base viewport) chunk-base
+          (transcript-viewport--row-base viewport) row-base
+          (transcript-viewport--weight viewport) weight
+          (transcript-viewport-top viewport) top))
   viewport)
 
 (defun viewport--row-chunk (viewport row)

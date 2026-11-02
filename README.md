@@ -309,6 +309,11 @@ opens ending on the bottom row, and steps from the section under that row. `tran
 click region action, the chunk text, and the character index under it.
 `transcript-viewport-checkpoint` and `-rollback` undo appends and scrolling
 when painting fails.
+`transcript-viewport-replace` replaces a resident chunk by its `EQUAL` tag,
+rewraps its text and display, and preserves its tag, click regions, and scroll
+anchor. It returns true when the tag is resident and NIL when it is missing or
+has been evicted. Use a checkpoint before replacement when publication may
+fail; rollback restores replacements and any evictions made afterward.
 
 A long-running application bounds the transcript with
 `:character-limit`. Past it, the oldest chunks are evicted down to three
