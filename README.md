@@ -170,6 +170,9 @@ delimiters as well as whitespace. The default delimiter list is `-`, `_`, `/`,
 - Ctrl-Right, Alt-Right, and ESC `f` become `:word-right`
 - Ctrl-W, Ctrl-Backspace, ESC Backspace, and ESC DEL become `:kill-word`
 - ESC `d` becomes `:kill-word-right`
+- A Ctrl-letter combination without an editing meaning, such as Ctrl-T,
+  becomes `(:control #\t)` with the lowercase letter, for the application
+  to bind
 
 ## Programmable keymaps
 

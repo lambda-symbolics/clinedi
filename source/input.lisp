@@ -223,7 +223,10 @@ Return NIL for malformed input or unrequested extra fields."
        (119
         :kill-word)
        (otherwise
-        :ignore)))
+        (let ((lower (if (<= 65 code 90) (+ code 32) code)))
+          (if (<= 97 lower 122)
+              (list :control (code-char lower))
+              :ignore)))))
     ((logbitp 1 modifiers)
      (case code
        ((66 98)
@@ -410,7 +413,9 @@ Ctrl-Backspace and Ctrl-W become :KILL-WORD. Ctrl-Left and Ctrl-Right become
 these events also recognize that editor's configured word delimiters. Arrow Up
 and Down become :UP and :DOWN, while Ctrl-P and Ctrl-N retain explicit history
 traversal. Shift-Tab becomes :COMPLETE-PREVIOUS. Ctrl-D becomes
-:END-OF-INPUT; physical stream EOF becomes :STREAM-END."
+:END-OF-INPUT; physical stream EOF becomes :STREAM-END. A Ctrl-letter
+combination without an editing meaning becomes (:CONTROL CHARACTER), with the
+lowercase letter, for applications to bind."
   (let ((character (read-char stream nil nil)))
     (cond ((null character)
            :stream-end)
@@ -451,6 +456,10 @@ traversal. Shift-Tab becomes :COMPLETE-PREVIOUS. Ctrl-D becomes
              (127
               :backspace)
              (t
-              (if (input--terminal-control-p character)
-                  :ignore
-                  (list :insert (string character)))))))))
+              (cond
+                ((<= 1 (char-code character) 26)
+                 (list :control (code-char (+ 96 (char-code character)))))
+                ((input--terminal-control-p character)
+                 :ignore)
+                (t
+                 (list :insert (string character))))))))))

@@ -45,6 +45,10 @@
                   ("[29483u" (:insert "猫"))
                   ("[128512u" (:insert "😀"))
                   ("OA" :up) ("OB" :down) ("OC" :right) ("OD" :left)
+                  ("[116;5u" (:control #\t))
+                  ("[84;5u" (:control #\t))
+                  ("[116;6u" (:control #\t))
+                  ("[49;5u" :ignore)
                   ("[-1u" :ignore)
                   ("[1114112u" :ignore)
                   ("[55296u" :ignore)
@@ -122,6 +126,12 @@
   (check-equal "control-N history event"
                :history-next
                (input-test--event (string (code-char 14))))
+  (check-equal "unbound control-T event names its letter"
+               '(:control #\t)
+               (input-test--event (string (code-char 20))))
+  (check-equal "unbound control-G event names its letter"
+               '(:control #\g)
+               (input-test--event (string (code-char 7))))
   (check-equal "shift-tab event"
                :complete-previous
                (input-test--event (input-test--escape-sequence "[Z")))
