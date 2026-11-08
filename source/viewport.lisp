@@ -70,7 +70,15 @@ LENGTH locate the row's plain characters inside it."
    (maximum-top
     :initform      0
     :reader        transcript-viewport-maximum-top
-    :documentation "The largest first row the last layout allowed."))
+    :documentation "The largest first row the last layout allowed.")
+   (selection-anchor
+    :initform      nil
+    :accessor      transcript-viewport--selection-anchor
+    :documentation "Where the selection began, as (CHUNK . INDEX), or NIL without one.")
+   (selection-head
+    :initform      nil
+    :accessor      transcript-viewport--selection-head
+    :documentation "Where the selection reaches now, as (CHUNK . INDEX), or NIL without one."))
   (:documentation
    "A scrollable transcript of appended plain and styled text.
 
@@ -98,8 +106,22 @@ chunk always stays. EVICT-FUNCTION receives the tag of each evicted chunk."
   (length (transcript-viewport--rows viewport)))
 
 (defun transcript-viewport-row-display (viewport index)
-  "Return the trusted styled display of VIEWPORT's wrapped row INDEX."
-  (viewport-row-display (aref (transcript-viewport--rows viewport) index)))
+  "Return the trusted styled display of VIEWPORT's wrapped row INDEX.
+
+A row the selection covers shows its plain characters, the selected ones in
+reverse video."
+  (let ((row (aref (transcript-viewport--rows viewport) index)))
+    (multiple-value-bind (from to) (viewport--row-selection viewport row)
+      (if from
+          (let ((text (transcript-viewport-row-text viewport index))
+                (base (viewport-row-offset row)))
+            (format nil "~A~c[7m~A~c[27m~A"
+                    (subseq text 0 (- from base))
+                    *escape-character*
+                    (subseq text (- from base) (- to base))
+                    *escape-character*
+                    (subseq text (- to base))))
+          (viewport-row-display row)))))
 
 (defun transcript-viewport-row-text (viewport index)
   "Return the plain characters VIEWPORT's wrapped row INDEX shows."
@@ -386,6 +408,126 @@ the wrapped rows, outside the layout, or beyond a row's last cell return NIL."
                           return action)
                   text
                   index))))))
+
+;;; Selection
+
+(defun transcript-viewport-selection-start (viewport column row)
+  "Begin a selection at the character shown at one-based COLUMN and ROW of the last layout.
+
+Return true when a row is there; otherwise any selection ends."
+  (let ((position (viewport--screen-position viewport column row)))
+    (setf (transcript-viewport--selection-anchor viewport) position
+          (transcript-viewport--selection-head viewport)   position)
+    (not (null position))))
+
+(defun transcript-viewport-selection-extend (viewport column row)
+  "Stretch the selection to the character shown at one-based COLUMN and ROW of the last layout.
+
+A position above or below the shown rows reaches the first or last of them.
+Return true when there is a selection to stretch."
+  (when (transcript-viewport--selection-anchor viewport)
+    (let ((position (viewport--screen-position viewport column row)))
+      (when position
+        (setf (transcript-viewport--selection-head viewport) position))
+      t)))
+
+(defun transcript-viewport-selection-clear (viewport)
+  "End VIEWPORT's selection."
+  (setf (transcript-viewport--selection-anchor viewport) nil
+        (transcript-viewport--selection-head viewport)   nil)
+  (values))
+
+(defun transcript-viewport-selection-text (viewport)
+  "Return the plain characters VIEWPORT's selection covers, or NIL without one.
+
+Characters of successive chunks are joined with a newline unless the earlier
+chunk ends with one."
+  (multiple-value-bind (start end) (viewport--selection-range viewport)
+    (when start
+      (let ((pieces nil))
+        (loop for number from (first start) to (first end)
+              for text = (viewport-chunk-text
+                          (aref (transcript-viewport--chunks viewport)
+                                (- number (transcript-viewport--chunk-base viewport))))
+              for from = (if (= number (first start)) (rest start) 0)
+              for to = (if (= number (first end)) (rest end) (length text))
+              do (when (and pieces
+                            (not (zerop (length (first pieces))))
+                            (char/= (char (first pieces) (1- (length (first pieces)))) #\Newline))
+                   (push (string #\Newline) pieces))
+                 (push (subseq text (min from (length text)) (min to (length text))) pieces))
+        (let ((text (apply #'concatenate 'string (nreverse pieces))))
+          (and (plusp (length text)) text))))))
+
+(defun viewport--screen-position (viewport column row)
+  "Return the (CHUNK . INDEX) of the character at one-based COLUMN and ROW, or NIL without rows.
+
+ROW is clamped to the rows the last layout showed and COLUMN past a row's last
+cell means the row's end."
+  (let ((rows (transcript-viewport--rows viewport)))
+    (when (plusp (length rows))
+      (let* ((maximum  (transcript-viewport-maximum-top viewport))
+             (top      (min (or (transcript-viewport-top viewport) maximum) maximum))
+             (last     (min (1- (length rows)) (+ top (transcript-viewport-height viewport) -1)))
+             (absolute (max top (min last (+ top (1- row)))))
+             (anchor   (aref rows absolute))
+             (text     (viewport-chunk-text (viewport--row-chunk viewport anchor)))
+             (start    (viewport-row-offset anchor))
+             (end      (min (length text) (+ start (viewport-row-length anchor)))))
+        (cons (viewport-row-chunk anchor)
+              (or (viewport--column-character-index text (max 1 column) :start start :end end)
+                  end))))))
+
+(defun viewport--position< (left right)
+  "Return true when position LEFT comes before RIGHT."
+  (or (< (first left) (first right))
+      (and (= (first left) (first right))
+           (< (rest left) (rest right)))))
+
+(defun viewport--selection-range (viewport)
+  "Return the selection's start and end positions, the end past its last character, or NIL.
+
+Both are clamped to the resident chunks, so eviction and rollback shorten the
+selection instead of breaking it."
+  (let ((anchor (transcript-viewport--selection-anchor viewport))
+        (head   (transcript-viewport--selection-head viewport))
+        (base   (transcript-viewport--chunk-base viewport))
+        (count  (length (transcript-viewport--chunks viewport))))
+    (when (and anchor head (plusp count))
+      (let* ((first  (if (viewport--position< head anchor) head anchor))
+             (second (if (viewport--position< head anchor) anchor head))
+             (last   (+ base count -1))
+             (start  (if (< (first first) base) (cons base 0) first))
+             (end    (if (> (first second) last)
+                         (cons last (length (viewport-chunk-text
+                                             (aref (transcript-viewport--chunks viewport) (1- count)))))
+                         (cons (first second) (1+ (rest second))))))
+        (unless (viewport--position< end start)
+          (values start end))))))
+
+(defun viewport--row-selection (viewport row)
+  "Return the chunk indexes the selection covers in ROW, as FROM and TO, or NIL."
+  (multiple-value-bind (start end) (viewport--selection-range viewport)
+    (when start
+      (let* ((number (viewport-row-chunk row))
+             (offset (viewport-row-offset row))
+             (limit  (+ offset (viewport-row-length row)))
+             (from   (cond
+                           ((< number (first start))
+                            nil)
+                           ((= number (first start))
+                            (max offset (rest start)))
+                           (t
+                            offset)))
+             (to     (cond
+                           ((> number (first end))
+                            nil)
+                           ((= number (first end))
+                            (min limit (rest end)))
+                           (t
+                            limit))))
+        (when (and from to (< from to))
+          (values from to))))))
 
 (defun viewport--copy-chunk (chunk)
   "Copy mutable state of CHUNK while retaining its immutable contents."

@@ -133,15 +133,18 @@ LAYER is :FOREGROUND or :BACKGROUND."
   (format nil "~c[?1049l" *escape-character*))
 
 (defun mouse-reporting-enable-sequence ()
-  "Return the controls requesting button reports in SGR encoding.
+  "Return the controls requesting button and drag reports in SGR encoding.
 
-READ-EVENT decodes the resulting wheel reports as (:SCROLL DELTA) and left
-presses as (:CLICK COLUMN ROW)."
-  (format nil "~c[?1000h~c[?1006h" *escape-character* *escape-character*))
+READ-EVENT decodes the resulting wheel reports as (:SCROLL DELTA), left
+presses as (:CLICK COLUMN ROW), motion while the left button is held as
+(:DRAG COLUMN ROW) and its release as (:RELEASE COLUMN ROW)."
+  (format nil "~c[?1000h~c[?1002h~c[?1006h"
+          *escape-character* *escape-character* *escape-character*))
 
 (defun mouse-reporting-disable-sequence ()
-  "Return the controls ending SGR button reports, in reverse order of enabling."
-  (format nil "~c[?1006l~c[?1000l" *escape-character* *escape-character*))
+  "Return the controls ending SGR button and drag reports, in reverse order of enabling."
+  (format nil "~c[?1006l~c[?1002l~c[?1000l"
+          *escape-character* *escape-character* *escape-character*))
 
 (defun ansi--default-color-code (layer)
   "Return the OSC number of the terminal default color LAYER."

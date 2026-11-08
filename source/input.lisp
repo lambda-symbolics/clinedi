@@ -83,11 +83,12 @@ buffer."
     (sanitize-text (get-output-stream-string payload))))
 
 (defun input--mouse-event (body)
-  "Decode an SGR mouse report as (:SCROLL delta) or (:CLICK column row).
+  "Decode an SGR mouse report as (:SCROLL delta), (:CLICK column row), (:DRAG column row) or (:RELEASE column row).
 
-Wheel presses become scroll steps and a left-button press becomes a click at
-its one-based column and row. Releases, motion, and other buttons are ignored
-once the modifier bits are masked away."
+Wheel presses become scroll steps. A left-button press becomes a click at its
+one-based column and row, motion while it is held a drag, and letting it go a
+release. Other buttons, and motion without a button, are ignored once the
+modifier bits are masked away."
   (handler-case
       (let* ((end              (1- (length body)))
              (first-separator  (position #\; body))
@@ -95,24 +96,32 @@ once the modifier bits are masked away."
                                     (position #\; body :start (1+ first-separator)))))
         (if (and (< 5 (length body) 64)
                  (char= (char body 0) #\<)
-                 (char= (char body end) #\M)
+                 (member (char body end) '(#\M #\m))
                  first-separator second-separator)
             (let ((button (logand (parse-integer body :start 1 :end first-separator)
                                   (lognot #x1c)))
                   (column (parse-integer body :start (1+ first-separator)
                                               :end   second-separator))
                   (row    (parse-integer body :start (1+ second-separator) :end end)))
-              (if (and (plusp column) (plusp row))
-                  (case button
-                    (#x40
-                     (list :scroll -1))
-                    (#x41
-                     (list :scroll 1))
-                    (0
-                     (list :click column row))
-                    (otherwise
+              (cond
+                ((not (and (plusp column) (plusp row)))
+                 :ignore)
+                ((char= (char body end) #\m)
+                 (if (= button 0)
+                     (list :release column row)
                      :ignore))
-                  :ignore))
+                (t
+                 (case button
+                   (#x40
+                    (list :scroll -1))
+                   (#x41
+                    (list :scroll 1))
+                   (0
+                    (list :click column row))
+                   (#x20
+                    (list :drag column row))
+                   (otherwise
+                    :ignore)))))
             :ignore))
     (error () :ignore)))
 

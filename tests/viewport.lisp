@@ -11,8 +11,47 @@
   "Append unstyled TEXT with REGIONS to VIEWPORT."
   (transcript-viewport-append viewport text text :regions regions))
 
+(defun viewport-tests--selection ()
+  "Test selecting a viewport's characters by dragging across its rows."
+  (let ((viewport (make-transcript-viewport :width 6))
+        (escape   (string (code-char 27))))
+    (check-equal "an empty viewport has nothing to select"
+                 '(nil nil)
+                 (list (transcript-viewport-selection-start viewport 1 1)
+                       (transcript-viewport-selection-text viewport)))
+    (viewport-tests--append viewport (format nil "abcdefghij~%"))
+    (viewport-tests--append viewport (format nil "# one~%body~%"))
+    (transcript-viewport-layout viewport 4)
+    (transcript-viewport-selection-start viewport 2 1)
+    (transcript-viewport-selection-extend viewport 3 2)
+    (check-equal "a drag selects from the press to the character under the pointer"
+                 "bcdefghi"
+                 (transcript-viewport-selection-text viewport))
+    (check-equal "selected characters show in reverse video"
+                 (list (format nil "a~A[7mbcdef~A[27m" escape escape)
+                       (format nil "~A[7mghi~A[27mj" escape escape)
+                       "# one")
+                 (list (transcript-viewport-row-display viewport 0)
+                       (transcript-viewport-row-display viewport 1)
+                       (transcript-viewport-row-display viewport 2)))
+    (transcript-viewport-selection-extend viewport 10 9)
+    (check-equal "a selection past the last row reaches its end, across chunks"
+                 (format nil "bcdefghij~%# one~%body~%")
+                 (transcript-viewport-selection-text viewport))
+    (transcript-viewport-selection-start viewport 2 2)
+    (transcript-viewport-selection-extend viewport 1 1)
+    (check-equal "a drag backwards selects the same way"
+                 "abcdefgh"
+                 (transcript-viewport-selection-text viewport))
+    (transcript-viewport-selection-clear viewport)
+    (check-equal "clearing ends the selection and its highlight"
+                 '(nil "abcdef")
+                 (list (transcript-viewport-selection-text viewport)
+                       (transcript-viewport-row-display viewport 0)))))
+
 (defun run-viewport-tests ()
   "Run transcript viewport regression tests."
+  (viewport-tests--selection)
   (let ((viewport (make-transcript-viewport :width 6)))
     (viewport-tests--append viewport (format nil "abcdefghij~%"))
     (viewport-tests--append viewport (format nil "# one~%body~%"))

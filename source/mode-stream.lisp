@@ -5,6 +5,7 @@
 (defparameter *mode-tracking-private-modes*
   '((1049 :alternate-screen nil)
     (1000 :mouse-reporting nil)
+    (1002 :mouse-drag-reporting nil)
     (1006 :sgr-mouse-encoding nil)
     (2004 :bracketed-paste nil)
     (25 :cursor-visible t)

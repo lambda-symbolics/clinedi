@@ -20,7 +20,7 @@
   (let* ((destination (make-string-output-stream))
          (stream      (make-mode-tracking-output-stream destination))
          (enter       (mode-stream-tests--controls
-                       "[?1049h[2J[H[?1000h[?1006h[?25l[?7l")))
+                       "[?1049h[2J[H[?1000h[?1002h[?1006h[?25l[?7l")))
     (check-equal "restoring an untouched stream writes nothing"
                  '(nil "")
                  (list (mode-tracking-output-stream-restore stream)
@@ -33,21 +33,21 @@
                  (get-output-stream-string destination))
     (check-equal "controls split one character per packet are all tracked"
                  '(:alternate-screen :autowrap :cursor-visible
-                   :mouse-reporting :sgr-mouse-encoding)
+                   :mouse-drag-reporting :mouse-reporting :sgr-mouse-encoding)
                  (sort (mode-tracking-output-stream-imposed-modes stream)
                        #'string<))
     (write-string (mode-stream-tests--controls "[?25h[?7h") stream)
     (check-equal "returning modes to their defaults releases them"
-                 '(:alternate-screen :mouse-reporting :sgr-mouse-encoding)
+                 '(:alternate-screen :mouse-drag-reporting :mouse-reporting :sgr-mouse-encoding)
                  (sort (mode-tracking-output-stream-imposed-modes stream)
                        #'string<))
     (get-output-stream-string destination)
     (check-equal "restoring reports the released modes"
-                 '(:alternate-screen :mouse-reporting :sgr-mouse-encoding)
+                 '(:alternate-screen :mouse-drag-reporting :mouse-reporting :sgr-mouse-encoding)
                  (sort (copy-list (mode-tracking-output-stream-restore stream))
                        #'string<))
     (check-equal "restoring resets attributes and leaves the alternate screen first"
-                 (mode-stream-tests--controls "[0m[?1049l[?1000l[?1006l")
+                 (mode-stream-tests--controls "[0m[?1049l[?1000l[?1002l[?1006l")
                  (get-output-stream-string destination))
     (check-equal "restoring twice writes nothing more"
                  '(nil "")

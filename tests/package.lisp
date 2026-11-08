@@ -107,6 +107,10 @@
                 #:transcript-viewport-page-rows
                 #:transcript-viewport-jump
                 #:transcript-viewport-hit
+                #:transcript-viewport-selection-start
+                #:transcript-viewport-selection-extend
+                #:transcript-viewport-selection-clear
+                #:transcript-viewport-selection-text
                 #:transcript-viewport-checkpoint
                 #:transcript-viewport-rollback
                 #:make-frame-painter

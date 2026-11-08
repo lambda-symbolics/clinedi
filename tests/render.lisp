@@ -71,9 +71,9 @@
                          (alternate-screen-enter-sequence))
                    (list "alternate screen leave" "[?1049l"
                          (alternate-screen-leave-sequence))
-                   (list "SGR mouse reporting enable" "[?1000h[?1006h"
+                   (list "SGR mouse reporting enable" "[?1000h[?1002h[?1006h"
                          (mouse-reporting-enable-sequence))
-                   (list "SGR mouse reporting disable" "[?1006l[?1000l"
+                   (list "SGR mouse reporting disable" "[?1006l[?1002l[?1000l"
                          (mouse-reporting-disable-sequence)))
         do (check-equal name
                         (with-output-to-string (stream)

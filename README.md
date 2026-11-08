@@ -123,8 +123,10 @@ For application-owned transcript viewports, `read-event` also decodes Page Up
 and Page Down as `:page-up` and `:page-down`, Ctrl-Page Up and Ctrl-Page Down
 as `:previous-section` and `:next-section`, Ctrl-Home and Ctrl-End as
 `:scroll-top` and `:scroll-bottom`, SGR mouse wheel reports as `(:scroll -1)`
-or `(:scroll 1)`, and an SGR left-button press as `(:click column row)` with
-one-based coordinates. Releases, motion, and other buttons decode as `:ignore`.
+or `(:scroll 1)`, an SGR left-button press as `(:click column row)`, motion
+while it is held as `(:drag column row)` and its release as
+`(:release column row)`, all with one-based coordinates. Other buttons, and
+motion without a button, decode as `:ignore`.
 Handle these in the application's viewport before dispatching to the editor.
 Enable mouse reporting only while that viewport owns the terminal.
 
@@ -307,6 +309,11 @@ move it, and following resumes at the newest output.
 as a message header; with `:align :end` it instead shows the section that row
 opens ending on the bottom row, and steps from the section under that row. `transcript-viewport-hit` maps a mouse position to the
 click region action, the chunk text, and the character index under it.
+`transcript-viewport-selection-start` begins a selection at a mouse position,
+`-selection-extend` stretches it to another, `-selection-text` returns the
+plain characters it covers, and `-selection-clear` ends it. While a selection
+lasts, `transcript-viewport-row-display` shows the selected characters of a
+row in reverse video.
 `transcript-viewport-checkpoint` and `-rollback` undo appends and scrolling
 when painting fails.
 `transcript-viewport-replace` replaces a resident chunk by its `EQUAL` tag,
@@ -356,13 +363,14 @@ restoring it. Every control ends with ST.
 For a fullscreen viewport, `clinedi:alternate-screen-enter-sequence` and
 `clinedi:alternate-screen-leave-sequence` switch to and from the alternate
 screen buffer, and `clinedi:mouse-reporting-enable-sequence` and
-`clinedi:mouse-reporting-disable-sequence` turn SGR button reports on and off,
-which `read-event` decodes as `:click` and `:scroll` events.
+`clinedi:mouse-reporting-disable-sequence` turn SGR button and drag reports on
+and off, which `read-event` decodes as `:click`, `:drag`, `:release` and
+`:scroll` events.
 
 `clinedi:make-mode-tracking-output-stream` wraps an output stream, such as the
 socket a remote session's output arrives on, and forwards everything unchanged
 while recognizing the modes that output imposes: alternate screen, mouse
-reporting, SGR mouse encoding, bracketed paste, hidden cursor, disabled autowrap,
+reporting, mouse drag reporting, SGR mouse encoding, bracketed paste, hidden cursor, disabled autowrap,
 synchronized output, and OSC 10 or 11 default colors. Controls split across writes are
 still recognized. `mode-tracking-output-stream-imposed-modes` lists the modes
 currently held, and `mode-tracking-output-stream-restore` writes the controls
