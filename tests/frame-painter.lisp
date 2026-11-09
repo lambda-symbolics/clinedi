@@ -98,4 +98,42 @@
     (check-equal "large synchronized frames are recorded after writing"
                  (list large-row "changed")
                  (coerce (frame-painter-frame painter) 'list)))
+  (let* ((painter (make-frame-painter))
+         (text    (copy-seq "mutable")))
+    (frame-painter-tests--paint painter (vector text) :height 2 :width 3)
+    (setf (char text 0) #\X
+          (char (aref (frame-painter-frame painter) 0) 1) #\Y)
+    (check-equal "painter owns rows and isolates accessor strings"
+                 '("mutable" "") (coerce (frame-painter-frame painter) 'list))
+    (let ((controls (frame-painter-tests--paint painter '("mutable")
+                                              :height 2 :width 3
+                                              :cursor-row -5 :cursor-column -9)))
+      (check-equal "cursor-only updates rewrite no rows" nil
+                   (frame-painter-tests--painted-rows controls))
+      (check-true "negative cursor coordinates clamp to origin"
+                  (search (format nil "~c[1;1H" (code-char 27)) controls)))
+    (check-equal "control-generation failure invalidates the baseline"
+                 :failed
+                 (handler-case
+                     (frame-painter-tests--paint painter '("mutable")
+                                                :height 2 :width 3 :cursor-row nil)
+                   (type-error () :failed)))
+    (check-equal "control-generation failure forces all rows including blanks"
+                 '(1 2)
+                 (frame-painter-tests--painted-rows
+                  (frame-painter-tests--paint painter '("mutable") :height 2 :width 3)))
+    (check-equal "writer sees previously committed frame before a non-error exit"
+                 '("mutable" "")
+                 (catch 'abort-write
+                   (frame-painter-paint painter '("new")
+                                        (lambda (controls)
+                                          (declare (ignore controls))
+                                          (throw 'abort-write
+                                            (coerce (frame-painter-frame painter) 'list)))
+                                        :height 2 :width 3)))
+    (check-equal "non-error writer exit invalidates the baseline" nil
+                 (frame-painter-frame painter))
+    (check-equal "recovery after non-error writer exit repaints all rows" '(1 2)
+                 (frame-painter-tests--painted-rows
+                  (frame-painter-tests--paint painter '("new") :height 2 :width 3))))
   (values))

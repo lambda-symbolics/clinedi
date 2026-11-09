@@ -174,6 +174,13 @@
    #:transcript-viewport-checkpoint
    #:transcript-viewport-rollback
    ;; Fullscreen frame painting
+   #:frame-snapshot
+   #:make-frame-snapshot
+   #:frame-snapshot-height
+   #:frame-snapshot-width
+   #:frame-snapshot-rows
+   #:frame-snapshot-delta
+   #:frame-snapshot-apply
    #:frame-painter
    #:make-frame-painter
    #:frame-painter-invalidate

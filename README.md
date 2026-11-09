@@ -333,6 +333,25 @@ history. `transcript-viewport-last-tag` reads and replaces the newest chunk's
 tag; `transcript-viewport-evicted-count` and `-resident-characters` report
 what eviction removed and what remains.
 
+`clinedi:make-frame-snapshot` copies a sequence of trusted string rows with
+`:height` and `:width`, both positive integers. A `frame-snapshot` is opaque and
+logically immutable. Excess rows are dropped, missing rows are blank, and width
+records geometry without clipping text. Read dimensions with
+`frame-snapshot-height` and `frame-snapshot-width`; `frame-snapshot-rows` returns
+a fresh vector of fresh strings.
+
+`frame-snapshot-delta` takes a snapshot and a previous snapshot (or `nil`) and
+returns two values: indexed rows and a complete flag. Indexed rows are fresh
+`(zero-based-index text)` lists in increasing order. Missing or differently sized
+baselines require a complete frame, omitting blank rows. Incremental deltas
+include changed-to-blank rows. `frame-snapshot-apply` takes a previous snapshot
+and indexed rows with `:height`, `:width`, and `:complete-p`, returning a new
+snapshot. Complete frames start blank. Incremental frames return `nil` without a
+matching baseline. High indices are ignored and duplicate indices use the last
+text. Validate wire data and resource limits in the application before applying
+trusted rows. Accessors, deltas, and applied snapshots do not share mutable
+strings or containers with their inputs.
+
 `clinedi:make-frame-painter` paints such a screen. `frame-painter-paint`
 takes trusted display rows, the screen height and width, the cursor position
 and visibility, and a write function. Write and flush the complete control string
@@ -340,7 +359,9 @@ once. Each frame is bracketed by DEC 2026 synchronized-output controls, includin
 its cursor and autowrap changes. Rows are drawn at absolute positions with
 autowrap disabled; only changed rows are rewritten. A failed write, size change
 or `frame-painter-invalidate` makes the next frame repaint completely.
-`frame-painter-frame` returns the rows last written.
+`frame-painter-frame` returns fresh copies of the rows last written. Complete
+repaints include every row, including blanks, and a nonlocal exit during control
+generation or writing invalidates the previous frame.
 
 ## Semantic prompt markers and xterm controls
 

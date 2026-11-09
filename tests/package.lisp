@@ -4,6 +4,12 @@
   (:documentation "Regression tests for Clinedi.")
   (:use #:cl)
   (:import-from #:clinedi
+                #:make-frame-snapshot
+                #:frame-snapshot-height
+                #:frame-snapshot-width
+                #:frame-snapshot-rows
+                #:frame-snapshot-delta
+                #:frame-snapshot-apply
                 #:program-status-sequence
                 #:program-status-identifier-p
                 #:program-status-text

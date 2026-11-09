@@ -20,6 +20,7 @@
     (run-live-region-tests)
     (run-mode-stream-tests)
     (run-viewport-tests)
+    (run-frame-snapshot-tests)
     (run-frame-painter-tests)
     (run-terminal-editor-tests)
     (when *test-failures*
