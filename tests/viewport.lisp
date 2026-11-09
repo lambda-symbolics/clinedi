@@ -49,9 +49,83 @@
                  (list (transcript-viewport-selection-text viewport)
                        (transcript-viewport-row-display viewport 0)))))
 
+(defun viewport-tests--source-layout ()
+  "Exercise source callbacks, local replacement, rollback and bounded ownership."
+  (let* ((calls    0)
+         (source   "abcdefghij")
+         (layout   (lambda (width)
+                     (incf calls)
+                     (let ((text (if (< width 10)
+                                     (format nil "abc~%defghij")
+                                     source)))
+                       (values text text (list (list 0 3 :source))))))
+         (viewport (make-transcript-viewport :width 20)))
+    (transcript-viewport-append viewport source source :tag :source
+                                :layout-function layout :source-characters 10)
+    (viewport-tests--append viewport "tail")
+    (transcript-viewport-resize viewport 20)
+    (check-equal "unchanged widths do no layout work" 0 calls)
+    (let ((checkpoint (transcript-viewport-checkpoint viewport)))
+      (transcript-viewport-resize viewport 8)
+      (check-equal "narrow layout uses retained source" '("abc" "defghij" "tail")
+                   (viewport-tests--rows viewport))
+      (transcript-viewport-layout viewport 3)
+      (transcript-viewport-scroll-to-top viewport)
+      (check-equal "rerendered regions remain actionable" :source
+                   (transcript-viewport-hit viewport 1 1))
+      (transcript-viewport-selection-start viewport 1 1)
+      (transcript-viewport-selection-extend viewport 3 1)
+      (transcript-viewport-resize viewport 20)
+      (check-equal "widening restores source layout" '("abcdefghij" "tail")
+                   (mapcar #'ansi-strip (viewport-tests--rows viewport)))
+      (check-equal "each width change invokes each source once" 2 calls)
+      (check-equal "source reflow keeps selection and explicit scroll anchoring"
+                   '("abc" 0 nil)
+                   (list (transcript-viewport-selection-text viewport)
+                         (transcript-viewport-top viewport)
+                         (transcript-viewport-following-p viewport)))
+      (transcript-viewport-selection-clear viewport)
+      (transcript-viewport-rollback viewport checkpoint)
+      (transcript-viewport-resize viewport 8)
+      (check-equal "rollback retains source ownership" 3 calls))
+    (let ((tail (aref (clinedi::transcript-viewport--rows viewport) 2)))
+      (transcript-viewport-replace viewport :source :text "new" :display "new")
+      (check-equal "replacement neither rerenders nor rebuilds unrelated rows"
+                   (list 3 tail)
+                   (list calls (aref (clinedi::transcript-viewport--rows viewport) 1))))
+    (let ((bounded (make-transcript-viewport :width 20 :character-limit 100)))
+      (transcript-viewport-append bounded "a" "a" :tag :source
+                                  :layout-function layout :source-characters 100)
+      (viewport-tests--append bounded "b")
+      (check-equal "logical source contributes to eviction accounting" 1
+                   (transcript-viewport-evicted-count bounded))
+      (transcript-viewport-resize bounded 9)
+      (check-equal "evicted source callbacks are released" 3 calls))))
+
+(defun viewport-tests--layout-failure ()
+  "A failing source callback leaves the current viewport usable."
+  (let ((viewport (make-transcript-viewport :width 20)))
+    (viewport-tests--append viewport "static before callback")
+    (transcript-viewport-append
+     viewport "original" "original" :tag :source
+     :layout-function                    (lambda (width)
+                                           (declare (ignore width))
+                                           (error "Layout failed")))
+    (let ((before (viewport-tests--rows viewport))
+          (weight (transcript-viewport-resident-characters viewport)))
+      (handler-case (transcript-viewport-resize viewport 10)
+        (error () nil))
+      (check-equal "failed layout keeps rows, geometry and accounting"
+                   (list before 20 weight)
+                   (list (viewport-tests--rows viewport)
+                         (transcript-viewport-width viewport)
+                         (transcript-viewport-resident-characters viewport))))))
+
 (defun run-viewport-tests ()
   "Run transcript viewport regression tests."
   (viewport-tests--selection)
+  (viewport-tests--source-layout)
+  (viewport-tests--layout-failure)
   (let ((viewport (make-transcript-viewport :width 6)))
     (viewport-tests--append viewport (format nil "abcdefghij~%"))
     (viewport-tests--append viewport (format nil "# one~%body~%"))

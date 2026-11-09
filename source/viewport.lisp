@@ -3,13 +3,16 @@
 (in-package #:clinedi)
 
 (defstruct (viewport-chunk
-            (:constructor %make-viewport-chunk (text display regions tag))
+            (:constructor %make-viewport-chunk
+                (text display regions tag &optional layout-function (source-characters 0)))
             (:copier nil))
-  "One appended transcript chunk kept unwrapped for reflow."
+  "One appended transcript chunk with optional source-backed layout."
   (text "" :type string :read-only t)
   (display "" :type string :read-only t)
   (regions nil :type list :read-only t)
   (tag nil)
+  (layout-function nil :type (or null function) :read-only t)
+  (source-characters 0 :type (integer 0) :read-only t)
   (weight 0 :type (integer 0)))
 
 (defstruct (viewport-row
@@ -166,18 +169,22 @@ An empty VIEWPORT has no chunk to tag and is left unchanged."
   "Return true when VIEWPORT follows its newest output."
   (null (transcript-viewport-top viewport)))
 
-(defun transcript-viewport-append (viewport text display &key regions tag)
-  "Append plain TEXT, its styled DISPLAY, and click REGIONS to VIEWPORT.
+(defun transcript-viewport-append (viewport text display
+                                   &key regions tag layout-function (source-characters 0))
+  "Append TEXT, styled DISPLAY, and click REGIONS to VIEWPORT.
 
-DISPLAY must present exactly TEXT's visible characters. REGIONS is a list of
-(START END ACTION) character ranges of TEXT, as cl-termdown's widget regions
-are. TAG is any value the evict function later receives for this chunk. A
-final newline ends the chunk rather than adding an empty row. Past the
-character limit the oldest chunks are evicted."
+DISPLAY presents exactly TEXT's visible characters; REGIONS contains
+(START END ACTION) ranges. TAG identifies the chunk for replacement/eviction.
+LAYOUT-FUNCTION, when supplied, returns fresh TEXT, DISPLAY and REGIONS for a
+new width. Initial TEXT and DISPLAY already use the viewport width. Count
+characters retained by its source in SOURCE-CHARACTERS for bounded eviction.
+A final newline ends the chunk rather than adding an empty row."
+  (check-type layout-function (or null function))
+  (check-type source-characters (integer 0))
   (when (plusp (length text))
     (let* ((chunks (transcript-viewport--chunks viewport))
            (index  (+ (transcript-viewport--chunk-base viewport) (length chunks)))
-           (chunk  (%make-viewport-chunk text display regions tag))
+           (chunk  (%make-viewport-chunk text display regions tag layout-function source-characters))
            (rows   (viewport--wrap-chunk chunk index (transcript-viewport-width viewport))))
       (vector-push-extend chunk chunks)
       (dolist (row rows)
@@ -187,47 +194,64 @@ character limit the oldest chunks are evicted."
       (viewport--evict viewport)))
   viewport)
 
-(defgeneric transcript-viewport-replace (viewport tag &key text display regions)
+(defgeneric transcript-viewport-replace
+    (viewport tag &key text display regions layout-function source-characters)
   (:documentation "Replace the resident chunk identified by TAG."))
 
 (defmethod transcript-viewport-replace ((viewport transcript-viewport) tag
-                                        &key text display regions)
-  "Replace the resident chunk whose tag is EQUAL to TAG.
+                                        &key text display regions layout-function
+                                          (source-characters 0))
+  "Replace TAG's chunk at its current width, preserving anchors and follow mode.
 
-The replacement keeps TAG, is rewrapped at the current width, and preserves
- the current scroll anchor and following state. REGIONS replaces the old
- chunk's click regions. Return true when a resident chunk matched TAG, or NIL
- when it was missing or had already been evicted."
+Only the replacement is wrapped; other chunks retain their row objects.
+LAYOUT-FUNCTION and SOURCE-CHARACTERS have the same meaning as on append.
+Return true when TAG matched a resident chunk, NIL otherwise."
+  (check-type layout-function (or null function))
+  (check-type source-characters (integer 0))
   (let* ((chunks (transcript-viewport--chunks viewport))
          (index  (position tag chunks :key #'viewport-chunk-tag :test #'equal)))
     (when index
-      (let* ((new-chunk (%make-viewport-chunk text display regions tag))
-             (old-rows  (transcript-viewport--rows viewport))
-             (top       (transcript-viewport-top viewport))
-             (anchor    (and top (< top (length old-rows)) (aref old-rows top)))
-             (rows      (make-array 0 :adjustable t :fill-pointer 0))
-             (new-top   nil)
-             (width     (transcript-viewport-width viewport))
-             (base      (transcript-viewport--chunk-base viewport)))
-        (setf (aref chunks index) new-chunk
-              (transcript-viewport--rows viewport) rows)
-        (loop for chunk across chunks
-              for chunk-index from base
-              do (let ((chunk-rows (viewport--wrap-chunk chunk chunk-index width)))
-                   (dolist (row chunk-rows)
-                     (when (and anchor
-                                (= chunk-index (viewport-row-chunk anchor))
-                                (<= (viewport-row-offset row)
-                                    (viewport-row-offset anchor)))
-                       (setf new-top (length rows)))
-                     (vector-push-extend row rows))
-                   (setf (viewport-chunk-weight chunk)
-                         (viewport--chunk-weight chunk chunk-rows))))
-        (setf (transcript-viewport--weight viewport)
-              (loop for chunk across chunks
-                    sum (viewport-chunk-weight chunk))
-              (transcript-viewport-top viewport)
-              (and top (or new-top (min top (max 0 (1- (length rows)))))))
+      (let* ((number      (+ index (transcript-viewport--chunk-base viewport)))
+             (old-chunk   (aref chunks index))
+             (new-chunk   (%make-viewport-chunk text display regions tag
+                                                layout-function source-characters))
+             (rows        (transcript-viewport--rows viewport))
+             (start       (or (position number rows :key #'viewport-row-chunk) (length rows)))
+             (end         (or (position-if (lambda (row) (> (viewport-row-chunk row) number))
+                                          rows :start start)
+                              (length rows)))
+             (replacement (viewport--wrap-chunk new-chunk number
+                                               (transcript-viewport-width viewport)))
+             (top         (transcript-viewport-top viewport))
+             (anchor      (and top (< top (length rows)) (aref rows top)))
+             (delta       (- (length replacement) (- end start)))
+             (old-length  (length rows)))
+        (setf (viewport-chunk-weight new-chunk)
+              (viewport--chunk-weight new-chunk replacement))
+        (when (plusp delta)
+          (dotimes (offset delta)
+            (vector-push-extend nil rows)))
+        (replace rows rows :start1 (+ end delta) :start2 end :end2 old-length)
+        (replace rows replacement :start1 start)
+        (when (minusp delta)
+          (viewport--clear-tail rows (+ old-length delta)))
+        (setf (aref chunks index) new-chunk)
+        (incf (transcript-viewport--weight viewport)
+              (- (viewport-chunk-weight new-chunk) (viewport-chunk-weight old-chunk)))
+        (when top
+          (setf (transcript-viewport-top viewport)
+                (cond
+                  ((>= top end)
+                   (+ top delta))
+                  ((and anchor (>= top start))
+                   (+ start (or (position-if
+                                 (lambda (row)
+                                   (> (+ (viewport-row-offset row) (viewport-row-length row))
+                                      (viewport-row-offset anchor)))
+                                 replacement)
+                                (max 0 (1- (length replacement))))))
+                  (t
+                   top))))
         (viewport--evict viewport)
         t))))
 
@@ -241,13 +265,13 @@ Return true when the width changed."
            (top     (transcript-viewport-top viewport))
            (anchor  (and top (< top (length old)) (aref old top)))
            (rows    (make-array 0 :adjustable t :fill-pointer 0))
+           (chunks  (make-array 0 :adjustable t :fill-pointer 0))
            (weight  0)
            (new-top nil))
-      ;; Drop the old rows before wrapping so a reflow never holds two row sets.
-      (setf (transcript-viewport--rows viewport) rows)
-      (viewport--clear-tail old 0)
-      (loop for chunk across (transcript-viewport--chunks viewport)
+      ;; Publish only after every source callback and wrap succeeds.
+      (loop for previous across (transcript-viewport--chunks viewport)
             for index from (transcript-viewport--chunk-base viewport)
+            for chunk = (viewport--layout-chunk previous width)
             do (let ((chunk-rows (viewport--wrap-chunk chunk index width)))
                  (dolist (row chunk-rows)
                    (when (and anchor
@@ -256,8 +280,11 @@ Return true when the width changed."
                      (setf new-top (length rows)))
                    (vector-push-extend row rows))
                  (setf (viewport-chunk-weight chunk) (viewport--chunk-weight chunk chunk-rows))
-                 (incf weight (viewport-chunk-weight chunk))))
-      (setf (transcript-viewport--weight viewport) weight
+                 (incf weight (viewport-chunk-weight chunk))
+                 (vector-push-extend chunk chunks)))
+      (setf (transcript-viewport--chunks viewport) chunks
+            (transcript-viewport--rows viewport) rows
+            (transcript-viewport--weight viewport) weight
             (slot-value viewport 'width) width
             (transcript-viewport-top viewport) (and top (or new-top top)))
       (viewport--evict viewport)
@@ -534,7 +561,9 @@ selection instead of breaking it."
   (let ((copy (%make-viewport-chunk (viewport-chunk-text chunk)
                                     (viewport-chunk-display chunk)
                                     (viewport-chunk-regions chunk)
-                                    (viewport-chunk-tag chunk))))
+                                    (viewport-chunk-tag chunk)
+                                    (viewport-chunk-layout-function chunk)
+                                    (viewport-chunk-source-characters chunk))))
     (setf (viewport-chunk-weight copy) (viewport-chunk-weight chunk))
     copy))
 
@@ -583,6 +612,7 @@ Discarded chunks and rows release their storage."
 (defun viewport--chunk-weight (chunk rows)
   "Return the characters CHUNK and its wrapped ROWS hold, counting each click region."
   (+ (length (viewport-chunk-text chunk))
+     (viewport-chunk-source-characters chunk)
      (length (viewport-chunk-display chunk))
      (* 16 (length (viewport-chunk-regions chunk)))
      (loop for row in rows
@@ -637,6 +667,15 @@ place, and each evicted chunk's tag goes to the evict function."
             (dolist (tag tags)
               (funcall function tag)))))))
   viewport)
+
+(defun viewport--layout-chunk (chunk width)
+  "Return CHUNK laid out for WIDTH, retaining its source callback and tag."
+  (let ((layout (viewport-chunk-layout-function chunk)))
+    (if layout
+        (multiple-value-bind (text display regions) (funcall layout width)
+          (%make-viewport-chunk text display regions (viewport-chunk-tag chunk)
+                               layout (viewport-chunk-source-characters chunk)))
+        (viewport--copy-chunk chunk))))
 
 (defun viewport--wrap-chunk (chunk index width)
   "Wrap CHUNK, number INDEX, to WIDTH columns as rows anchored to its text."

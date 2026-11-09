@@ -298,6 +298,14 @@ cl-termdown's widget regions. Chunks stay unwrapped and each wrapped row
 remembers the characters it shows, so `transcript-viewport-resize` reflows
 the whole transcript while keeping the same first visible line.
 
+For width-dependent layouts, pass `:layout-function` on append or replacement.
+The callback receives the new width and returns plain text, styled display,
+and click regions. Keep original source in the callback instead of hardwrapped
+rows; it runs once per width change, never during unchanged paints. Initial
+text and display already use the current width. Declare retained source size
+with `:source-characters` so eviction accounts for it. A callback failure
+leaves the previous layout available.
+
 `transcript-viewport-layout` fits the viewport to a height, optionally
 counting unfinished rows shown after it, and returns the first visible row;
 `transcript-viewport-row-display` returns each row's trusted display and
@@ -317,8 +325,8 @@ row in reverse video.
 `transcript-viewport-checkpoint` and `-rollback` undo appends and scrolling
 when painting fails.
 `transcript-viewport-replace` replaces a resident chunk by its `EQUAL` tag,
-rewraps its text and display, and preserves its tag, click regions, and scroll
-anchor. It returns true when the tag is resident and NIL when it is missing or
+wraps only the replacement's text and display, and preserves its tag and scroll
+anchor. Supply replacement click regions alongside the new content. It returns true when the tag is resident and NIL when it is missing or
 has been evicted. Use a checkpoint before replacement when publication may
 fail; rollback restores replacements and any evictions made afterward.
 
