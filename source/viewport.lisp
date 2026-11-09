@@ -275,8 +275,9 @@ Return true when the width changed."
       (loop for previous across (transcript-viewport--chunks viewport)
             for index from (transcript-viewport--chunk-base viewport)
             for chunk = (viewport--layout-chunk previous width)
+            for changed-p = (not (string= (viewport-chunk-text previous) (viewport-chunk-text chunk)))
             do (let ((chunk-rows (viewport--wrap-chunk chunk index width)))
-                 (unless (string= (viewport-chunk-text previous) (viewport-chunk-text chunk))
+                 (when changed-p
                    (multiple-value-bind (start end) (viewport--selection-range viewport)
                      (when (and start (<= (first start) index (first end)))
                        (setf clear-selection-p t)))
@@ -285,7 +286,7 @@ Return true when the width changed."
                  (dolist (row chunk-rows)
                    (when (and anchor
                               (= index (viewport-row-chunk anchor))
-                              (string= (viewport-chunk-text previous) (viewport-chunk-text chunk))
+                              (not changed-p)
                               (<= (viewport-row-offset row) (viewport-row-offset anchor)))
                      (setf new-top (length rows)))
                    (vector-push-extend row rows))
