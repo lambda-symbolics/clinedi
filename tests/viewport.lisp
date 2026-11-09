@@ -69,18 +69,22 @@
       (transcript-viewport-resize viewport 8)
       (check-equal "narrow layout uses retained source" '("abc" "defghij" "tail")
                    (viewport-tests--rows viewport))
-      (transcript-viewport-layout viewport 3)
+      (transcript-viewport-layout viewport 2)
       (transcript-viewport-scroll-to-top viewport)
       (check-equal "rerendered regions remain actionable" :source
                    (transcript-viewport-hit viewport 1 1))
-      (transcript-viewport-selection-start viewport 1 1)
-      (transcript-viewport-selection-extend viewport 3 1)
+      (transcript-viewport-selection-start viewport 1 2)
+      (transcript-viewport-selection-extend viewport 3 2)
+      (check-equal "selection starts after the inserted newline" "def"
+                   (transcript-viewport-selection-text viewport))
+      (transcript-viewport-layout viewport 1)
+      (transcript-viewport-scroll viewport 1)
       (transcript-viewport-resize viewport 20)
       (check-equal "widening restores source layout" '("abcdefghij" "tail")
                    (mapcar #'ansi-strip (viewport-tests--rows viewport)))
       (check-equal "each width change invokes each source once" 2 calls)
-      (check-equal "source reflow keeps selection and explicit scroll anchoring"
-                   '("abc" 0 nil)
+      (check-equal "changed text clears selection and anchors the same chunk"
+                   '(nil 0 nil)
                    (list (transcript-viewport-selection-text viewport)
                          (transcript-viewport-top viewport)
                          (transcript-viewport-following-p viewport)))
@@ -121,11 +125,63 @@
                          (transcript-viewport-width viewport)
                          (transcript-viewport-resident-characters viewport))))))
 
+(defun viewport-tests--invalid-layout-regions ()
+  "Reject invalid callback regions before publishing any new layout state."
+  (dolist (regions '((("bad" 2 :action)) ((0 20 :action)) ((2 1 :action))
+                     ((-1 2 :action)) ((0 2)) ((0 2 :action extra)) (bad)))
+    (let ((viewport (make-transcript-viewport :width 20)))
+      (transcript-viewport-append
+       viewport "original" "original" :tag :source
+       :layout-function                    (lambda (width)
+                                             (declare (ignore width))
+                                             (values "changed" "changed" regions)))
+      (transcript-viewport-layout viewport 1)
+      (transcript-viewport-scroll-to-top viewport)
+      (transcript-viewport-selection-start viewport 1 1)
+      (transcript-viewport-selection-extend viewport 3 1)
+      (let ((before (viewport-tests--rows viewport))
+            (weight (transcript-viewport-resident-characters viewport)))
+        (check-equal "invalid callback regions signal before publication" t
+                     (handler-case (progn (transcript-viewport-resize viewport 10) nil)
+                       (type-error () t)))
+        (check-equal "invalid regions retain rows, width, weight, selection and scroll"
+                     (list before 20 weight "ori" 0)
+                     (list (viewport-tests--rows viewport)
+                           (transcript-viewport-width viewport)
+                           (transcript-viewport-resident-characters viewport)
+                           (transcript-viewport-selection-text viewport)
+                           (transcript-viewport-top viewport)))))))
+
+(defun viewport-tests--source-selection-policy ()
+  "Preserve unchanged source offsets; clear selections when a newline is inserted."
+  (let* ((source   "abcdefghij")
+         (viewport (make-transcript-viewport :width 20)))
+    (transcript-viewport-append
+     viewport source source
+     :layout-function (lambda (width)
+                        (let ((text (if (< width 10) (format nil "abc~%defghij") source)))
+                          (values text text nil))))
+    (transcript-viewport-layout viewport 3)
+    (transcript-viewport-selection-start viewport 4 1)
+    (transcript-viewport-selection-extend viewport 6 1)
+    (transcript-viewport-resize viewport 30)
+    (check-equal "unchanged callback text preserves exact selection and follow mode"
+                 '("def" t)
+                 (list (transcript-viewport-selection-text viewport)
+                       (transcript-viewport-following-p viewport)))
+    (transcript-viewport-resize viewport 8)
+    (check-equal "inserting a newline clears obsolete offsets after the common prefix"
+                 '(nil t)
+                 (list (transcript-viewport-selection-text viewport)
+                       (transcript-viewport-following-p viewport)))))
+
 (defun run-viewport-tests ()
   "Run transcript viewport regression tests."
   (viewport-tests--selection)
   (viewport-tests--source-layout)
   (viewport-tests--layout-failure)
+  (viewport-tests--invalid-layout-regions)
+  (viewport-tests--source-selection-policy)
   (let ((viewport (make-transcript-viewport :width 6)))
     (viewport-tests--append viewport (format nil "abcdefghij~%"))
     (viewport-tests--append viewport (format nil "# one~%body~%"))

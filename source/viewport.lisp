@@ -256,26 +256,36 @@ Return true when TAG matched a resident chunk, NIL otherwise."
         t))))
 
 (defun transcript-viewport-resize (viewport width)
-  "Reflow VIEWPORT to WIDTH columns, keeping its first visible line in view.
+  "Reflow VIEWPORT to WIDTH columns, keeping its first visible chunk in view.
 
+Unchanged text retains exact character anchors. Changed source-backed text
+anchors scrolling at the chunk's first row and clears selections spanning it.
 Return true when the width changed."
   (check-type width (integer 1))
   (unless (= width (transcript-viewport-width viewport))
-    (let* ((old     (transcript-viewport--rows viewport))
-           (top     (transcript-viewport-top viewport))
-           (anchor  (and top (< top (length old)) (aref old top)))
-           (rows    (make-array 0 :adjustable t :fill-pointer 0))
-           (chunks  (make-array 0 :adjustable t :fill-pointer 0))
-           (weight  0)
-           (new-top nil))
+    (let* ((old               (transcript-viewport--rows viewport))
+           (top               (transcript-viewport-top viewport))
+           (anchor            (and top (< top (length old)) (aref old top)))
+           (rows              (make-array 0 :adjustable t :fill-pointer 0))
+           (chunks            (make-array 0 :adjustable t :fill-pointer 0))
+           (weight            0)
+           (clear-selection-p nil)
+           (new-top           nil))
       ;; Publish only after every source callback and wrap succeeds.
       (loop for previous across (transcript-viewport--chunks viewport)
             for index from (transcript-viewport--chunk-base viewport)
             for chunk = (viewport--layout-chunk previous width)
             do (let ((chunk-rows (viewport--wrap-chunk chunk index width)))
+                 (unless (string= (viewport-chunk-text previous) (viewport-chunk-text chunk))
+                   (multiple-value-bind (start end) (viewport--selection-range viewport)
+                     (when (and start (<= (first start) index (first end)))
+                       (setf clear-selection-p t)))
+                   (when (and anchor (= index (viewport-row-chunk anchor)))
+                     (setf new-top (length rows))))
                  (dolist (row chunk-rows)
                    (when (and anchor
                               (= index (viewport-row-chunk anchor))
+                              (string= (viewport-chunk-text previous) (viewport-chunk-text chunk))
                               (<= (viewport-row-offset row) (viewport-row-offset anchor)))
                      (setf new-top (length rows)))
                    (vector-push-extend row rows))
@@ -287,6 +297,8 @@ Return true when the width changed."
             (transcript-viewport--weight viewport) weight
             (slot-value viewport 'width) width
             (transcript-viewport-top viewport) (and top (or new-top top)))
+      (when clear-selection-p
+        (transcript-viewport-selection-clear viewport))
       (viewport--evict viewport)
       t)))
 
@@ -668,11 +680,28 @@ place, and each evicted chunk's tag goes to the evict function."
               (funcall function tag)))))))
   viewport)
 
+(define-condition viewport-layout-region-error (type-error)
+  ()
+  (:documentation "A source callback returned malformed or out-of-bounds click regions."))
+
+(defun viewport--valid-regions-p (regions &optional (text-length most-positive-fixnum))
+  "Accept proper lists of character-bound region triples within TEXT-LENGTH."
+  (and (handler-case (integerp (list-length regions)) (type-error () nil))
+       (every (lambda (region)
+                (and (typep region '(cons (integer 0) (cons (integer 0) (cons t null))))
+                     (<= (first region) (second region) text-length)))
+              regions)))
+
 (defun viewport--layout-chunk (chunk width)
   "Return CHUNK laid out for WIDTH, retaining its source callback and tag."
   (let ((layout (viewport-chunk-layout-function chunk)))
     (if layout
         (multiple-value-bind (text display regions) (funcall layout width)
+          (check-type text string)
+          (check-type display (or null string))
+          (unless (viewport--valid-regions-p regions (length text))
+            (error 'viewport-layout-region-error :datum regions
+                   :expected-type                       '(satisfies viewport--valid-regions-p)))
           (%make-viewport-chunk text display regions (viewport-chunk-tag chunk)
                                layout (viewport-chunk-source-characters chunk)))
         (viewport--copy-chunk chunk))))
