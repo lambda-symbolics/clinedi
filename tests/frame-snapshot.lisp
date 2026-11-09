@@ -54,8 +54,8 @@
                      (coerce (frame-snapshot-rows applied) 'list))))
     (check-equal "apply does not modify baseline" '("a" "b")
                  (coerce (frame-snapshot-rows previous) 'list)))
-  (let* ((text (copy-seq "owned"))
-         (input (vector text))
+  (let* ((text     (copy-seq "owned"))
+         (input    (vector text))
          (snapshot (make-frame-snapshot input :height 2 :width 1)))
     (setf (char text 0) #\X
           (aref input 0) "replaced")
@@ -70,9 +70,9 @@
                  '("owned" "") (coerce (frame-snapshot-rows snapshot) 'list))
     (dolist (complete-p '(nil t))
       (let* ((replacement (copy-seq "fresh"))
-             (entries (list (list 1 replacement)))
-             (applied (frame-snapshot-apply snapshot entries :height 2 :width 1
-                                                           :complete-p complete-p)))
+             (entries     (list (list 1 replacement)))
+             (applied     (frame-snapshot-apply snapshot entries :height 2 :width 1
+                                                               :complete-p complete-p)))
         (setf (char replacement 0) #\X
               (second (first entries)) "replaced"
               (char (aref (frame-snapshot-rows applied) 1) 1) #\Y)
