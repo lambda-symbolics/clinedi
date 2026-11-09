@@ -175,6 +175,28 @@
                  (list (transcript-viewport-selection-text viewport)
                        (transcript-viewport-following-p viewport)))))
 
+(defun viewport-tests--replacement-selection-policy ()
+  "Invalidate changed replacement offsets while preserving unchanged selections."
+  (let ((source (format nil "abc~%defghij")))
+    (dolist (replacement (list source "abcdefghij" "x" (format nil "z~%abc~%defghij")))
+      (let ((viewport (make-transcript-viewport :width 8)))
+        (transcript-viewport-append viewport source source :tag :source)
+        (viewport-tests--append viewport "tail")
+        (transcript-viewport-layout viewport 3)
+        (transcript-viewport-selection-start viewport 1 2)
+        (transcript-viewport-selection-extend viewport 3 2)
+        (check-equal "selection starts after the replacement's common prefix" "def"
+                     (transcript-viewport-selection-text viewport))
+        (transcript-viewport-layout viewport 1)
+        (transcript-viewport-scroll-to-top viewport)
+        (transcript-viewport-scroll viewport 1)
+        (transcript-viewport-replace viewport :source :text replacement :display replacement)
+        (check-equal "replacement keeps follow mode and uses valid selection and scroll anchors"
+                     (if (string= source replacement) '("def" 1 nil) '(nil 0 nil))
+                     (list (transcript-viewport-selection-text viewport)
+                           (transcript-viewport-top viewport)
+                           (transcript-viewport-following-p viewport)))))))
+
 (defun run-viewport-tests ()
   "Run transcript viewport regression tests."
   (viewport-tests--selection)
@@ -182,6 +204,7 @@
   (viewport-tests--layout-failure)
   (viewport-tests--invalid-layout-regions)
   (viewport-tests--source-selection-policy)
+  (viewport-tests--replacement-selection-policy)
   (let ((viewport (make-transcript-viewport :width 6)))
     (viewport-tests--append viewport (format nil "abcdefghij~%"))
     (viewport-tests--append viewport (format nil "# one~%body~%"))

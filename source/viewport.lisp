@@ -200,9 +200,11 @@ A final newline ends the chunk rather than adding an empty row."
 
 (defmethod transcript-viewport-replace ((viewport transcript-viewport) tag
                                         &key text display regions layout-function
-                                          (source-characters 0))
-  "Replace TAG's chunk at its current width, preserving anchors and follow mode.
+                                        (source-characters 0))
+  "Replace TAG's chunk at its current width, preserving follow mode.
 
+Unchanged text retains exact character anchors. Changed text anchors scrolling
+at the chunk's first row and clears selections spanning it.
 Only the replacement is wrapped; other chunks retain their row objects.
 LAYOUT-FUNCTION and SOURCE-CHARACTERS have the same meaning as on append.
 Return true when TAG matched a resident chunk, NIL otherwise."
@@ -214,7 +216,8 @@ Return true when TAG matched a resident chunk, NIL otherwise."
       (let* ((number      (+ index (transcript-viewport--chunk-base viewport)))
              (old-chunk   (aref chunks index))
              (new-chunk   (%make-viewport-chunk text display regions tag
-                                                layout-function source-characters))
+                                               layout-function source-characters))
+             (changed-p   (not (string= (viewport-chunk-text old-chunk) text)))
              (rows        (transcript-viewport--rows viewport))
              (start       (or (position number rows :key #'viewport-row-chunk) (length rows)))
              (end         (or (position-if (lambda (row) (> (viewport-row-chunk row) number))
@@ -238,18 +241,24 @@ Return true when TAG matched a resident chunk, NIL otherwise."
         (setf (aref chunks index) new-chunk)
         (incf (transcript-viewport--weight viewport)
               (- (viewport-chunk-weight new-chunk) (viewport-chunk-weight old-chunk)))
+        (when changed-p
+          (multiple-value-bind (selection-start selection-end) (viewport--selection-range viewport)
+            (when (and selection-start (<= (first selection-start) number (first selection-end)))
+              (transcript-viewport-selection-clear viewport))))
         (when top
           (setf (transcript-viewport-top viewport)
                 (cond
                   ((>= top end)
                    (+ top delta))
                   ((and anchor (>= top start))
-                   (+ start (or (position-if
-                                 (lambda (row)
-                                   (> (+ (viewport-row-offset row) (viewport-row-length row))
-                                      (viewport-row-offset anchor)))
-                                 replacement)
-                                (max 0 (1- (length replacement))))))
+                   (if changed-p
+                       start
+                       (+ start (or (position-if
+                                     (lambda (row)
+                                       (> (+ (viewport-row-offset row) (viewport-row-length row))
+                                          (viewport-row-offset anchor)))
+                                     replacement)
+                                    (max 0 (1- (length replacement)))))))
                   (t
                    top))))
         (viewport--evict viewport)
