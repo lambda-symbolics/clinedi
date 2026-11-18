@@ -193,6 +193,8 @@ Return NIL for malformed input or unrequested extra fields."
         :complete)
        (1
         :complete-previous)
+       (4
+        :focus-next)
        (otherwise
         :ignore)))
     ((= code 27)

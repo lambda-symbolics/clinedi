@@ -193,6 +193,9 @@ with the standard behavior, so an application can customize its own copy:
 (clinedi:edit-line "> " :keymap *application-keymap*)
 ```
 
+Ctrl-Tab decodes to `:focus-next` where the terminal reports it. The default
+keymap leaves it unbound, for a host that moves focus between panes.
+
 A binding maps an event to a built-in semantic command, a function, or a
 non-keyword fbound symbol. Custom commands receive the editor and the original
 event, and return the same action and optional payload pair as

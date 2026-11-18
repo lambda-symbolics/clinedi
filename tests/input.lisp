@@ -182,6 +182,8 @@
                   ("CSI-u carriage-return event" "[13u" :submit)
                   ("CSI-u tab event" "[9u" :complete)
                   ("CSI-u shift-tab event" "[9;2u" :complete-previous)
+                  ("CSI-u control-tab event" "[9;5u" :focus-next)
+                  ("modifyOtherKeys control-tab event" "[27;5;9~" :focus-next)
                   ("CSI-u escape event" "[27u" :escape)
                   ("CSI-u backspace event" "[127u" :backspace)
                   ("CSI-u control-D event" "[100;5u" :end-of-input)
