@@ -19,6 +19,8 @@
 
 (defun run-input-tests ()
   "Run semantic input-decoder regression tests."
+  (check-equal "the NUL byte of Ctrl-Space" :focus-next
+               (input-test--event (string (code-char 0))))
   (dolist (case '(("[1;1D" :left)
                   ("[1;1C" :right)
                   ("[1;1H" :home)
@@ -183,6 +185,7 @@
                   ("CSI-u tab event" "[9u" :complete)
                   ("CSI-u shift-tab event" "[9;2u" :complete-previous)
                   ("CSI-u control-tab event" "[9;5u" :focus-next)
+                  ("CSI-u control-space event" "[32;5u" :focus-next)
                   ("modifyOtherKeys control-tab event" "[27;5;9~" :focus-next)
                   ("CSI-u escape event" "[27u" :escape)
                   ("CSI-u backspace event" "[127u" :backspace)

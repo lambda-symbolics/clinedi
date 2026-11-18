@@ -203,6 +203,8 @@ Return NIL for malformed input or unrequested extra fields."
      (if (logtest 6 modifiers) :kill-word :backspace))
     ((logbitp 2 modifiers)
      (case (if (<= 65 code 90) (+ code 32) code)
+       (32
+        :focus-next)
        (97
         :home)
        (98
@@ -426,7 +428,8 @@ and Down become :UP and :DOWN, while Ctrl-P and Ctrl-N retain explicit history
 traversal. Shift-Tab becomes :COMPLETE-PREVIOUS. Ctrl-D becomes
 :END-OF-INPUT; physical stream EOF becomes :STREAM-END. A Ctrl-letter
 combination without an editing meaning becomes (:CONTROL CHARACTER), with the
-lowercase letter, for applications to bind."
+lowercase letter, for applications to bind. Ctrl-Space, like Ctrl-Tab where the
+terminal reports it, becomes :FOCUS-NEXT."
   (let ((character (read-char stream nil nil)))
     (cond ((null character)
            :stream-end)
@@ -434,6 +437,8 @@ lowercase letter, for applications to bind."
            (input--read-escape stream escape-delay))
           (t
            (case (char-code character)
+             (0
+              :focus-next)           ; C-Space
              (1
               :home)                 ; C-a
              (2
