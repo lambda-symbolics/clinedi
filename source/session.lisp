@@ -118,7 +118,10 @@ SEARCH-KEY returns text; whitespace-separated query terms match case-insensitive
                                (subseq text 0 (min remaining (length text))))))))
        (selection-session--refresh session identity)
        (values ':continue nil))
-      ((eq event ':poll)
+      ((or (eq event ':poll)
+           (and (consp event) (member (first event) '(:click :drag :release :scroll))))
+       ;; The pointer never answers a modal choice: the release after the click
+       ;; that opened it would otherwise accept the highlighted item.
        (values ':continue nil))
       (t
        (selector-handle-event (selection-session-selector session) event)))))

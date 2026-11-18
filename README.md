@@ -226,6 +226,8 @@ measures candidate cell widths against the available terminal width.
 - Enter accepts
 - ordinary editing input dismisses the chooser while returning the selected
   value
+- in a selection session, pointer events answer nothing: a click, drag,
+  release or wheel step leaves the choice open
 
 ```lisp
 (let ((selector (clinedi:make-selector

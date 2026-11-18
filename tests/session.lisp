@@ -49,6 +49,7 @@
                  (clinedi:selection-session-query session)))
   (dolist (case '(((:submit) 2) ((:down :submit) 3)
                   ((:complete :submit) 3) ((:complete-previous :submit) 1)
+                  (((:release 4 2) (:drag 4 3) (:scroll 1) (:click 9 9) :down :submit) 3)
                   ((:escape) nil) ((:interrupt) nil) ((:stream-end) nil)))
     (let* ((events  (copy-list (first case)))
            (session (session-tests--make))
