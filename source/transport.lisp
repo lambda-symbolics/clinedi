@@ -152,6 +152,21 @@
   (write-string text (stream-terminal-output-stream terminal))
   nil)
 
+(defun terminal-write-text (terminal text)
+  "Write trusted TEXT, using CRLF for its newlines on an interactive TERMINAL.
+
+Do not sanitize control sequences or flush output."
+  (let ((start 0)
+        (line-end (if (terminal-interactive-p terminal)
+                      (format nil "~C~C" #\Return #\Newline)
+                      (string #\Newline))))
+    (loop for newline = (position #\Newline text :start start)
+          while newline
+          do (terminal-write terminal (subseq text start newline))
+             (terminal-write terminal line-end)
+             (setf start (1+ newline))
+          finally (terminal-write terminal (subseq text start))))
+  nil)
 (defmethod terminal-flush ((terminal stream-terminal))
   "Flush TERMINAL's output stream."
   (finish-output (stream-terminal-output-stream terminal))

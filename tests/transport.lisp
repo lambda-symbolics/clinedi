@@ -575,9 +575,25 @@
                   (clinedi:terminal-error () t)))
     (check-equal "failed concealment reads nothing" "unread" (read-line input))))
 
+(defun test-terminal-write-text ()
+  "Check trusted writes with leading and trailing line breaks."
+  (dolist (interactive-p '(nil t))
+    (let* ((terminal (make-instance 'protocol-recording-stream-terminal
+                                    :interactive-p interactive-p
+                                    :input-file-descriptor -1))
+           (text (format nil "~%~C[0m~%" #\Escape))
+           (line-end (if interactive-p (format nil "~C~C" #\Return #\Newline)
+                         (string #\Newline))))
+      (clinedi:terminal-write-text terminal text)
+      (check-equal "line endings and raw controls" (list "" line-end (subseq text 1 5) line-end "")
+                   (reverse (protocol-recording-stream-terminal-chunks terminal)))
+      (check-equal "trusted text write does not flush" 0
+                   (protocol-recording-stream-terminal-flush-count terminal))))
+  t)
 (defun run-transport-tests ()
   "Run buffered input and optional native transport checks."
   (test-terminal-concealed-line)
+  (test-terminal-write-text)
   (test-terminal-input-decoding)
   (test-terminal-size-resolution)
   (test-terminal-size-noninteractive-query)

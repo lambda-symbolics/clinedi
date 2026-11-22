@@ -39,6 +39,7 @@
    #:terminal-read-event
    #:terminal-input-ready-p
    #:terminal-write
+   #:terminal-write-text
    #:terminal-flush
    #:stream-terminal-input-stream
    #:stream-terminal-output-stream
