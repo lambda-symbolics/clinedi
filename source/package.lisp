@@ -167,6 +167,7 @@
    #:transcript-viewport-follow
    #:transcript-viewport-page-rows
    #:transcript-viewport-jump
+   #:transcript-viewport-jump-tagged
    #:transcript-viewport-hit
    #:transcript-viewport-selection-start
    #:transcript-viewport-selection-extend

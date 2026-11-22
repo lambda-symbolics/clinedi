@@ -499,6 +499,52 @@ when a row was found."
                      (show (1+ (- end (transcript-viewport-height viewport))))))))))
         (and target t)))))
 
+(defun transcript-viewport-jump-tagged (viewport direction predicate)
+  "Show the neighboring accepted chunk ending on the bottom row of VIEWPORT.
+
+Call PREDICATE with the tag and plain text of each chunk considered. The
+current section is the last accepted chunk starting at or above the bottom. Skip chunks
+without nonempty rows and exclude trailing blank rows from each section.
+DIRECTION is -1 for the previous section or 1 for the next. Follow the newest
+output only if the target ends at the last resident row. Return true if a
+section was found, NIL without moving otherwise."
+  (check-type direction (member -1 1))
+  (let* ((rows    (transcript-viewport--rows viewport))
+         (height  (transcript-viewport-height viewport))
+         (top     (or (transcript-viewport-top viewport)
+                      (transcript-viewport-maximum-top viewport)))
+         (bottom  (min (1- (length rows)) (+ top height -1)))
+         (row     0)
+         (current nil)
+         (target  nil))
+    (loop for chunk across (transcript-viewport--chunks viewport)
+          for number from (transcript-viewport--chunk-base viewport)
+          for start = row
+          for end = nil
+          for accepted-p = (funcall predicate (viewport-chunk-tag chunk)
+                                             (viewport-chunk-text chunk))
+          do (loop while (and (< row (length rows))
+                              (= (viewport-row-chunk (aref rows row)) number))
+                   do (when (and accepted-p (plusp (viewport-row-length (aref rows row))))
+                        (setf end row))
+                      (incf row))
+             (when end
+               (cond
+                 ((<= start bottom)
+                  (when (minusp direction)
+                    (setf target current
+                          current end)))
+                 ((plusp direction)
+                  (setf target end)
+                  (return))
+                 (t
+                  (return)))))
+    (when target
+      (if (= target (1- (length rows)))
+          (transcript-viewport-follow viewport)
+          (setf (transcript-viewport-top viewport) (max 0 (1+ (- target height)))))
+      t)))
+
 (defun transcript-viewport-hit (viewport column row)
   "Return what VIEWPORT shows at one-based screen COLUMN and ROW of the last layout.
 

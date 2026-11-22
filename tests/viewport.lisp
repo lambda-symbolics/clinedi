@@ -295,6 +295,41 @@
                          (error () t))
                        (viewport-tests--rows viewport)))))
 
+(defun viewport-tests--tagged-jump ()
+  "Test bottom-aligned jumps among selected chunks, not incidental rows."
+  (let ((viewport (make-transcript-viewport :width 10)))
+    (dolist (entry (list (list :activity "noise")
+                         (list :message (format nil "# a~%~%"))
+                         (list :activity "# fake")
+                         (list :message (format nil "# b~%one~%two~%three~%~%"))
+                         (list :message (string #\Newline))
+                         (list :side-status "# side")
+                         (list :activity "activity")))
+      (destructuring-bind (tag text) entry
+        (transcript-viewport-append viewport text text :tag tag)))
+    (transcript-viewport-layout viewport 2)
+    (flet ((accepted-p (tag text)
+             (and (member tag '(:message :side-status))
+                  (or (char= (char text 0) #\#) (char= (char text 0) #\Newline)))))
+      (dolist (case '((-1 t 6) (-1 t 0) (-1 nil 0) (1 t 6) (1 t 9) (1 nil 9)))
+        (destructuring-bind (direction moved-p top) case
+          (check-equal "tagged jumps skip activity and blank chunks and bottom-align even tall sections"
+                       (list moved-p top)
+                       (list (transcript-viewport-jump-tagged viewport direction #'accepted-p)
+                             (transcript-viewport-top viewport)))))
+      (transcript-viewport-append viewport "# last" "# last" :tag :message)
+      (transcript-viewport-layout viewport 2 :extra-rows 1)
+      (check-equal "a target ending at the last resident row resumes following extra output"
+                   '(t t)
+                   (list (transcript-viewport-jump-tagged viewport 1 #'accepted-p)
+                         (transcript-viewport-following-p viewport)))
+      (transcript-viewport-scroll-to-top viewport)
+      (transcript-viewport-layout viewport 1)
+      (check-equal "a forward jump before the first accepted chunk reaches it"
+                   '(t 1)
+                   (list (transcript-viewport-jump-tagged viewport 1 #'accepted-p)
+                         (transcript-viewport-top viewport))))))
+
 (defun run-viewport-tests ()
   "Run transcript viewport regression tests."
   (viewport-tests--selection)
@@ -304,6 +339,7 @@
   (viewport-tests--source-selection-policy)
   (viewport-tests--replacement-selection-policy)
   (viewport-tests--prepend)
+  (viewport-tests--tagged-jump)
   (let ((viewport (make-transcript-viewport :width 6)))
     (viewport-tests--append viewport (format nil "abcdefghij~%"))
     (viewport-tests--append viewport (format nil "# one~%body~%"))

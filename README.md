@@ -321,8 +321,13 @@ counting unfinished rows shown after it, and returns the first visible row;
 move it, and following resumes at the newest output.
 `transcript-viewport-jump` moves to the nearest row a predicate accepts, such
 as a message header; with `:align :end` it instead shows the section that row
-opens ending on the bottom row, and steps from the section under that row. `transcript-viewport-hit` maps a mouse position to the
-click region action, the chunk text, and the character index under it.
+opens ending on the bottom row, and steps from the section under that row.
+When the caller identifies sections by chunk, use
+`transcript-viewport-jump-tagged` with a predicate of `(tag text)`. It aligns
+accepted chunks by their last nonempty row, including chunks taller than the
+window. Other chunks provide no jump targets and do not extend a section.
+`transcript-viewport-hit` maps a mouse position to the click region action,
+the chunk text, and the character index under it.
 `transcript-viewport-selection-start` begins a selection at a mouse position,
 `-selection-extend` stretches it to another, `-selection-text` returns the
 plain characters it covers, and `-selection-clear` ends it. While a selection
