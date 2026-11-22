@@ -177,5 +177,24 @@
                  (sanitize-text (format nil "a~%b") :single-line-p t))
     (check-equal "sanitizing expands tabs deterministically"
                  "a  b"
-                 (sanitize-text (format nil "a~cb" #\tab) :tab-width 2)))
+                 (sanitize-text (format nil "a~cb" #\tab) :tab-width 2))
+    (let ((clean "plain text"))
+      (check-true "sanitizing clean text returns the same string"
+                  (eq clean (sanitize-text clean))))
+    (let ((clean (format nil "a~%b")))
+      (check-true "sanitizing text with preserved newlines returns the same string"
+                  (eq clean (sanitize-text clean))))
+    (let ((clean "a b"))
+      (check-true "sanitizing clean single-line text returns the same string"
+                  (eq clean (sanitize-text clean :single-line-p t))))
+    (check-equal "CRLF becomes one newline"
+                 (format nil "a~%b")
+                 (sanitize-text (format nil "a~c~%b" #\return)))
+    (check-equal "single-line CRLF becomes one space"
+                 "a b"
+                 (sanitize-text (format nil "a~c~%b" #\return)
+                                :single-line-p t))
+    (check-equal "CR not followed by LF becomes one newline"
+                 (format nil "a~%b")
+                 (sanitize-text (format nil "a~cb" #\return))))
   (values))

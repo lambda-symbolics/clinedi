@@ -598,31 +598,56 @@ the returned window."
                     (write-char character stream)))
              (incf index))))
 
+(defun unicode--sanitize-text-changed-p (text single-line-p replacement-character)
+  "Return true when sanitizing TEXT with these options would change TEXT."
+  (if (loop for character across text
+            for code = (char-code character)
+            thereis (cond ((char= character #\return)
+                           t)
+                          ((char= character #\newline)
+                           single-line-p)
+                          ((char= character #\tab)
+                           t)
+                          ((unicode--control-code-p code)
+                           (not (eql replacement-character character)))))
+      t
+      nil))
+
 (defun sanitize-text
     (text &key (single-line-p nil) (tab-width 4)
-               (replacement-character (code-char #xfffd)))
+           (replacement-character (code-char #xfffd)))
   "Return TEXT without executable terminal control characters.
 
-CR and CRLF become newlines. Newlines remain unless SINGLE-LINE-P is true,
-in which case each becomes a space. Tabs expand to TAB-WIDTH spaces. Other
-C0, DEL and C1 controls become REPLACEMENT-CHARACTER; NIL removes them."
+Clean text is returned unchanged. CR and CRLF become newlines. Newlines remain
+unless SINGLE-LINE-P is true, in which case each becomes a space. Tabs expand
+to TAB-WIDTH spaces. Other C0, DEL and C1 controls become REPLACEMENT-CHARACTER;
+NIL removes them."
   (check-type text string)
   (check-type tab-width (integer 0 *))
   (check-type replacement-character (or null character))
-  (with-output-to-string (stream)
-    (loop for character across (unicode--normalize-newlines text)
-          for code = (char-code character)
-          do (cond ((char= character #\newline)
-                    (write-char (if single-line-p #\space #\newline)
-                                stream))
-                   ((char= character #\tab)
-                    (loop repeat tab-width
-                          do (write-char #\space stream)))
-                   ((unicode--control-code-p code)
-                    (when replacement-character
-                      (write-char replacement-character stream)))
-                   (t
-                    (write-char character stream))))))
+  (if (not (unicode--sanitize-text-changed-p text single-line-p replacement-character))
+      text
+      (with-output-to-string (stream)
+        (loop with index = 0
+              with end = (length text)
+              while (< index end)
+              for character = (char text index)
+              do (cond ((char= character #\return)
+                        (write-char (if single-line-p #\space #\newline) stream)
+                        (when (and (< (1+ index) end)
+                                   (char= (char text (1+ index)) #\newline))
+                          (incf index)))
+                       ((char= character #\newline)
+                        (write-char (if single-line-p #\space #\newline) stream))
+                       ((char= character #\tab)
+                        (loop repeat tab-width
+                              do (write-char #\space stream)))
+                       ((unicode--control-code-p (char-code character))
+                        (when replacement-character
+                          (write-char replacement-character stream)))
+                       (t
+                        (write-char character stream)))
+              (incf index)))))
 
 (defun unicode--trimmed-row-end (line start end)
   "Return END moved left past ASCII spaces within LINE's row slice."
