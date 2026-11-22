@@ -20,10 +20,10 @@
             (:copier nil))
   "One wrapped display row anchored to the plain characters of its chunk.
 
-CHUNK is the chunk's append number, counting evicted chunks, and OFFSET and
+CHUNK is the chunk's number in transcript order. OFFSET and
 LENGTH locate the row's plain characters inside it."
   (display "" :type string :read-only t)
-  (chunk 0 :type (integer 0) :read-only t)
+  (chunk 0 :type integer :read-only t)
   (offset 0 :type (integer 0) :read-only t)
   (length 0 :type (integer 0) :read-only t))
 
@@ -39,7 +39,11 @@ LENGTH locate the row's plain characters inside it."
    (chunk-base
     :initform      0
     :accessor      transcript-viewport--chunk-base
-    :documentation "The append number of the oldest resident chunk.")
+    :documentation "The number of the oldest resident chunk.")
+   (evicted-count
+    :initform      0
+    :reader        transcript-viewport-evicted-count
+    :documentation "The number of chunks evicted from either edge.")
    (row-base
     :initform      0
     :accessor      transcript-viewport--row-base
@@ -57,7 +61,7 @@ LENGTH locate the row's plain characters inside it."
     :initarg       :evict-function
     :initform      nil
     :reader        transcript-viewport-evict-function
-    :documentation "A function called with each evicted chunk's tag, oldest first, or NIL.")
+    :documentation "A function called with each tag evicted from the older edge, or NIL.")
    (width
     :initarg       :width
     :reader        transcript-viewport-width
@@ -142,10 +146,6 @@ reverse video."
   "Return the plain text of VIEWPORT's resident chunk INDEX, oldest first."
   (viewport-chunk-text (aref (transcript-viewport--chunks viewport) index)))
 
-(defun transcript-viewport-evicted-count (viewport)
-  "Return how many chunks VIEWPORT has evicted."
-  (transcript-viewport--chunk-base viewport))
-
 (defun transcript-viewport-resident-characters (viewport)
   "Return the characters VIEWPORT's resident chunks hold, rows included."
   (transcript-viewport--weight viewport))
@@ -193,6 +193,76 @@ A final newline ends the chunk rather than adding an empty row."
       (incf (transcript-viewport--weight viewport) (viewport-chunk-weight chunk))
       (viewport--evict viewport)))
   viewport)
+
+(defun transcript-viewport-prepend (viewport prefix &key (extra-rows 0))
+  "Copy PREFIX's resident chunks before VIEWPORT, keeping the first visible row if retained.
+
+Use VIEWPORT's width, laying out source-backed prefix chunks again only if the
+widths differ. Keep the oldest chunk even if it alone exceeds the character
+limit. If the next chunk would exceed the limit, discard it and the entire
+newer suffix. Return VIEWPORT, the retained prefix tags, and the discarded
+chunk tags, both lists oldest first. Do not call the front-eviction callback.
+EXTRA-ROWS has the same meaning as for TRANSCRIPT-VIEWPORT-LAYOUT."
+  (check-type extra-rows (integer 0))
+  (let* ((prefix-chunks (transcript-viewport--chunks prefix))
+         (width         (transcript-viewport-width viewport))
+         (same-width    (= width (transcript-viewport-width prefix)))
+         (old-base      (transcript-viewport--chunk-base viewport))
+         (base          (- old-base (length prefix-chunks)))
+         (old-chunks    (transcript-viewport--chunks viewport))
+         (old-rows      (transcript-viewport--rows viewport))
+         (maximum-top   (transcript-viewport-maximum-top viewport))
+         (top           (min (or (transcript-viewport-top viewport) maximum-top) maximum-top))
+         (limit         (transcript-viewport-character-limit viewport))
+         (chunks        (make-array 0 :adjustable t :fill-pointer 0))
+         (rows          (make-array 0 :adjustable t :fill-pointer 0))
+         (weight        0)
+         (added         nil)
+         (discarded     nil))
+    (when (zerop (length prefix-chunks))
+      (return-from transcript-viewport-prepend (values viewport nil nil)))
+    (flet ((keep (chunk)
+             (if (or (not limit) (zerop (length chunks))
+                     (<= (+ weight (viewport-chunk-weight chunk)) limit))
+                 (progn
+                   (vector-push-extend chunk chunks)
+                   (incf weight (viewport-chunk-weight chunk))
+                   t)
+                 (progn
+                   (push (viewport-chunk-tag chunk) discarded)
+                   nil))))
+      ;; Publish only after all required prefix layouts succeed.
+      (loop for original across prefix-chunks
+            for number from base
+            do (if discarded
+                   (push (viewport-chunk-tag original) discarded)
+                   (let* ((chunk      (if same-width (viewport--copy-chunk original)
+                                          (viewport--layout-chunk original width)))
+                          (chunk-rows (viewport--wrap-chunk chunk number width)))
+                     (setf (viewport-chunk-weight chunk) (viewport--chunk-weight chunk chunk-rows))
+                     (when (keep chunk)
+                       (push (viewport-chunk-tag chunk) added)
+                       (dolist (row chunk-rows)
+                         (vector-push-extend row rows))))))
+      (let ((added-rows (length rows))
+            (kept       0))
+        (loop for chunk across old-chunks
+              do (if discarded
+                     (push (viewport-chunk-tag chunk) discarded)
+                     (when (keep chunk) (incf kept))))
+        (loop for row across old-rows
+              while (< (viewport-row-chunk row) (+ old-base kept))
+              do (vector-push-extend row rows))
+        (viewport--retain-selection viewport kept)
+        (setf (transcript-viewport--chunks viewport) chunks
+              (transcript-viewport--rows viewport) rows
+              (transcript-viewport--chunk-base viewport) base
+              (transcript-viewport--weight viewport) weight
+              (transcript-viewport-top viewport) (and (plusp (length old-rows)) (+ added-rows top)))
+        (incf (slot-value viewport 'evicted-count) (length discarded))
+        (transcript-viewport-layout viewport (transcript-viewport-height viewport)
+                                    :extra-rows extra-rows)))
+    (values viewport (nreverse added) (nreverse discarded))))
 
 (defgeneric transcript-viewport-replace
     (viewport tag &key text display regions layout-function source-characters)
@@ -554,6 +624,33 @@ selection instead of breaking it."
         (unless (viewport--position< end start)
           (values start end))))))
 
+(defun viewport--retain-selection (viewport count)
+  "Restrict a selection to the first COUNT previous chunks before prepending."
+  (let* ((anchor (transcript-viewport--selection-anchor viewport))
+         (head   (transcript-viewport--selection-head viewport))
+         (base   (transcript-viewport--chunk-base viewport))
+         (chunks (transcript-viewport--chunks viewport))
+         (last   (1- count)))
+    (when (and anchor head)
+      (loop while (and (>= last 0) (zerop (length (viewport-chunk-text (aref chunks last)))))
+            do (decf last))
+      (cond
+        ((or (minusp last)
+             (< (max (first anchor) (first head)) base)
+             (> (min (first anchor) (first head)) (+ base last)))
+         (transcript-viewport-selection-clear viewport))
+        (t
+         (flet ((clamp (position)
+                  (cond
+                    ((< (first position) base)
+                     (cons base 0))
+                    ((> (first position) (+ base last))
+                     (cons (+ base last) (1- (length (viewport-chunk-text (aref chunks last))))))
+                    (t
+                     position))))
+           (setf (transcript-viewport--selection-anchor viewport) (clamp anchor)
+                 (transcript-viewport--selection-head viewport) (clamp head))))))))
+
 (defun viewport--row-selection (viewport row)
   "Return the chunk indexes the selection covers in ROW, as FROM and TO, or NIL."
   (multiple-value-bind (start end) (viewport--selection-range viewport)
@@ -593,23 +690,27 @@ selection instead of breaking it."
   "Return an opaque state that TRANSCRIPT-VIEWPORT-ROLLBACK can restore.
 
 The snapshot includes resident chunks and rows, so a failed publication can
-undo replacements, evictions, appends, scrolling, and the last layout."
+undo replacements, evictions, appends, prepends, selections and scrolling."
   (list (map 'vector #'viewport--copy-chunk
              (transcript-viewport--chunks viewport))
         (copy-seq (transcript-viewport--rows viewport))
         (transcript-viewport--chunk-base viewport)
+        (transcript-viewport-evicted-count viewport)
         (transcript-viewport--row-base viewport)
         (transcript-viewport--weight viewport)
         (transcript-viewport-width viewport)
         (transcript-viewport-top viewport)
         (transcript-viewport-height viewport)
-        (transcript-viewport-maximum-top viewport)))
+        (transcript-viewport-maximum-top viewport)
+        (transcript-viewport--selection-anchor viewport)
+        (transcript-viewport--selection-head viewport)))
 
 (defun transcript-viewport-rollback (viewport checkpoint)
   "Restore VIEWPORT to the complete state captured by CHECKPOINT.
 
 Discarded chunks and rows release their storage."
-  (destructuring-bind (chunks rows chunk-base row-base weight width top height maximum-top)
+  (destructuring-bind (chunks rows chunk-base evicted-count row-base weight width top height
+                       maximum-top selection-anchor selection-head)
       checkpoint
     (setf (transcript-viewport--chunks viewport)
           (make-array (length chunks) :adjustable t :fill-pointer t
@@ -618,12 +719,15 @@ Discarded chunks and rows release their storage."
           (make-array (length rows) :adjustable t :fill-pointer t
                       :initial-contents rows)
           (transcript-viewport--chunk-base viewport) chunk-base
+          (slot-value viewport 'evicted-count) evicted-count
           (transcript-viewport--row-base viewport) row-base
           (transcript-viewport--weight viewport) weight
           (slot-value viewport 'width) width
           (transcript-viewport-top viewport) top
           (slot-value viewport 'height) height
-          (slot-value viewport 'maximum-top) maximum-top))
+          (slot-value viewport 'maximum-top) maximum-top
+          (transcript-viewport--selection-anchor viewport) selection-anchor
+          (transcript-viewport--selection-head viewport) selection-head))
   viewport)
 
 (defun viewport--row-chunk (viewport row)
@@ -680,6 +784,7 @@ place, and each evicted chunk's tag goes to the evict function."
         (replace rows rows :start2 row-count)
         (viewport--clear-tail rows (- (length rows) row-count))
         (incf (transcript-viewport--chunk-base viewport) chunk-count)
+        (incf (slot-value viewport 'evicted-count) chunk-count)
         (incf (transcript-viewport--row-base viewport) row-count)
         (let ((top (transcript-viewport-top viewport)))
           (when top

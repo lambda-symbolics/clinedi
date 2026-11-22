@@ -336,6 +336,14 @@ anchor. Supply replacement click regions alongside the new content. It returns t
 has been evicted. Use a checkpoint before replacement when publication may
 fail; rollback restores replacements and any evictions made afterward.
 
+For history paging, call `transcript-viewport-prepend` with the active
+viewport and an older page rendered in another viewport. It copies the page,
+keeps the first visible row when possible and removes chunks from the newer
+edge if needed. It returns the viewport, the kept page's tags, and the
+removed tags, both in transcript order. Handle those removals separately from
+the callback for eviction at the older edge. Pass `:extra-rows` for any rows
+outside the transcript in the current layout.
+
 A long-running application bounds the transcript with
 `:character-limit`. Past it, the oldest chunks are evicted down to three
 quarters of the limit; the newest chunk always stays, and a scrolled view

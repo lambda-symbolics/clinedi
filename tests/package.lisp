@@ -104,6 +104,7 @@
                 #:transcript-viewport-chunk-text
                 #:transcript-viewport-following-p
                 #:transcript-viewport-append
+                #:transcript-viewport-prepend
                 #:transcript-viewport-replace
                 #:transcript-viewport-resize
                 #:transcript-viewport-layout
