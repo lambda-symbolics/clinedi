@@ -76,3 +76,18 @@
   :description "Optional SBCL Windows console input-mode and geometry adapter"
   :depends-on  ("clinedi")
   :components  ((:file "source/win32" :if-feature :win32)))
+
+(asdf:defsystem "clinedi/lisp-layout"
+  :description "Optional Lisp source layout for display without reading forms"
+  :depends-on  ("clinedi" "parenchek")
+  :components  ((:file "source/lisp-layout"))
+  :in-order-to ((asdf:test-op (asdf:test-op "clinedi/lisp-layout/tests"))))
+
+(asdf:defsystem "clinedi/lisp-layout/tests"
+  :description "Regression tests for Clinedi's optional Lisp source layout"
+  :depends-on  ("clinedi/lisp-layout")
+  :components  ((:file "tests/lisp-layout"))
+  :perform     (asdf:test-op
+                (operation system)
+                (declare (ignore operation system))
+                (uiop:symbol-call '#:clinedi '#:run-lisp-layout-tests)))

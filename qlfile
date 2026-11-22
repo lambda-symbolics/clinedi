@@ -1,3 +1,6 @@
 ql bordeaux-threads 2026-01-01
 ql trivial-gray-streams 2026-01-01
 git cl-colorist https://github.com/lambda-symbolics/cl-colorist.git :ref a70749493fbdbe79d6766f254a664119042102b9
+ql serapeum 2026-01-01
+git parenchek https://github.com/lambda-symbolics/parenchek.git :ref 747c3f189bbc9fcaa22ab3f47d9ed5e6880a980b
+git ls-compat https://github.com/lambda-symbolics/ls-compat.git :ref 7219ac3fffecc37de977fcbd143c33bb7703ade4

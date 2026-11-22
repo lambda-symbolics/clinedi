@@ -3,6 +3,7 @@
 (defpackage #:clinedi
   (:use #:cl)
   (:export
+   #:lisp-source-layout
    #:pasted-path
    #:pasted-path-token
    #:terminal-disable-input-echo

@@ -106,6 +106,19 @@ local projects:
 (ql:register-local-projects)
 ```
 
+## Lisp source layout
+
+On SBCL, load `clinedi/lisp-layout` to display compact Lisp source:
+
+```lisp
+(asdf:load-system "clinedi/lisp-layout")
+(clinedi:lisp-source-layout "(defun square (x) (* x x))" 40)
+```
+
+The function changes whitespace between tokens without reading or evaluating
+the source. Multiline or unbalanced input is returned verbatim. The column
+count guides line breaking; individual tokens may exceed it. Use
+`(asdf:test-system "clinedi/lisp-layout")` to run the layout checks.
 ## Incremental editor
 
 ```lisp
