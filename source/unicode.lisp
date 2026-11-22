@@ -542,6 +542,21 @@ when necessary, so the returned string never contains a partial grapheme."
                             prefix-end next))
              (subseq text safe-start prefix-end)))))))
 
+(defun text-cell-fit (text width &key (alignment ':left))
+  "Clip plain TEXT at a grapheme boundary and space-pad it to WIDTH cells.
+
+ALIGNMENT is :LEFT for spaces after the prefix or :RIGHT for spaces before
+it. Negative widths count as zero. For a painted row, sanitize untrusted text
+before fitting it."
+  (let* ((width   (max 0 width))
+         (visible (text-cell-prefix text width))
+         (padding (make-string (- width (text-cell-width visible)) :initial-element #\Space)))
+    (ecase alignment
+      (:left
+       (concatenate 'string visible padding))
+      (:right
+       (concatenate 'string padding visible)))))
+
 (defun text-cell-window
     (text cursor maximum-cells &key (left-marker "‹"))
   "Return a grapheme-safe window around CURSOR and its cell offset.

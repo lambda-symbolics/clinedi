@@ -84,6 +84,18 @@
                  "" (text-cell-prefix family 1))
     (check-equal "cell prefix excludes a partial requested slice"
                  "" (text-cell-prefix combined 1 :start 1 :end 1))
+    (check-equal "cell fit clips before a wide character and pads on the requested side"
+                 '("a " " a")
+                 (list (text-cell-fit "a猫b" 2)
+                       (text-cell-fit "a猫b" 2 :alignment ':right)))
+    (check-equal "cell fit preserves combining accents and pads for an omitted emoji"
+                 (concatenate 'string combined " ")
+                 (text-cell-fit (concatenate 'string combined family) 2))
+    (check-equal "cell fit pads a shorter row and accepts empty geometry"
+                 '(" 猫" "" "")
+                 (list (text-cell-fit "猫" 3 :alignment ':right)
+                       (text-cell-fit "猫" 0)
+                       (text-cell-fit "abc" -1)))
     (check-equal "cell window clips on grapheme boundaries"
                  '("‹bc" 3)
                  (multiple-value-list

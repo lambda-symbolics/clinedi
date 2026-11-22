@@ -294,6 +294,9 @@ the painted rows with terminal reflow before retracting them. Pass
 Applications that manage their own presentation can use `clinedi:screen-window`
 to obtain grapheme-safe start, end, and cursor indexes for the same bounded
 multiline viewport behavior.
+Use `clinedi:text-cell-prefix` to clip plain text on grapheme boundaries.
+`clinedi:text-cell-fit` also adds spaces to fill the requested width. Pass
+`:alignment :right` to put the padding before the clipped text.
 
 ## Transcript viewport
 

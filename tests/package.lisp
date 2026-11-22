@@ -67,6 +67,7 @@
                 #:grapheme-cell-width
                 #:text-cell-width
                 #:text-cell-prefix
+                #:text-cell-fit
                 #:text-cell-window
                 #:wrap-text
                 #:sanitize-text
