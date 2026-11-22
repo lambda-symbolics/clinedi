@@ -117,6 +117,8 @@
                 #:transcript-viewport-hit
                 #:transcript-viewport-selection-start
                 #:transcript-viewport-selection-extend
+                #:transcript-viewport-selection-edge
+                #:transcript-viewport-selection-autoscroll
                 #:transcript-viewport-selection-clear
                 #:transcript-viewport-selection-text
                 #:transcript-viewport-checkpoint

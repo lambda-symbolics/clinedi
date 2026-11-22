@@ -49,6 +49,33 @@
                  (list (transcript-viewport-selection-text viewport)
                        (transcript-viewport-row-display viewport 0)))))
 
+(defun viewport-tests--selection-autoscroll ()
+  "Step the selection and viewport together while a drag holds an edge."
+  (let ((viewport (make-transcript-viewport :width 6)))
+    (viewport-tests--append viewport (format nil "aa~%bb~%cc~%dd~%ee~%"))
+    (transcript-viewport-layout viewport 3)
+    (check-equal "an edge alone cannot start a drag"
+                 nil (transcript-viewport-selection-autoscroll viewport 1 1))
+    (transcript-viewport-selection-start viewport 2 2)
+    (check-equal "only edges of the active selection scroll"
+                 '(-1 -1 nil 1 nil)
+                 (loop for row from 0 to 4 collect (transcript-viewport-selection-edge viewport row)))
+    (check-equal "autoscroll extends the selection through the newly visible older row"
+                 (list t 1 (format nil "bb~%cc~%dd"))
+                 (list (transcript-viewport-selection-autoscroll viewport 1 1)
+                       (transcript-viewport-top viewport)
+                       (transcript-viewport-selection-text viewport)))
+    (check-equal "scrolling down at the edge selects the newer row and follows the tail"
+                 (list t t (format nil "d~%e"))
+                 (list (transcript-viewport-selection-autoscroll viewport 1 3)
+                       (transcript-viewport-following-p viewport)
+                       (transcript-viewport-selection-text viewport)))
+    (check-equal "the bottom boundary reports no motion"
+                 nil (transcript-viewport-selection-autoscroll viewport 1 3))
+    (transcript-viewport-layout viewport 3 :extra-rows 4)
+    (check-equal "a layout showing only extra rows cannot start a selection"
+                 nil (transcript-viewport-selection-start viewport 1 1))))
+
 (defun viewport-tests--source-layout ()
   "Exercise source callbacks, local replacement, rollback and bounded ownership."
   (let* ((calls    0)
@@ -340,6 +367,7 @@
   (viewport-tests--replacement-selection-policy)
   (viewport-tests--prepend)
   (viewport-tests--tagged-jump)
+  (viewport-tests--selection-autoscroll)
   (let ((viewport (make-transcript-viewport :width 6)))
     (viewport-tests--append viewport (format nil "abcdefghij~%"))
     (viewport-tests--append viewport (format nil "# one~%body~%"))

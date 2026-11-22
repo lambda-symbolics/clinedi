@@ -596,6 +596,34 @@ Return true when there is a selection to stretch."
         (setf (transcript-viewport--selection-head viewport) position))
       t)))
 
+(defun transcript-viewport-selection-edge (viewport row)
+  "Return the scroll direction (-1 or 1) for a held selection at ROW, or NIL.
+
+ROW is one-based. Rows at or above the top edge scroll towards older text.
+Only the bottom row itself scrolls towards newer text; below it the caller
+may have other controls. On a one-row display the top edge takes precedence."
+  (let ((height (transcript-viewport-height viewport)))
+    (when (and (plusp height) (transcript-viewport--selection-anchor viewport))
+      (cond
+        ((<= row 1)
+         -1)
+        ((= row height)
+         1)))))
+
+(defun transcript-viewport-selection-autoscroll (viewport column row)
+  "Scroll a held selection one row at an edge and extend it under the pointer.
+
+Return true if the visible position moved. The caller supplies repeated ticks
+and controls when the gesture starts and ends."
+  (let ((direction (transcript-viewport-selection-edge viewport row)))
+    (when direction
+      (let* ((maximum (transcript-viewport-maximum-top viewport))
+             (before  (min (or (transcript-viewport-top viewport) maximum) maximum)))
+        (transcript-viewport-scroll viewport direction)
+        (unless (= before (or (transcript-viewport-top viewport) maximum))
+          (transcript-viewport-selection-extend viewport column row)
+          t)))))
+
 (defun transcript-viewport-selection-clear (viewport)
   "End VIEWPORT's selection."
   (setf (transcript-viewport--selection-anchor viewport) nil
@@ -634,14 +662,15 @@ cell means the row's end."
       (let* ((maximum  (transcript-viewport-maximum-top viewport))
              (top      (min (or (transcript-viewport-top viewport) maximum) maximum))
              (last     (min (1- (length rows)) (+ top (transcript-viewport-height viewport) -1)))
-             (absolute (max top (min last (+ top (1- row)))))
-             (anchor   (aref rows absolute))
-             (text     (viewport-chunk-text (viewport--row-chunk viewport anchor)))
-             (start    (viewport-row-offset anchor))
-             (end      (min (length text) (+ start (viewport-row-length anchor)))))
-        (cons (viewport-row-chunk anchor)
-              (or (viewport--column-character-index text (max 1 column) :start start :end end)
-                  end))))))
+             (absolute (max top (min last (+ top (1- row))))))
+        (when (<= absolute last)
+          (let* ((anchor (aref rows absolute))
+                 (text   (viewport-chunk-text (viewport--row-chunk viewport anchor)))
+                 (start  (viewport-row-offset anchor))
+                 (end    (min (length text) (+ start (viewport-row-length anchor)))))
+            (cons (viewport-row-chunk anchor)
+                  (or (viewport--column-character-index text (max 1 column) :start start :end end)
+                      end))))))))
 
 (defun viewport--position< (left right)
   "Return true when position LEFT comes before RIGHT."

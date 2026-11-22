@@ -333,6 +333,9 @@ the chunk text, and the character index under it.
 plain characters it covers, and `-selection-clear` ends it. While a selection
 lasts, `transcript-viewport-row-display` shows the selected characters of a
 row in reverse video.
+For drag autoscroll, use `transcript-viewport-selection-edge` to check the
+pointer's direction and `transcript-viewport-selection-autoscroll` to move
+one row and extend the selection. The caller schedules each step.
 `transcript-viewport-checkpoint` and `-rollback` undo appends and scrolling
 when painting fails.
 `transcript-viewport-replace` replaces a resident chunk by its `EQUAL` tag,
