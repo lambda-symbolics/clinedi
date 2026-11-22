@@ -2,6 +2,19 @@
 
 (in-package #:clinedi)
 
+(defun progress-bar-spans (width start end &key track-style fill-style)
+  "Return (STYLE . TEXT) spans for a WIDTH-cell bar filled from START below END.
+
+Clamp nonnegative START and END to the bar, omitting empty spans."
+  (flet ((segment (style character count)
+           (when (plusp count)
+             (list (cons style (make-string count :initial-element character))))))
+    (let* ((end   (min width end))
+           (start (min start end)))
+      (append (segment track-style #\─ start)
+              (segment fill-style #\━ (- end start))
+              (segment track-style #\─ (- width end))))))
+
 (defun screen-position (text &key (prompt-width 0) (columns 80) (start 0)
                                   (end (length text)))
   "Return the screen position after TEXT from START through END.

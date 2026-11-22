@@ -590,10 +590,31 @@
       (check-equal "trusted text write does not flush" 0
                    (protocol-recording-stream-terminal-flush-count terminal))))
   t)
+
+(defun test-terminal-alternate-screen ()
+  "Record the ordered controls and flushes for the alternate screen lifecycle."
+  (let ((terminal (make-instance 'protocol-recording-stream-terminal
+                                 :input-file-descriptor -1)))
+    (clinedi:terminal-enter-alternate-screen terminal)
+    (clinedi:terminal-leave-alternate-screen terminal)
+    (destructuring-bind (enter leave)
+        (reverse (protocol-recording-stream-terminal-chunks terminal))
+      (check-true "enter screen before clearing and enabling the mouse"
+                  (< (search (clinedi:alternate-screen-enter-sequence) enter)
+                     (search (format nil "~C[2J" #\Escape) enter)
+                     (search (clinedi:mouse-reporting-enable-sequence) enter)))
+      (check-true "disable mouse before leaving screen"
+                  (< (search (clinedi:mouse-reporting-disable-sequence) leave)
+                     (search (clinedi:alternate-screen-leave-sequence) leave))))
+    (check-equal "flush each mode change" 2
+                 (protocol-recording-stream-terminal-flush-count terminal)))
+  t)
+
 (defun run-transport-tests ()
   "Run buffered input and optional native transport checks."
   (test-terminal-concealed-line)
   (test-terminal-write-text)
+  (test-terminal-alternate-screen)
   (test-terminal-input-decoding)
   (test-terminal-size-resolution)
   (test-terminal-size-noninteractive-query)

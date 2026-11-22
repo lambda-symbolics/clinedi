@@ -40,6 +40,8 @@
    #:terminal-input-ready-p
    #:terminal-write
    #:terminal-write-text
+   #:terminal-enter-alternate-screen
+   #:terminal-leave-alternate-screen
    #:terminal-flush
    #:stream-terminal-input-stream
    #:stream-terminal-output-stream
@@ -93,6 +95,8 @@
    #:text-range-error-text
    #:text-range-error-start
    #:text-range-error-end
+
+   #:progress-bar-spans
 
    ;; ANSI presentation
    #:*presentation-enabled*

@@ -167,9 +167,34 @@ Do not sanitize control sequences or flush output."
              (setf start (1+ newline))
           finally (terminal-write terminal (subseq text start))))
   nil)
+
 (defmethod terminal-flush ((terminal stream-terminal))
   "Flush TERMINAL's output stream."
   (finish-output (stream-terminal-output-stream terminal))
+  nil)
+
+(defun terminal-enter-alternate-screen (terminal)
+  "Enter and clear the alternate screen with keyboard and mouse reports enabled."
+  (terminal-write
+   terminal
+   (concatenate 'string
+                (alternate-screen-enter-sequence)
+                (terminal-keyboard-enhancement-enable-sequence)
+                (format nil "~C[2J~C[H" #\Escape #\Escape)
+                (mouse-reporting-enable-sequence)))
+  (terminal-flush terminal)
+  nil)
+
+(defun terminal-leave-alternate-screen (terminal)
+  "Restore display modes, disable input reports and return to the normal screen."
+  (terminal-write
+   terminal
+   (concatenate 'string
+                (format nil "~C[0m~C[?7h~C[?25h" #\Escape #\Escape #\Escape)
+                (mouse-reporting-disable-sequence)
+                (terminal-keyboard-enhancement-disable-sequence)
+                (alternate-screen-leave-sequence)))
+  (terminal-flush terminal)
   nil)
 
 (defun terminal--disable-input-protocols (terminal)

@@ -4,6 +4,13 @@
 
 (defun run-render-tests ()
   "Run ANSI and wrapped-rendering regression tests."
+  (check-equal "progress segments preserve application styles"
+               '((:track . "─") (:fill . "━━") (:track . "──"))
+               (clinedi:progress-bar-spans 5 1 3 :track-style :track :fill-style :fill))
+  (check-equal "progress fill stops at the last cell" '((nil . "━━━"))
+               (clinedi:progress-bar-spans 3 0 9))
+  (check-equal "zero-width progress produces no spans" nil
+               (clinedi:progress-bar-spans 0 0 9))
   (flet ((expected-marker (payload)
            "Return the exact OSC 133 ST control for PAYLOAD."
            (format nil "~c]133;~a~c~c"
